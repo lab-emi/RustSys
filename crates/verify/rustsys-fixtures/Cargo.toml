@@ -1,0 +1,18 @@
+[package]
+name = "rustsys-fixtures"
+description = "Synthetic test inputs: toy cell libraries and RTL modules"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+rusteda-formats.workspace = true
+
+[lints]
+workspace = true

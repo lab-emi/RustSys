@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 RustSys contributors -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="568" viewBox="0 0 1080 568" role="img" aria-labelledby="title description">
+  <title id="title">RustSys synthesis and independent checking</title>
+  <desc id="description">RTL, BLIF, or AIGER source and a Liberty library enter the synthesis engine. Reading, elaboration, AIG optimization, and standard-cell mapping produce structural Verilog and a JSON report. For RTL-to-netlist checking, a separate RTL interpreter and independent library-cell evaluator produce SAT obligations and a verdict with evidence. The library also supplies the independent cell evaluator.</desc>
+  <defs>
+    <marker id="copper-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#EF8B52" stroke-width="1.5"/></marker>
+    <marker id="teal-arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8" fill="none" stroke="#57D6BE" stroke-width="1.5"/></marker>
+  </defs>
+  <rect width="1080" height="568" rx="20" fill="#101923"/>
+  <g font-family="system-ui, -apple-system, sans-serif" fill="#F4F1E9">
+    <text x="52" y="49" font-size="25" font-weight="700">Separate synthesis and verification</text>
+    <text x="52" y="79" font-size="15" fill="#A1B0BA">Explicit artifacts connect the engine, the checker, and the workspace.</text>
+    <g fill="none" stroke-width="2">
+      <path d="M312 165H391" stroke="#EF8B52" marker-end="url(#copper-arrow)"/>
+      <path d="M312 282H391" stroke="#EF8B52" marker-end="url(#copper-arrow)"/>
+      <path d="M680 185H790" stroke="#EF8B52" marker-end="url(#copper-arrow)"/>
+      <path d="M66 217H30V400H51" stroke="#57D6BE" marker-end="url(#teal-arrow)"/>
+      <path d="M312 298H350V329H1051V400H1039" stroke="#57D6BE" stroke-dasharray="5 6" marker-end="url(#teal-arrow)"/>
+      <path d="M915 278V350" stroke="#57D6BE" marker-end="url(#teal-arrow)"/>
+      <path d="M312 400H391" stroke="#57D6BE" marker-end="url(#teal-arrow)"/>
+      <path d="M790 400H689" stroke="#57D6BE" marker-end="url(#teal-arrow)"/>
+      <path d="M540 450V486" stroke="#57D6BE" marker-end="url(#teal-arrow)"/>
+    </g>
+    <g fill="#17242F" stroke="#3A4B57" stroke-width="1.3">
+      <rect x="52" y="110" width="260" height="107" rx="10"/>
+      <rect x="52" y="254" width="260" height="56" rx="10"/>
+      <rect x="400" y="110" width="280" height="202" rx="10" stroke="#EF8B52"/>
+      <rect x="800" y="132" width="230" height="146" rx="10"/>
+      <rect x="60" y="358" width="252" height="92" rx="10" stroke="#57D6BE"/>
+      <rect x="400" y="358" width="280" height="92" rx="10" stroke="#57D6BE"/>
+      <rect x="800" y="358" width="230" height="92" rx="10" stroke="#57D6BE"/>
+      <rect x="400" y="496" width="280" height="46" rx="10"/>
+    </g>
+    <text x="72" y="141" font-size="19" font-weight="650">Verilog / SystemVerilog</text>
+    <text x="72" y="170" font-size="16" fill="#A1B0BA">RTL source files</text>
+    <text x="72" y="197" font-size="14" fill="#A1B0BA">Synthesis also accepts BLIF / AIGER.</text>
+    <text x="72" y="289" font-size="18" font-weight="650">Liberty cell library</text>
+    <text x="425" y="143" font-size="19" font-weight="700" fill="#EF8B52">Synthesis engine</text>
+    <g font-size="17">
+      <text x="425" y="178">1  Read and elaborate</text>
+      <text x="425" y="212">2  Build bit-level AIG</text>
+      <text x="425" y="246">3  Optimize logic</text>
+      <text x="425" y="280">4  Map standard cells</text>
+    </g>
+    <text x="820" y="172" font-size="19" font-weight="650">Structural Verilog</text>
+    <text x="820" y="202" font-size="16" fill="#A1B0BA">gate-level netlist</text>
+    <text x="820" y="244" font-size="18" font-weight="650">+ JSON report</text>
+    <text x="52" y="348" font-size="12" fill="#57D6BE" letter-spacing="1">RTL ONLY</text>
+    <text x="80" y="390" font-size="17" font-weight="650">Independent RTL</text>
+    <text x="80" y="420" font-size="17">interpreter</text>
+    <text x="425" y="391" font-size="19" font-weight="650">SAT obligations</text>
+    <text x="425" y="421" font-size="15" fill="#A1B0BA">compare the two models</text>
+    <text x="820" y="390" font-size="17" font-weight="650">Independent cell</text>
+    <text x="820" y="420" font-size="17">evaluator</text>
+    <text x="540" y="525" text-anchor="middle" font-size="18" font-weight="650">Verdict + evidence</text>
+  </g>
+</svg>

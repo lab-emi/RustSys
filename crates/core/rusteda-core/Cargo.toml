@@ -1,0 +1,17 @@
+[package]
+name = "rusteda-core"
+description = "Core of the RustEDA tools: coded messages, the context of engine runs and the Liberty library model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors = ["RustEDA contributors"]
+repository.workspace = true
+
+[dependencies]
+bytemuck.workspace = true
+rustc-hash.workspace = true
+
+[lints]
+workspace = true

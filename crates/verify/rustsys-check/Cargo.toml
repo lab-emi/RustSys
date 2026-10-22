@@ -1,0 +1,23 @@
+[package]
+name = "rustsys-check"
+description = "Independent synthesis checker: RTL versus gate-level netlist equivalence"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+rusteda-core.workspace = true
+rusteda-formats.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+rustsys-fixtures.workspace = true
+rusteda-workspace.workspace = true
+
+[lints]
+workspace = true

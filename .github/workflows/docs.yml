@@ -1,0 +1,76 @@
+name: docs
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - 'docs/_tools/**'
+      - 'docs/mkdocs.yml'
+      - 'docs/requirements.*'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'docs/**'
+      - 'docs/_tools/**'
+      - 'docs/mkdocs.yml'
+      - 'docs/requirements.*'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to GitHub Pages after validation
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: docs/requirements.txt
+      - run: python -m pip install -r docs/requirements.txt
+      - name: Build and check the static site
+        run: |
+          free -h
+          ulimit -v 4194304
+          timeout 60s python docs/_tools/check_markdown.py
+          /usr/bin/time -v timeout 180s python -m mkdocs build --strict -f docs/mkdocs.yml
+          timeout 60s python docs/_tools/check_site.py .work/docs-site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rustsys-documentation
+          path: .work/docs-site
+          retention-days: 14
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'
+        with:
+          path: .work/docs-site
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy validated site
+        id: deployment
+        uses: actions/deploy-pages@v4

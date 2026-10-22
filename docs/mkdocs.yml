@@ -1,0 +1,156 @@
+site_name: RustSys
+site_description: Verilog to standard cells, with a CLI made for engineers and agents.
+site_url: https://lab-emi.github.io/RustSys/
+repo_url: https://github.com/lab-emi/RustSys
+repo_name: lab-emi/RustSys
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; RustSys contributors · Apache-2.0
+
+docs_dir: .
+site_dir: ../.work/docs-site
+exclude_docs: |
+  /mkdocs.yml
+  /requirements.in
+  /requirements.txt
+  /_tools/
+strict: true
+
+theme:
+  name: material
+  language: en
+  logo: assets/rustsys-logo.svg
+  favicon: assets/favicon.svg
+  font: false
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+
+plugins:
+  - search:
+      lang: en
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_css:
+  - stylesheets/rusteda.css
+extra_javascript:
+  - javascripts/banner.js
+
+validation:
+  nav:
+    omitted_files: info
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn
+
+nav:
+  - Home: index.md
+  - Get started:
+      - Install from source: guide/installation.md
+      - First synthesis and proof: guide/quickstart.md
+  - Workflows:
+      - Synthesize a design: guide/synthesis.md
+      - Timing and GPU backends: guide/gpu-and-timing.md
+      - CPU performance and scaling: guide/performance.md
+      - Automate with an agent: guide/agents.md
+      - Check equivalence: guide/checking.md
+      - Troubleshooting: guide/troubleshooting.md
+  - Reference:
+      - Commands and exit codes: reference/cli.md
+      - JSON reports and artifacts: reference/reports.md
+      - Language support: reference/language-support.md
+      - Detailed specifications:
+          - Synthesis: specs/synth/README.md
+          - Source inputs: specs/synth/inputs.md
+          - Frontend: specs/synth/frontend.md
+          - RTL semantics: specs/synth/semantics.md
+          - Sequential logic: specs/synth/sequential.md
+          - Optimization: specs/synth/optimization.md
+          - Technology mapping: specs/synth/mapping.md
+          - Gate netlist: specs/synth/netlist.md
+          - Electrical checks: specs/synth/electrical.md
+          - Synthesis CLI: specs/synth/cli.md
+          - CLI protocol: specs/cli/README.md
+          - Envelopes and handles: specs/cli/protocol.md
+          - Tables and filtering: specs/cli/tables.md
+          - Workspace store: specs/workspace/README.md
+          - Workspace netlist: specs/workspace/netlist.md
+          - Compiled libraries: specs/workspace/rlib.md
+          - Workspace timing: specs/workspace/sta.md
+          - RustEDA CLI: specs/rusteda-cli/README.md
+          - Core data structures: specs/core/README.md
+          - Core netlist: specs/core/netlist.md
+          - Compute backends: specs/compute/README.md
+          - Timing computation: specs/compute/timing.md
+          - Compute decisions: specs/compute/decisions.md
+          - SystemVerilog: specs/verilog/verilog.md
+          - Structural Verilog: specs/verilog/netlist.md
+          - Liberty: specs/liberty/liberty.md
+          - SDC: specs/sdc/sdc.md
+          - AIGER: specs/aiger/README.md
+          - BLIF: specs/blif/README.md
+  - Evidence:
+      - Benchmark results: guide/benchmarks.md
+      - Proof scope and status: verification/index.md
+      - Checker specification: specs/check/synth.md
+      - Synthesis verification: specs/synth/verification.md
+      - PDK verification: verification/pdk.md
+      - Requirements and evidence: verification/requirements.md
+  - Project:
+      - Architecture: architecture/index.md
+      - Contribute: contributing.md
+      - RustEDA brand: brand/README.md
+      - Maintain this site: about/maintaining-docs.md
+      - Engineering decisions:
+          - Bit-level core: adr/0001-bit-level-core.md
+          - Native GPU runtimes: adr/0002-gpu-runtimes-and-native-cuda.md
+          - Frontends: adr/0003-front-ends.md
+          - Crate boundaries: adr/0004-rusteda-crate-map-and-shared-crates.md
+          - SDC layer: adr/0005-sdc-layer.md
+      - Extended user manuals:
+          - Synthesis manual: user/synth/README.md
+          - Reset handling: user/synth/reset.md
+          - RustSys CLI manual: user/cli/README.md

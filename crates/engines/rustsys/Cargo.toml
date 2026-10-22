@@ -1,0 +1,30 @@
+[package]
+name = "rustsys"
+description = "RustSys: logic synthesis and standard-cell mapping of SystemVerilog RTL"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+rusteda-core.workspace = true
+rusteda-compute.workspace = true
+rusteda-formats.workspace = true
+rustc-hash.workspace = true
+rayon.workspace = true
+smallvec.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[features]
+# CUDA backend of the mapper's cut passes (SYNTH-REQ-0516).
+cuda = ["rusteda-compute/cuda"]
+
+[dev-dependencies]
+rustsys-fixtures.workspace = true
+
+[lints]
+workspace = true

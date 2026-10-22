@@ -1,0 +1,178 @@
+[
+  {
+    "design": "Ibex",
+    "directory": "proofs/ibex/sky130hd_tt/rustsys",
+    "id": "ibex",
+    "library": "sky130hd_tt",
+    "measured_netlist_sha256": "9289c009348fef1a2e4a4d63199518146458649273cf5628c8fb628472d8e2b9",
+    "method": "arithmetic-inductive-composition-v1",
+    "partitions": 6303,
+    "tool": "rustsys",
+    "wall_s": 168.4140761019953
+  },
+  {
+    "design": "PicoRV32",
+    "directory": "proofs/picorv32/sky130hd_tt/rustsys",
+    "id": "picorv32",
+    "library": "sky130hd_tt",
+    "measured_netlist_sha256": "2ed8aa4be3f97b0648ae3faf42d3578514874d74aee78e036ab7688bd9274e7f",
+    "method": "abc-inductive-transition-priority-v4",
+    "partitions": 2140,
+    "tool": "rustsys",
+    "wall_s": 14.043187046998355
+  },
+  {
+    "design": "PicoRV32",
+    "directory": "proofs/picorv32/sky130hd_tt/yosys",
+    "id": "picorv32",
+    "library": "sky130hd_tt",
+    "measured_netlist_sha256": "ff078188abdc1206d79831f8583e0c4593f4c3f292ce0daed1b57f38b9361a6e",
+    "method": "abc-inductive-transition-priority-v4",
+    "partitions": 2170,
+    "tool": "yosys",
+    "wall_s": 13.261413620995882
+  },
+  {
+    "design": "SERV",
+    "directory": "proofs/serv/sky130hd_tt/yosys",
+    "id": "serv",
+    "library": "sky130hd_tt",
+    "measured_netlist_sha256": "6ee783a37c935ef2516aeea5508dc17e7d817e9f0a296e74865763508fa3206a",
+    "method": "abc-inductive-transition-priority-v4",
+    "partitions": 1509,
+    "tool": "yosys",
+    "wall_s": 8.32981896000274
+  },
+  {
+    "design": "SERV",
+    "directory": "proofs/serv/sky130hd_tt/rustsys",
+    "id": "serv",
+    "library": "sky130hd_tt",
+    "measured_netlist_sha256": "ace6511545d42e9171e89f254e799f05200bf83667c89f51a25b6e358ba02014",
+    "method": "eqy-safe-replacement-v1",
+    "partitions": 796,
+    "tool": "rustsys",
+    "wall_s": 177.5437003793195
+  },
+  {
+    "design": "Ibex",
+    "directory": "proofs/ibex/gf180mcu7t_tt/rustsys",
+    "id": "ibex",
+    "library": "gf180mcu7t_tt",
+    "measured_netlist_sha256": "ce9944ad36a08748a96ff8a263b46b4955e0f7ac7e9160828dd44236583cfdd7",
+    "method": "arithmetic-inductive-composition-v1",
+    "partitions": 6303,
+    "tool": "rustsys",
+    "wall_s": 157.97731192899664
+  },
+  {
+    "design": "PicoRV32",
+    "directory": "proofs/picorv32/gf180mcu7t_tt/rustsys",
+    "id": "picorv32",
+    "library": "gf180mcu7t_tt",
+    "measured_netlist_sha256": "e822d991b0dfcdcc20f8282c4e9f2083b3ec6790a0b69bcca0925fdfd3cffd66",
+    "method": "abc-inductive-transition-priority-v4",
+    "partitions": 2077,
+    "tool": "rustsys",
+    "wall_s": 11.694970265998563
+  },
+  {
+    "design": "PicoRV32",
+    "directory": "proofs/picorv32/gf180mcu7t_tt/yosys",
+    "id": "picorv32",
+    "library": "gf180mcu7t_tt",
+    "measured_netlist_sha256": "73f4a46f742b16747868fb0a914e356988c07b70b12dd7aa979e4d5c015a80fa",
+    "method": "abc-inductive-transition-priority-v4",
+    "partitions": 2170,
+    "tool": "yosys",
+    "wall_s": 14.416954461994465
+  },
+  {
+    "design": "SERV",
+    "directory": "proofs/serv/gf180mcu7t_tt/yosys",
+    "id": "serv",
+    "library": "gf180mcu7t_tt",
+    "measured_netlist_sha256": "5cb2c1e3976f23005e367348badc870a8ee2ee7f9235065b92d815a85be7ac53",
+    "method": "abc-inductive-transition-priority-v4",
+    "partitions": 1509,
+    "tool": "yosys",
+    "wall_s": 7.753547243999492
+  },
+  {
+    "design": "SERV",
+    "directory": "proofs/serv/gf180mcu7t_tt/rustsys",
+    "id": "serv",
+    "library": "gf180mcu7t_tt",
+    "measured_netlist_sha256": "384480b5e17d221b1ee117bdad374e73c49dd2e787752e9785e257e89a0be8ba",
+    "method": "eqy-safe-replacement-v2",
+    "partitions": 18,
+    "tool": "rustsys",
+    "wall_s": 40.98241475899704
+  },
+  {
+    "design": "VexRiscv",
+    "directory": "proofs/vexriscv-verilog/sky130hd_tt/yosys",
+    "id": "vexriscv-verilog",
+    "library": "sky130hd_tt",
+    "measured_netlist_sha256": "597d7e7ffd7eb89baa8b05565ca51a82accf0dba2225be7f405dc607b1b120f3",
+    "method": "abc-inductive-transition-priority-v5",
+    "partitions": 74138,
+    "tool": "yosys",
+    "wall_s": 522.7313981080079
+  },
+  {
+    "design": "VexRiscv",
+    "directory": "proofs/vexriscv-verilog/gf180mcu7t_tt/yosys",
+    "id": "vexriscv-verilog",
+    "library": "gf180mcu7t_tt",
+    "measured_netlist_sha256": "cb48f49e981e1392894f8d50070187d1b94ba1174c79f0f5e80e849f20542e3a",
+    "method": "abc-inductive-transition-priority-v5",
+    "partitions": 74138,
+    "tool": "yosys",
+    "wall_s": 486.71949382999446
+  },
+  {
+    "design": "VexRiscv",
+    "directory": "proofs/vexriscv-verilog/sky130hd_tt/rustsys",
+    "id": "vexriscv-verilog",
+    "library": "sky130hd_tt",
+    "measured_netlist_sha256": "4457a880566db14c2f6ea6a650cf2cb8aea574ab8d4afb27f2ad97d1700dc96f",
+    "method": "arithmetic-inductive-composition-v1",
+    "partitions": 148422,
+    "tool": "rustsys",
+    "wall_s": 1103.0015395760056
+  },
+  {
+    "design": "VexRiscv",
+    "directory": "proofs/vexriscv-verilog/gf180mcu7t_tt/rustsys",
+    "id": "vexriscv-verilog",
+    "library": "gf180mcu7t_tt",
+    "measured_netlist_sha256": "dd2d80900c1c42c723acb834b534831bc760e45aac900ba26e9608bf16b7736f",
+    "method": "arithmetic-inductive-composition-v1",
+    "partitions": 148422,
+    "tool": "rustsys",
+    "wall_s": 1041.883722638995
+  },
+  {
+    "design": "Ibex",
+    "directory": "proofs/ibex/sky130hd_tt/yosys",
+    "id": "ibex",
+    "library": "sky130hd_tt",
+    "measured_netlist_sha256": "90ca69c60464496eb236eae8988def8fc2f82fc0a91266ad3bbd6b6591fe0c75",
+    "method": "transitive-inductive-composition-v1",
+    "partitions": 44661,
+    "tool": "yosys",
+    "wall_s": 577.3598729779842
+  },
+  {
+    "design": "Ibex",
+    "directory": "proofs/ibex/gf180mcu7t_tt/yosys",
+    "id": "ibex",
+    "library": "gf180mcu7t_tt",
+    "measured_netlist_sha256": "918b3fb4d8f2123d827fa706704b13841465a20cb4e31155d90c8118c850443f",
+    "method": "transitive-inductive-composition-v1",
+    "partitions": 44661,
+    "tool": "yosys",
+    "wall_s": 576.576234849992
+  }
+]

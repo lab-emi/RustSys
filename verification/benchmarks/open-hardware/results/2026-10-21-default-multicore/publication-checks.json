@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "checks": {
+    "docs-final.log": "9a513757ddc9d55aa4f3e0e3d6ce488e8ea35cd7e4dfd33af5b23f60f3e660c6",
+    "docs-final.time": "3312c23ba0476754b26a95bb4e04cb65ea621bd00b3375ef983e9e046d6fb09a",
+    "docs-site-final.log": "ea4adc52e51c169ff4ef2e98b4f2c7a522bc4e22f88b44a2a43e001cf0a0393b",
+    "docs-site-final.time": "73261d367b4ab4559edce91087c43ecdf53e72521c5a8981608597a49c3806ef",
+    "docs-links-final.log": "4e4b81796b84644a6d1ca89387efd5910dda170e511d4f061e57ad037211e5a1",
+    "docs-links-final.time": "ed0a849e31a92ce92f018225fc5a9d3fc7e2c9ca9a2bcb9359efff67c8db9dde",
+    "harness-publication-tests.log": "1cf3af78136b50cc6e0ac7894835894926c06ddb56988c660b47c88abf0905e9",
+    "harness-publication-tests.time": "ec60f8037c5b7867ce6556a9e1ef13b11a55b3ee766e1d8fd73b6fa2f4c54dcc",
+    "final-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_link_check": "markdown_check: 62 pages; 220 local references; 0 failures",
+  "built_site_check": "docs_check: 62 pages; 6245 local references; 0 failures",
+  "readme_sha256": "b4764d8440cbc727d9b88023a2dfb2176c113980fc0844d31ee96f75d3d56800"
+}

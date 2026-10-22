@@ -1,0 +1,130 @@
+{
+  "area_wins": 10,
+  "bound_records": {
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/enabled-controls-v9/results.json": "f63cd832b9d9ba1114a3feffc3f48af171b371987ca0d8b98e406207cfe40457",
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/final-binaries.json": "bce64640569173fa2383349c18dfbdd766c9d0575b45ee12ed826bc986fa9601",
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/pass-cec-v9/results.json": "a33bf82c18c95e9b7378a17442678acc1cfd4d61049a5fe35693127be60c7077",
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/unified/results.json": "4d8bb931425825ddd7af3c5b64142c4f583b10157b3976d77818997070182c34",
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/validation/proofs.json": "c64818190bf613ae6121aaaaa55f100a5f1029f8bd056182b7fe6552f2e6b2ef",
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/validation/timing.json": "cfef5ac935b158040334d8b1bf614f1eab0af691b5c7c7c29ea97f0912946959"
+  },
+  "complete_STA_results": 20,
+  "complete_distinct_netlist_LECs": 20,
+  "initial_states": "arbitrary under checked correspondence",
+  "input_assumptions": "none",
+  "matrix": "40 actually measured allocations;1warmup+3formal runs each",
+  "max_rustsys_scaling": 4.020325203252033,
+  "reset_assumptions": "none",
+  "rows": [
+    {
+      "id": "ibex",
+      "library": "sky130hd_tt",
+      "rustsys_area_after_um2": 117405.10079999373,
+      "rustsys_area_before_um2": 117405.10079999446,
+      "rustsys_fmax_after_mhz": 42.918454935622314,
+      "rustsys_fmax_before_mhz": 35.88087549336204,
+      "rustsys_self_scaling": 1.8539325842696628,
+      "speedup16": 7.48314606741573
+    },
+    {
+      "id": "ibex",
+      "library": "gf180mcu7t_tt",
+      "rustsys_area_after_um2": 356149.24800000264,
+      "rustsys_area_before_um2": 356149.2480000035,
+      "rustsys_fmax_after_mhz": 14.927601134497687,
+      "rustsys_fmax_before_mhz": 11.097547442015314,
+      "rustsys_self_scaling": 1.6224489795918369,
+      "speedup16": 6.826530612244898
+    },
+    {
+      "id": "picorv32",
+      "library": "sky130hd_tt",
+      "rustsys_area_after_um2": 76169.30239999657,
+      "rustsys_area_before_um2": 76169.30239999433,
+      "rustsys_fmax_after_mhz": 107.52688172043011,
+      "rustsys_fmax_before_mhz": 98.61932938856016,
+      "rustsys_self_scaling": 1.4893617021276595,
+      "speedup16": 2.3829787234042556
+    },
+    {
+      "id": "picorv32",
+      "library": "gf180mcu7t_tt",
+      "rustsys_area_after_um2": 233097.31199999363,
+      "rustsys_area_before_um2": 233097.31199999363,
+      "rustsys_fmax_after_mhz": 26.652452025586353,
+      "rustsys_fmax_before_mhz": 26.652452025586353,
+      "rustsys_self_scaling": 1.2982456140350878,
+      "speedup16": 2.649122807017544
+    },
+    {
+      "id": "serv",
+      "library": "sky130hd_tt",
+      "rustsys_area_after_um2": 51460.60479999751,
+      "rustsys_area_before_um2": 51460.60479999741,
+      "rustsys_fmax_after_mhz": 60.27727546714888,
+      "rustsys_fmax_before_mhz": 17.985611510791365,
+      "rustsys_self_scaling": 1.4571428571428573,
+      "speedup16": 2.4857142857142858
+    },
+    {
+      "id": "serv",
+      "library": "gf180mcu7t_tt",
+      "rustsys_area_after_um2": 163404.1023999984,
+      "rustsys_area_before_um2": 163516.0575999986,
+      "rustsys_fmax_after_mhz": 43.271311120726956,
+      "rustsys_fmax_before_mhz": 7.1797817346352675,
+      "rustsys_self_scaling": 1.381578947368421,
+      "speedup16": 1.4999999999999998
+    },
+    {
+      "id": "vexriscv-verilog",
+      "library": "sky130hd_tt",
+      "rustsys_area_after_um2": 2399457.520001869,
+      "rustsys_area_before_um2": 2399457.520001869,
+      "rustsys_fmax_after_mhz": 10.220768601798856,
+      "rustsys_fmax_before_mhz": 10.220768601798856,
+      "rustsys_self_scaling": 4.020325203252033,
+      "speedup16": 25.82520325203252
+    },
+    {
+      "id": "vexriscv-verilog",
+      "library": "gf180mcu7t_tt",
+      "rustsys_area_after_um2": 7490709.497605401,
+      "rustsys_area_before_um2": 7490709.497605401,
+      "rustsys_fmax_after_mhz": 4.467676361524371,
+      "rustsys_fmax_before_mhz": 4.467676361524371,
+      "rustsys_self_scaling": 3.273542600896861,
+      "speedup16": 35.54708520179372
+    },
+    {
+      "id": "openc910",
+      "library": "sky130hd_tt",
+      "rustsys_area_after_um2": 53453687.57432624,
+      "rustsys_area_before_um2": 53453687.57432624,
+      "rustsys_fmax_after_mhz": 0.6899406651028012,
+      "rustsys_fmax_before_mhz": 0.6899406651028012,
+      "rustsys_self_scaling": 2.5660295395308426,
+      "speedup16": 20.468867651317694
+    },
+    {
+      "id": "openc910",
+      "library": "gf180mcu7t_tt",
+      "rustsys_area_after_um2": 165273356.9151576,
+      "rustsys_area_before_um2": 165273356.9151576,
+      "rustsys_fmax_after_mhz": 0.09890844638568755,
+      "rustsys_fmax_before_mhz": 0.09890844638568755,
+      "rustsys_self_scaling": 2.3639186461729547,
+      "speedup16": 42.11224965067536
+    }
+  ],
+  "runtime_wins": 20,
+  "rustsys_area_growth_pairs": 0,
+  "rustsys_fmax_regressions": 0,
+  "setup_fmax_wins": 10,
+  "speedup16_range": [
+    1.4999999999999998,
+    42.11224965067536
+  ],
+  "status": "passed",
+  "thread_outputs": "both tools byte-identical1/16"
+}

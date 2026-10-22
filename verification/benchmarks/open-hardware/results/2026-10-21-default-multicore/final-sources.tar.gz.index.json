@@ -1,0 +1,9 @@
+{
+  "original_name": "final-sources.tar.gz",
+  "parts": [
+    "final-sources.tar.gz.part-0000",
+    "final-sources.tar.gz.part-0001"
+  ],
+  "reassemble": "concatenate listed parts in order",
+  "sha256": "78da984da095e658c63628dbe350d774b1760dc0b780e3fc2fba5010168f6b8f"
+}

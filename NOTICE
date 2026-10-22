@@ -1,0 +1,13 @@
+RustSys
+Copyright 2026 RustSys contributors
+
+The shared crates of the RustEDA tools (crates/core/rusteda-core, crates/core/rusteda-compute and
+crates/formats/rusteda-formats, and crates/core/rusteda-workspace and crates/apps/rusteda-cli where
+present) and their specifications (docs/specs/core, compute, verilog, liberty and sdc, and
+docs/specs/workspace and rusteda-cli where present):
+Copyright 2026 RustEDA contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party assets bundled in this repository are listed below together with their licenses.
+(none yet)

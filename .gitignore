@@ -1,0 +1,23 @@
+# Generated build outputs and local scratch work.
+/target/
+/.work/
+
+# Local agent instructions; keep the published agent workflow guide.
+AGENTS.md
+agents.md
+!docs/guide/agents.md
+
+# Python benchmark harness caches.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local environment files, editor files, and solver scratch outputs.
+.env
+.env.*
+!.env.example
+.DS_Store
+*.swp
+*.swo
+/.cex
+/cecmiter.aig

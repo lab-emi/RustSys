@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "designs": [
+    {
+      "id": "ibex",
+      "name": "Ibex",
+      "repo": "https://github.com/lowRISC/ibex",
+      "commit": "38c070939183cc10940b66c8e9e04eeca6b65470",
+      "version": "v2.1.0",
+      "license": "Apache-2.0",
+      "top": "ibex_top",
+      "configuration": "upstream defaults, RV32IMC, flip-flop register file, no instruction cache",
+      "prepare": "ibex_sv2v"
+    },
+    {
+      "id": "picorv32",
+      "name": "PicoRV32",
+      "repo": "https://github.com/YosysHQ/picorv32",
+      "commit": "ef203c2b0a3fb793280f5114941416c425c5b461",
+      "license": "ISC",
+      "top": "picorv32",
+      "configuration": "upstream defaults, RV32I, internal register file",
+      "sources": ["picorv32.v"]
+    },
+    {
+      "id": "serv",
+      "name": "SERV",
+      "repo": "https://github.com/olofk/serv",
+      "commit": "f200eb2ed7b69ac1c6b8eddd47654522aeee5ce8",
+      "license": "ISC",
+      "top": "serv_rf_top",
+      "configuration": "upstream defaults, W=1, WITH_CSR=1, internal register file",
+      "sources": ["rtl/serv_*.v"]
+    },
+    {
+      "id": "vexriscv-verilog",
+      "name": "VexRiscv",
+      "repo": "https://github.com/litex-hub/pythondata-cpu-vexriscv",
+      "commit": "642ecfed1c84460555d6d803d660cc60cfc1ecb6",
+      "license": "MIT",
+      "top": "VexRiscv",
+      "configuration": "LiteX default RV32IM, 4 KiB instruction and 4 KiB data caches, memories lowered to flip-flops",
+      "sources": ["pythondata_cpu_vexriscv/verilog/VexRiscv.v"]
+    }
+  ],
+  "libraries": ["sky130hd_tt", "gf180mcu7t_tt"],
+  "reference_versions": {
+    "yosys": "Yosys 0.67 (git sha1 2d1509d1b, Release, GNU /usr/bin/c++ 13.3.0)",
+    "sv2v": "sv2v v0.0.13-11-g6662fa5",
+    "eqy": "EQY v0.67-dirty",
+    "sby": "SBY v0.67-dirty"
+  }
+}

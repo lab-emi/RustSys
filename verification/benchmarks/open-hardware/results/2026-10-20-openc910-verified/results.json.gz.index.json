@@ -1,0 +1,9 @@
+{
+  "original_name": "results.json.gz",
+  "parts": [
+    "results.json.gz.part-0000",
+    "results.json.gz.part-0001"
+  ],
+  "reassemble": "concatenate listed parts in order",
+  "sha256": "bdabc2bc049dc8c71378d9e76fb352be871be618f4568d80d7ae727167d58877"
+}

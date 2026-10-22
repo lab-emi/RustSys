@@ -1,0 +1,16 @@
+[package]
+name = "rustsys-defects"
+description = "Planted-defect generator for verifying the independent synthesis checker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+rusteda-formats.workspace = true
+
+[lints]
+workspace = true

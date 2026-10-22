@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "design": {
+    "id": "openc910",
+    "name": "OpenC910",
+    "repo": "https://github.com/XUANTIE-RV/openc910",
+    "commit": "b91c90914c19f114d35c8f6b73408eb241ed847c",
+    "license": "Apache-2.0",
+    "top": "ct_core",
+    "filelist": "C910_RTL_FACTORY/gen_rtl/filelists/C910_asic_rtl.fl",
+    "configuration": "Complete single core; upstream default 64 KiB I-cache and 64 KiB D-cache; functional FPGA SRAM models lowered to standard cells. L2, second core and cluster peripherals are outside ct_core.",
+    "defines": ["SYNTHESIS"]
+  },
+  "prepared_sha256": "0ec2601635ca3196cf57fce4b8d5f58227b2b7b9e06fce81605e4c505cee9e56",
+  "prepared_bytes": 20115079,
+  "libraries": ["sky130hd_tt", "gf180mcu7t_tt"],
+  "limits": {
+    "max_source_files": 600,
+    "max_source_bytes": 33554432,
+    "max_prepared_bytes": 134217728,
+    "max_output_bytes": 2147483648,
+    "max_workspace_bytes": 51539607552,
+    "max_workspace_files": 200000
+  }
+}

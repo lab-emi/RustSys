@@ -1,0 +1,46 @@
+# RustSys
+
+> RustSys is the RustEDA logic synthesis CLI. It turns Verilog/SystemVerilog and a Liberty cell library into gate-level Verilog and structured reports. RustSys 0.1.0 is a source preview, not a crates.io release.
+
+This is a navigation aid for agents, not a command protocol or an API guarantee.
+The canonical site URL is configured as https://lab-emi.github.io/RustSys/;
+deployment status must be checked separately. Web paths below are relative to
+that site root. Source paths are relative to the repository root.
+
+## Start and automate
+
+- [Installation](guide/installation/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/installation.md))
+- [First synthesis and proof](guide/quickstart/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/quickstart.md))
+- [Agent and CI workflow](guide/agents/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/agents.md))
+- [Commands, exit statuses, and workspace revisions](reference/cli/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/reference/cli.md))
+- [JSON reports and recorded artifacts](reference/reports/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/reference/reports.md))
+- [Language support and diagnostics](reference/language-support/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/reference/language-support.md))
+
+## Evaluate evidence
+
+- [Equivalence workflow and budgets](guide/checking/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/checking.md))
+- [Proof scope and status](verification/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/verification/index.md))
+- [RustSys/Yosys comparisons](guide/benchmarks/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/benchmarks.md))
+- [CPU performance, actual utilization, and quality preservation](guide/performance/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/performance.md))
+- [Canonical evidence archives](https://github.com/lab-emi/RustSys/tree/main/verification/benchmarks/open-hardware/results/)
+- [Invalidated historical proofs](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/proof-invalidations.json)
+
+## Integration rules
+
+- Use `rustsys --help` and `rusteda --help` from the installed build to confirm available commands.
+- Keep standard output results separate from standard error diagnostics.
+- Distinguish synthesis success, check equivalence, and undecided/budget-limited results.
+- Use explicit file paths, proof budgets, thread counts, and workspace revision guards where applicable.
+- Do not add reset/input assumptions to an arbitrary-initial-state proof without changing and reporting its scope.
+- Benchmark timings, proof time, memory, and mapping quality are separate measurements.
+- Do not infer placement/routing, signoff timing, DRC, or universal language support from synthesis results.
+
+## Extend the project
+
+- [Architecture](architecture/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/architecture/index.md))
+- [Normative specifications](https://github.com/lab-emi/RustSys/tree/main/docs/specs/)
+- [Contributing](contributing/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/contributing.md))
+- [Documentation maintenance](about/maintaining-docs/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/about/maintaining-docs.md))
+
+All substantive guides are plain Markdown in the same repository. No separate
+agent service or generated SDK is required to read this index or run the CLI.

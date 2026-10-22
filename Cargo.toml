@@ -1,0 +1,68 @@
+[workspace]
+resolver = "3"
+members = ["crates/*/*", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+license = "Apache-2.0"
+publish = false
+authors = ["RustSys contributors"]
+repository = "https://github.com/lab-emi/RustSys"
+
+[workspace.dependencies]
+rusteda-core = { path = "crates/core/rusteda-core" }
+rusteda-workspace = { path = "crates/core/rusteda-workspace" }
+rusteda-compute = { path = "crates/core/rusteda-compute" }
+rusteda-formats = { path = "crates/formats/rusteda-formats" }
+rustsys = { path = "crates/engines/rustsys" }
+rustsys-check = { path = "crates/verify/rustsys-check" }
+rustsys-fixtures = { path = "crates/verify/rustsys-fixtures" }
+rustsys-defects = { path = "crates/verify/rustsys-defects" }
+rusteda-cli = { path = "crates/apps/rusteda-cli" }
+clap = { version = "=4.6.7", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions"] }
+clap_complete = { version = "=4.6.11", default-features = false }
+# Terminal size for the progress line of the command line. `windows`: crossterm does not compile
+# on Windows without it (its dependencies are Windows-only).
+crossterm = { version = "=0.29.0", default-features = false, features = ["windows"] }
+serde = { version = "=1.0.228", features = ["derive"] }
+# float_roundtrip: the decimal text of a stored f64 parses back to the same value.
+serde_json = { version = "=1.0.149", features = ["float_roundtrip"] }
+thiserror = "=2.0.18"
+rayon = "=1.12.0"
+rustc-hash = "=2.1.2"
+# Plain-record views of the frozen netlist tables.
+bytemuck = { version = "=1.25.2", features = ["derive"] }
+# Memory-mapped section files of the workspace store.
+memmap2 = "=0.9.11"
+# Checksums of workspace section records (XXH3-64).
+xxhash-rust = { version = "=0.8.19", default-features = false, features = ["xxh3"] }
+smallvec = { version = "=1.16.2", default-features = false }
+# The CUDA driver and NVRTC libraries are loaded at run time: builds need no CUDA toolkit.
+cudarc = { version = "=0.19.10", default-features = false, features = ["std", "driver", "nvrtc", "fallback-dynamic-loading", "cuda-version-from-build-system", "fallback-latest"] }
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+print_stdout = "warn"
+too_many_arguments = "allow"
+module_inception = "allow"
+# Style preferences of this code base.
+collapsible_if = "allow"
+type_complexity = "allow"
+needless_range_loop = "allow"
+
+[profile.release]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.test]
+opt-level = 1

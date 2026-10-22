@@ -1,0 +1,125 @@
+{
+  "complete": true,
+  "checks": [
+    {
+      "name": "final-build",
+      "exit_code": 0,
+      "peak_rss_kib": 37964,
+      "log": ".work/multicore-next-20261021/final-build.log",
+      "time": ".work/multicore-next-20261021/final-build.time"
+    },
+    {
+      "name": "final-clippy",
+      "exit_code": 0,
+      "peak_rss_kib": 129648,
+      "log": ".work/multicore-next-20261021/final-clippy.log",
+      "time": ".work/multicore-next-20261021/final-clippy.time"
+    },
+    {
+      "name": "final-engine-tests",
+      "exit_code": 0,
+      "peak_rss_kib": 182668,
+      "log": ".work/multicore-next-20261021/final-engine-tests.log",
+      "time": ".work/multicore-next-20261021/final-engine-tests.time"
+    },
+    {
+      "name": "cli-tests-v9",
+      "exit_code": 0,
+      "peak_rss_kib": 309256,
+      "log": ".work/multicore-next-20261021/cli-tests-v9.log",
+      "time": ".work/multicore-next-20261021/cli-tests-v9.time"
+    },
+    {
+      "name": "writers-v6",
+      "exit_code": 0,
+      "peak_rss_kib": 507284,
+      "log": ".work/multicore-next-20261021/writers-v6.log",
+      "time": ".work/multicore-next-20261021/writers-v6.time"
+    },
+    {
+      "name": "export-v6",
+      "exit_code": 0,
+      "peak_rss_kib": 285724,
+      "log": ".work/multicore-next-20261021/export-v6.log",
+      "time": ".work/multicore-next-20261021/export-v6.time"
+    },
+    {
+      "name": "pdk-fixtures-v9",
+      "exit_code": 0,
+      "peak_rss_kib": 721156,
+      "log": ".work/multicore-next-20261021/pdk-fixtures-v9.log",
+      "time": ".work/multicore-next-20261021/pdk-fixtures-v9.time"
+    },
+    {
+      "name": "final-harness-tests",
+      "exit_code": 0,
+      "peak_rss_kib": 27628,
+      "log": ".work/multicore-next-20261021/final-harness-tests.log",
+      "time": ".work/multicore-next-20261021/final-harness-tests.time"
+    },
+    {
+      "name": "pass-export-v9",
+      "exit_code": 0,
+      "peak_rss_kib": 28748,
+      "log": ".work/multicore-next-20261021/pass-export-v9.log",
+      "time": ".work/multicore-next-20261021/pass-export-v9.time"
+    },
+    {
+      "name": "pass-cec-v9",
+      "exit_code": 0,
+      "peak_rss_kib": 41028,
+      "log": ".work/multicore-next-20261021/pass-cec-v9.log",
+      "time": ".work/multicore-next-20261021/pass-cec-v9.time"
+    },
+    {
+      "name": "enabled-controls-v9",
+      "exit_code": 0,
+      "peak_rss_kib": 82812,
+      "log": ".work/multicore-next-20261021/enabled-controls-v9.log",
+      "time": ".work/multicore-next-20261021/enabled-controls-v9.time"
+    },
+    {
+      "name": "join",
+      "exit_code": 0,
+      "peak_rss_kib": 26136,
+      "log": ".work/multicore-next-20261021/join.log",
+      "time": ".work/multicore-next-20261021/join.time"
+    },
+    {
+      "name": "pin-harness",
+      "exit_code": 0,
+      "peak_rss_kib": 24436,
+      "log": ".work/multicore-next-20261021/pin-harness.log",
+      "time": ".work/multicore-next-20261021/pin-harness.time"
+    },
+    {
+      "name": "validation",
+      "exit_code": 0,
+      "peak_rss_kib": 88024,
+      "log": ".work/multicore-next-20261021/validation.log",
+      "time": ".work/multicore-next-20261021/validation.time"
+    },
+    {
+      "name": "load-scope",
+      "exit_code": 0,
+      "peak_rss_kib": 48060,
+      "log": ".work/multicore-next-20261021/load-scope.log",
+      "time": ".work/multicore-next-20261021/load-scope.time"
+    },
+    {
+      "name": "acceptance",
+      "exit_code": 0,
+      "peak_rss_kib": 47576,
+      "log": ".work/multicore-next-20261021/acceptance.log",
+      "time": ".work/multicore-next-20261021/acceptance.time"
+    }
+  ],
+  "engine_tests": 101,
+  "cli_tests": 26,
+  "writer_export_tests": 4,
+  "real_pdk_fixture_exports": 2,
+  "harness_tests": 30,
+  "external_pass_CEC": 155,
+  "enabled_positive_and_negative_controls": 6,
+  "gpu_note": "CPUbenchmark; oneCUDAunit testignoredwhenCUDAunavailable"
+}

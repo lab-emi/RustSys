@@ -1,0 +1,12 @@
+{
+  "a": [
+    ["u_ibex_core.ex_block_i.genblk3.gen_multdiv_fast.multdiv_i.gen_mult_fast.mult_op_a", 16],
+    ["u_ibex_core.ex_block_i.genblk3.gen_multdiv_fast.multdiv_i.sign_a", 1]
+  ],
+  "b": [
+    ["u_ibex_core.ex_block_i.genblk3.gen_multdiv_fast.multdiv_i.gen_mult_fast.mult_op_b", 16],
+    ["u_ibex_core.ex_block_i.genblk3.gen_multdiv_fast.multdiv_i.sign_b", 1]
+  ],
+  "c": [["u_ibex_core.ex_block_i.genblk3.gen_multdiv_fast.multdiv_i.accum", 34]],
+  "y": [["u_ibex_core.ex_block_i.genblk3.gen_multdiv_fast.multdiv_i.mac_res_ext", 34]]
+}

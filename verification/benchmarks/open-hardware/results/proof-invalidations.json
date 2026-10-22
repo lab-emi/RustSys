@@ -1,0 +1,18 @@
+[
+  {
+    "date": "2026-10-20",
+    "design": "OpenC910 ct_core",
+    "prepared_sha256": "0ec2601635ca3196cf57fce4b8d5f58227b2b7b9e06fce81605e4c505cee9e56",
+    "reason": "Synthesis and native RTL checker both lost wildcard masks in concatenated/replicated case labels. Independent Icarus exhaustive simulation found 152 mismatching inputs out of 256 in a small reproduction, on both PDKs. Earlier native RustSys proof labels on this design are invalidated.",
+    "affected_archives": [
+      "2026-10-20-openc910-16g",
+      "2026-10-20-openc910",
+      "2026-10-20-openc910-lec"
+    ],
+    "checker_sha256": [
+      "2ba63fe6cff9d94b142cbe796a5a98ca25b5260e02e1551ac307b53e052b84ef",
+      "5295d17190067060943e110ebd992e17f741fa408506c155adaaddac1b352f49"
+    ],
+    "unaffected": "The earlier four-core external RTL proof suite uses a separate reference lowering; the lpmd_b duplicated-output counterexample does not depend on wildcard matching."
+  }
+]

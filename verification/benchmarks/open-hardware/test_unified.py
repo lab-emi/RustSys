@@ -64,5 +64,11 @@ class UnifiedTests(unittest.TestCase):
         for render in RENDERERS:
             with self.assertRaises(ValueError):render(data,p,s)
 
+    def test_unavailable_memory_cannot_be_published_as_zero(self):
+        for value in (None,0,float('nan'),float('inf')):
+            data,p,s=matrix();data['rows'][1]['rustsys']['peak_rss_kib']=value
+            for render in RENDERERS[1:]:
+                with self.assertRaisesRegex(ValueError,'peak RSS'):render(data,p,s)
+
 
 if __name__=='__main__':unittest.main()

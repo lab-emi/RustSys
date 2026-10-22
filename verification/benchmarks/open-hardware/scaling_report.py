@@ -105,12 +105,23 @@ def tables(data,proofs,timing):
     return '\n'.join(main),('' if unified else '\n'.join(scale)),speedups,selfups
 
 
+def peak_memory_mib(result):
+    peak=result.get('peak_rss_kib')
+    if type(peak) not in (int,float) or not 0<peak<float('inf'):
+        raise ValueError('missing or invalid measured peak RSS')
+    return f'{peak/1024:,.1f}'
+
+
 def comparison_table(data,proofs,timing,*,include_quality=False):
     """A 16-core overview; retain the full campaign's proof and timing gates."""
-    tables(data,proofs,timing)
+    if not scaling_verify.ready(data):raise ValueError('incomplete common campaign')
     rows={(r['id'],r['library'],r['allocated_physical_cores']):r for r in data['rows']}
-    columns=['Design','PDK','RustSys<br>16 cores, s ↓','Yosys<br>16 cores, s ↓','RustSys speedup ↑']
-    alignment=['---','---','---:','---:','---:']
+    memory={(did,lib,t):peak_memory_mib(rows[did,lib,16][t])
+            for did in ORDER for lib in LIBS for t in ('rustsys','yosys')}
+    tables(data,proofs,timing)
+    columns=['Design','PDK','RustSys<br>16 cores, s ↓','Yosys<br>16 cores, s ↓','RustSys speedup ↑',
+             'RustSys<br>Peak mem, MiB ↓','Yosys<br>Peak mem, MiB ↓']
+    alignment=['---','---','---:','---:','---:','---:','---:']
     if include_quality:
         columns[4]='RustSys<br>Speedup ↑'
         columns+=['RustSys<br>Area, µm² ↓','Yosys<br>Area, µm² ↓',
@@ -123,6 +134,7 @@ def comparison_table(data,proofs,timing,*,include_quality=False):
             row=rows[did,lib,16]
             rustsys=row['rustsys']['median_wall_s'];yosys=row['yosys']['median_wall_s']
             values=[row['design'],PDK[lib],f'{rustsys:,.2f}',f'{yosys:,.2f}',f'**{yosys/rustsys:.2f}×**']
+            values += [memory[did,lib,t] for t in ('rustsys','yosys')]
             if include_quality:
                 values += [f"{row[t]['qor']['area_um2']:,.0f}" for t in ('rustsys','yosys')]
                 values += [frequency(estimates[did,lib][t]['fmax_mhz']) for t in ('rustsys','yosys')]
@@ -389,14 +401,17 @@ small models and complete solver receipts are included in the streamed archive.
     if a.root_readme:
         text=a.root_readme.read_text();before,after=text.split('## Benchmarks\n',1)
         _,rest=after.split(START,1)
-        overview_scope=('Five complete RISC-V designs × two PDKs. **16 physical host cores per tool**, '
+        overview_scope=(f'**CPU: {host["cpu"]}.**\n\n'
+            'Five complete RISC-V designs × two PDKs. **16 physical host cores per tool**, '
             'one warm-up and three measured runs; median wall times below.\n'
             'Time includes workspace init/import, synthesis, mmap and full Verilog export; '
             'source preparation, LEC and timing analysis are outside the timer.\n')
         text=before+'## Benchmarks\n\n'+overview_scope+'\n'+START+rest
         text=block(text,START,END,comparison_table(data,proofs,timing))
         end_index=text.index(END)+len(END);large_index=text.index(LARGE_START)
-        summary=(f'Speedup = **Yosys time ÷ RustSys time**. All **20 distinct netlists pass '
+        summary=('Peak mem = maximum GNU time process peak RSS across the three timed runs, in MiB. '
+            'Aggregate cgroup peaks remain in the complete receipts.\n\n'
+            f'Speedup = **Yosys time ÷ RustSys time**. All **20 distinct netlists pass '
             'arbitrary-state RTL LEC**, with no reset or input assumption added.\n\n'
             f'[Full 1/16-core results, CPU use, area, setup-Fmax and LEC certificates]({relative}/README.md).\n\n')
         text=text[:end_index]+'\n\n'+summary+text[large_index:]

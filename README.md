@@ -36,6 +36,8 @@ equivalence from your terminal, CI pipeline, or coding agent. Part of the **Rust
 
 ## Benchmarks
 
+**CPU: AMD Ryzen 9 9950X3D 16-Core Processor** · 16 physical host cores per tool, no SMT siblings.
+
 Five complete RISC-V designs × two PDKs. **16 physical host cores per tool**,
 one warm-up and three measured runs; median wall times below.
 Time includes workspace init/import, synthesis, mmap and full Verilog export;
@@ -43,20 +45,23 @@ source preparation, LEC and timing analysis are outside the timer.
 
 <!-- open-hardware-benchmark:start -->
 
-| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys speedup ↑ |
-|---|---|---:|---:|---:|
-| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** |
-| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** |
-| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** |
-| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** |
-| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** |
-| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** |
-| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** |
-| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** |
-| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** |
-| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** |
+| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys speedup ↑ | RustSys<br>Peak mem, MiB ↓ | Yosys<br>Peak mem, MiB ↓ |
+|---|---|---:|---:|---:|---:|---:|
+| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** | 91.9 | 273.1 |
+| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.6 | 273.0 |
+| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 66.0 | 81.0 |
+| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** | 117.3 | 100.2 |
+| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** | 65.9 | 71.9 |
+| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 117.4 | 90.4 |
+| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** | 449.8 | 840.2 |
+| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** | 481.3 | 864.1 |
+| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** | 7,492.7 | 16,339.8 |
+| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** | 7,543.2 | 17,511.3 |
 
 <!-- open-hardware-benchmark:end -->
+
+**Peak mem** = maximum GNU time process peak RSS across the three timed runs, in MiB.
+Aggregate cgroup memory peaks remain in the complete receipts.
 
 Speedup = **Yosys time ÷ RustSys time**. All **20 distinct netlists pass
 arbitrary-state RTL LEC**, with no reset or input assumption added.

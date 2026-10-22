@@ -39,9 +39,9 @@ agents: explicit inputs, JSON reports, recorded runs and equivalence checks.
 
 ## 16-core synthesis speed
 
-Same 16-core host allowance for both tools; median seconds after one warm-up and
-three timed runs. **Speedup = Yosys ÷ RustSys.**
-Area and setup-Fmax refer to the exact netlists from these runs.
+**CPU: AMD Ryzen 9 9950X3D 16-Core Processor** · 16 physical host cores per tool, no SMT siblings.
+One warm-up and three measured synthesis/export runs; median seconds shown.
+**Speedup = Yosys time ÷ RustSys time.**
 
 <p class="rustsys-comparison-hint">Swipe horizontally to compare all columns. Design and PDK stay visible.</p>
 
@@ -49,22 +49,25 @@ Area and setup-Fmax refer to the exact netlists from these runs.
 
 <!-- benchmark-16-core:start -->
 
-| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys<br>Speedup ↑ | RustSys<br>Area, µm² ↓ | Yosys<br>Area, µm² ↓ | RustSys<br>Setup Fmax†, MHz ↑ | Yosys<br>Setup Fmax†, MHz ↑ |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** | 117,405 | 123,670 | 42.92 | 33.47 |
-| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 356,149 | 379,410 | 14.93 | 8.33 |
-| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 76,169 | 83,603 | 107.53 | 67.75 |
-| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** | 233,097 | 255,798 | 26.65 | 15.98 |
-| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** | 51,461 | 54,067 | 60.28 | 57.47 |
-| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 163,404 | 167,428 | 43.27 | 19.54 |
-| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
-| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
-| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
-| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
+| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys<br>Speedup ↑ | RustSys<br>Peak mem, MiB ↓ | Yosys<br>Peak mem, MiB ↓ | RustSys<br>Area, µm² ↓ | Yosys<br>Area, µm² ↓ | RustSys<br>Setup Fmax†, MHz ↑ | Yosys<br>Setup Fmax†, MHz ↑ |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** | 91.9 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
+| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.6 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
+| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 66.0 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
+| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** | 117.3 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
+| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** | 65.9 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
+| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 117.4 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
+| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** | 449.8 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
+| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** | 481.3 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
+| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** | 7,492.7 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
+| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** | 7,543.2 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
 
 <!-- benchmark-16-core:end -->
 
 </div>
+
+**Peak mem** = maximum GNU time process peak RSS across the three timed runs,
+in MiB. Aggregate cgroup memory peaks remain in the complete receipts.
 
 † **Setup-Fmax is an OpenSTA estimate** at the TT corner with ideal clocks and no wire
 parasitics. OpenC910 loads exceed Liberty characterization limits; its raw Fmax

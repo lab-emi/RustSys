@@ -79,12 +79,13 @@
 .md-typeset .rustsys-comparison table:not([class]) {
   display: table;
   width: 100%;
-  min-width: 54rem;
+  min-width: 60rem;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
 }
 .md-typeset .rustsys-comparison table:not([class]) th,
 .md-typeset .rustsys-comparison table:not([class]) td { padding: .55em 1em; }
+.md-typeset .rustsys-comparison table:not([class]) th { padding-inline: .7em; }
 .rustsys-comparison th:nth-child(-n+2) { width: var(--comparison-id-width); }
 .rustsys-comparison th:nth-child(-n+2),
 .rustsys-comparison td:nth-child(-n+2) {
@@ -135,8 +136,8 @@
     scroll-padding-inline-start: calc(2 * var(--comparison-id-width));
   }
   .md-typeset .rustsys-comparison .md-typeset__table {
-    /* Two pinned identifiers; each of seven metrics fills the remaining viewport. */
-    width: calc(700% - 12 * var(--comparison-id-width));
+    /* Two pinned identifiers; each of nine metrics fills the remaining viewport. */
+    width: calc(900% - 16 * var(--comparison-id-width));
     max-width: none;
   }
   .md-typeset .rustsys-comparison table:not([class]) { width: 100%; min-width: 0; }

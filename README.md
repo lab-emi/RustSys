@@ -9,7 +9,7 @@
 [![CI](https://github.com/lab-emi/RustSys/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lab-emi/RustSys/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Rust 1.97.1](https://img.shields.io/badge/rust-1.97.1-orange.svg?logo=rust)](rust-toolchain.toml)
-[![Documentation](https://img.shields.io/badge/docs-start_here-57D6BE)](docs/index.md)
+[![Documentation](https://img.shields.io/badge/docs-online-57D6BE)](https://lab-emi.github.io/RustSys/)
 
 RustSys turns synthesizable SystemVerilog and Liberty libraries into a gate-level Verilog
 netlist and a JSON report. Synthesize, check equivalence, inspect results, and repeat from your
@@ -21,7 +21,7 @@ terminal, CI job, or coding agent. It is the logic synthesis tool in the **RustE
 </picture>
 
 [Static banner](docs/assets/rustsys-banner.svg) · [Get started](#quick-start) ·
-[Agent guide](docs/guide/agents.md) · [Documentation](docs/index.md) · [Benchmarks](#benchmarks)
+[Agent guide](docs/guide/agents.md) · [Documentation](https://lab-emi.github.io/RustSys/) · [Benchmarks](#benchmarks)
 
 <!-- measured-performance-pitch -->
 
@@ -203,7 +203,7 @@ of an existing workspace names the expected revision; a stale base fails with
 | Bounded work | Proof/search budgets report exhaustion as undecided; `unverified` evidence stays unverified. |
 
 [Agent integration recipes](docs/guide/agents.md) · [CLI reference](docs/reference/cli.md) ·
-[JSON and report contracts](docs/reference/reports.md) · [Agent documentation index](docs/llms.txt).
+[JSON and report contracts](docs/reference/reports.md) · [Agent documentation index](https://lab-emi.github.io/RustSys/llms.txt).
 
 ## Synthesis and verification
 
@@ -233,12 +233,12 @@ modports, tri-state logic, `inout`, and dynamic types are among the current limi
 
 ## Documentation
 
-The documentation site follows a task-based path from a first netlist to repeatable automation
+The [documentation site](https://lab-emi.github.io/RustSys/) follows a task-based path from a first netlist to repeatable automation
 and inspectable proof evidence. All pages also live in this repository.
 
 | Start here | Go deeper |
 |---|---|
-| [Documentation home](docs/index.md) | [Architecture and crate boundaries](docs/architecture/index.md) |
+| [Documentation home](https://lab-emi.github.io/RustSys/) | [Architecture and crate boundaries](docs/architecture/index.md) |
 | [Install and run your first design](docs/guide/quickstart.md) | [Synthesis specifications](docs/specs/synth/README.md) |
 | [Automate with scripts and agents](docs/guide/agents.md) | [Workspace and JSON protocol](docs/specs/workspace/README.md) |
 | [Check equivalence](docs/guide/checking.md) | [Verification evidence and limitations](docs/verification/index.md) |

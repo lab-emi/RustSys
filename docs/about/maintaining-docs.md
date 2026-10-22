@@ -79,14 +79,18 @@ legacy campaign publishers must not overwrite its wider table or mix tool
 profiles. Do not revive a certificate listed in the historical
 proof invalidation registry.
 
-## Publish deliberately
+## Publish to GitHub Pages
 
 The `docs` GitHub Actions workflow builds and validates pull requests and
-changes to `main`, then uploads a downloadable site artifact. It publishes
-only when a maintainer manually starts the workflow on `main` with **Publish
-to GitHub Pages** enabled. Configure the repository's Pages source as
-**GitHub Actions** and any required `github-pages` environment protection
-before using that action.
+changes to `main`, then uploads a downloadable site artifact. Successful
+documentation updates on `main` deploy automatically to GitHub Pages. Pull
+requests only build and validate the site.
 
-The intended public location is `https://lab-emi.github.io/RustSys/`.
-Treat it as configured until the deployment job has actually succeeded.
+For a manual deployment, start the workflow on `main` with **Publish to GitHub
+Pages** enabled. Leaving that option disabled builds and validates without
+deploying. The repository's Pages publishing source is **GitHub Actions**;
+the deployment job uses the `github-pages` environment and scoped Pages/OIDC
+permissions.
+
+The online documentation is [lab-emi.github.io/RustSys](https://lab-emi.github.io/RustSys/).
+Confirm a successful deployment job and check the live URL after publishing.

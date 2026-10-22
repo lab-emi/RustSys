@@ -2,10 +2,14 @@
 # SPDX-FileCopyrightText: 2026 RustSys contributors
 """Unified table's completeness/binding controls.40 small records, <64MiB, one worker."""
 import copy
+from functools import partial
 import unittest
 
 import scaling_report
 import scaling_verify
+
+RENDERERS=(scaling_report.tables,scaling_report.comparison_table,
+           partial(scaling_report.comparison_table,include_quality=True))
 
 
 def matrix():
@@ -43,21 +47,21 @@ class UnifiedTests(unittest.TestCase):
         data,p,s=matrix()
         data['rows'][0].pop('yosys')
         self.assertFalse(scaling_verify.ready(data))
-        for render in (scaling_report.tables,scaling_report.comparison_table):
+        for render in RENDERERS:
             with self.assertRaises(ValueError):render(data,p,s)
 
     def test_different_thread_output_needs_its_own_proof(self):
         data,p,s=matrix()
         data['rows'][0]['yosys']['netlist_sha256']='changed'
-        for render in (scaling_report.tables,scaling_report.comparison_table):
+        for render in RENDERERS:
             with self.assertRaises(ValueError):render(data,p,s)
 
     def test_unverified_proof_and_failed_repeat_cannot_be_published(self):
         data,p,s=matrix();p['rows'][0]['rustsys']['verdict']='unverified'
-        for render in (scaling_report.tables,scaling_report.comparison_table):
+        for render in RENDERERS:
             with self.assertRaises(ValueError):render(data,p,s)
         data,p,s=matrix();data['rows'][0]['yosys']['samples'][1]['status']='timeout'
-        for render in (scaling_report.tables,scaling_report.comparison_table):
+        for render in RENDERERS:
             with self.assertRaises(ValueError):render(data,p,s)
 
 

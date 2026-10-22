@@ -7,27 +7,34 @@ The [README comparison](https://github.com/lab-emi/RustSys#benchmarks) uses one 
 Both tools receive **16 physical host cores**. Times are end-to-end synthesis and
 Verilog export in seconds: one excluded warm-up and three measured runs, shown
 as medians. **Speedup = Yosys time ÷ RustSys time.**
+Area and setup-Fmax refer to the exact netlists from these runs.
 
-<div class="rustsys-comparison" markdown="1">
+<p class="rustsys-comparison-hint">Swipe horizontally to compare all columns. Design and PDK stay visible.</p>
+
+<div class="rustsys-comparison" markdown="1" role="region" aria-label="16-core RustSys and Yosys synthesis comparison" tabindex="0">
 
 <!-- benchmark-16-core:start -->
 
-| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys speedup ↑ |
-|---|---|---:|---:|---:|
-| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** |
-| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** |
-| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** |
-| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** |
-| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** |
-| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** |
-| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** |
-| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** |
-| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** |
-| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** |
+| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys<br>Speedup ↑ | RustSys<br>Area, µm² ↓ | Yosys<br>Area, µm² ↓ | RustSys<br>Setup Fmax†, MHz ↑ | Yosys<br>Setup Fmax†, MHz ↑ |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** | 117,405 | 123,670 | 42.92 | 33.47 |
+| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 356,149 | 379,410 | 14.93 | 8.33 |
+| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 76,169 | 83,603 | 107.53 | 67.75 |
+| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** | 233,097 | 255,798 | 26.65 | 15.98 |
+| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** | 51,461 | 54,067 | 60.28 | 57.47 |
+| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 163,404 | 167,428 | 43.27 | 19.54 |
+| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
+| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
+| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
+| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
 
 <!-- benchmark-16-core:end -->
 
 </div>
+
+† **Setup-Fmax is an OpenSTA estimate** at the TT corner with ideal clocks and no wire
+parasitics. OpenC910 loads exceed Liberty characterization limits; its raw Fmax
+does not establish achievable frequency. [Timing scope](performance.md#interpret-the-timing-estimate).
 
 Speedups use the recorded medians before display rounding. All **20 distinct
 netlists pass arbitrary-state RTL LEC**, with no reset or input assumptions.

@@ -105,18 +105,28 @@ def tables(data,proofs,timing):
     return '\n'.join(main),('' if unified else '\n'.join(scale)),speedups,selfups
 
 
-def comparison_table(data,proofs,timing):
+def comparison_table(data,proofs,timing,*,include_quality=False):
     """A 16-core overview; retain the full campaign's proof and timing gates."""
     tables(data,proofs,timing)
     rows={(r['id'],r['library'],r['allocated_physical_cores']):r for r in data['rows']}
-    lines=['| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys speedup ↑ |',
-           '|---|---|---:|---:|---:|']
+    columns=['Design','PDK','RustSys<br>16 cores, s ↓','Yosys<br>16 cores, s ↓','RustSys speedup ↑']
+    alignment=['---','---','---:','---:','---:']
+    if include_quality:
+        columns[4]='RustSys<br>Speedup ↑'
+        columns+=['RustSys<br>Area, µm² ↓','Yosys<br>Area, µm² ↓',
+                  'RustSys<br>Setup Fmax†, MHz ↑','Yosys<br>Setup Fmax†, MHz ↑']
+        alignment+=['---:']*4
+    lines=['| '+' | '.join(columns)+' |','|'+'|'.join(alignment)+'|']
+    estimates={(r['id'],r['library']):r for r in timing['rows']}
     for did in ORDER:
         for lib in LIBS:
             row=rows[did,lib,16]
             rustsys=row['rustsys']['median_wall_s'];yosys=row['yosys']['median_wall_s']
-            lines.append('| '+' | '.join([row['design'],PDK[lib],f'{rustsys:,.2f}',
-                f'{yosys:,.2f}',f'**{yosys/rustsys:.2f}×**'])+' |')
+            values=[row['design'],PDK[lib],f'{rustsys:,.2f}',f'{yosys:,.2f}',f'**{yosys/rustsys:.2f}×**']
+            if include_quality:
+                values += [f"{row[t]['qor']['area_um2']:,.0f}" for t in ('rustsys','yosys')]
+                values += [frequency(estimates[did,lib][t]['fmax_mhz']) for t in ('rustsys','yosys')]
+            lines.append('| '+' | '.join(values)+' |')
     return '\n'.join(lines)
 
 

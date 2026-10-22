@@ -17,7 +17,7 @@ terminal, CI job, or coding agent. It is the logic synthesis tool in the **RustE
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/rustsys-banner.svg">
-  <img src="docs/assets/rustsys-banner.gif" alt="Verilog source flows through RustSys synthesis into connected standard-cell gates." width="1200" height="400">
+  <img src="docs/assets/rustsys-banner.gif" alt="Verilog source flows through RustSys synthesis into connected standard-cell gates." width="1200">
 </picture>
 
 [Static banner](docs/assets/rustsys-banner.svg) · [Get started](#quick-start) ·

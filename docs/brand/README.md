@@ -76,7 +76,7 @@ site, render it by default and select the GIF only when the user allows motion:
           srcset="../assets/rustsys-banner.gif" type="image/gif">
   <img src="../assets/rustsys-banner.svg"
        alt="RustSys transforms Verilog through synthesis into a gate-level netlist"
-       width="1200" height="400">
+       width="1200">
 </picture>
 ```
 

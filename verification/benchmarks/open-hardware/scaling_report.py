@@ -407,15 +407,19 @@ small models and complete solver receipts are included in the streamed archive.
             'Time includes workspace init/import, synthesis, mmap and full Verilog export; '
             'source preparation, LEC and timing analysis are outside the timer.\n')
         text=before+'## Benchmarks\n\n'+overview_scope+'\n'+START+rest
-        text=block(text,START,END,comparison_table(data,proofs,timing))
+        text=block(text,START,END,comparison_table(data,proofs,timing,include_quality=True))
         end_index=text.index(END)+len(END);large_index=text.index(LARGE_START)
         summary=('Peak mem = maximum GNU time process peak RSS across the three timed runs, in MiB. '
             'Aggregate cgroup peaks remain in the complete receipts.\n\n'
+            '† **Setup-Fmax is an OpenSTA estimate** at the TT corner with ideal clocks and no wire '
+            'parasitics. OpenC910 loads exceed Liberty characterization limits; its raw Fmax '
+            'does not establish achievable frequency. '
+            '[Timing scope](https://lab-emi.github.io/RustSys/guide/performance/#interpret-the-timing-estimate).\n\n'
             f'Speedup = **Yosys time ÷ RustSys time**. All **20 distinct netlists pass '
             'arbitrary-state RTL LEC**, with no reset or input assumption added.\n\n'
             f'[Full 1/16-core results, CPU use, area, setup-Fmax and LEC certificates]({relative}/README.md).\n\n')
         text=text[:end_index]+'\n\n'+summary+text[large_index:]
-        details='<details>\n<summary>Workload, proof and timing scope</summary>\n\n'+large+'\n'+timing_scope+'\n\n</details>'
+        details='<details>\n<summary>Workload, proof and timing scope</summary>\n\n'+large+'\n'+timing_scope.replace('‡ OpenSTA','† OpenSTA')+'\n\n</details>'
         text=block(text,LARGE_START,LARGE_END,details)
         scale_section=('Both tools emit byte-identical netlists at 1 and 16 cores; '
             'thread count preserves measured area and timing. The complete campaign linked above '

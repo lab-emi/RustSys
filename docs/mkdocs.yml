@@ -1,5 +1,5 @@
 site_name: RustSys
-site_description: Verilog to standard cells, with a CLI made for engineers and agents.
+site_description: High-performance Verilog/SystemVerilog synthesis in Rust, with a CLI made for engineers and agents.
 site_url: https://lab-emi.github.io/RustSys/
 repo_url: https://github.com/lab-emi/RustSys
 repo_name: lab-emi/RustSys

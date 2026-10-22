@@ -43,18 +43,22 @@ class UnifiedTests(unittest.TestCase):
         data,p,s=matrix()
         data['rows'][0].pop('yosys')
         self.assertFalse(scaling_verify.ready(data))
-        with self.assertRaises(ValueError):scaling_report.tables(data,p,s)
+        for render in (scaling_report.tables,scaling_report.comparison_table):
+            with self.assertRaises(ValueError):render(data,p,s)
 
     def test_different_thread_output_needs_its_own_proof(self):
         data,p,s=matrix()
         data['rows'][0]['yosys']['netlist_sha256']='changed'
-        with self.assertRaises(ValueError):scaling_report.tables(data,p,s)
+        for render in (scaling_report.tables,scaling_report.comparison_table):
+            with self.assertRaises(ValueError):render(data,p,s)
 
     def test_unverified_proof_and_failed_repeat_cannot_be_published(self):
         data,p,s=matrix();p['rows'][0]['rustsys']['verdict']='unverified'
-        with self.assertRaises(ValueError):scaling_report.tables(data,p,s)
+        for render in (scaling_report.tables,scaling_report.comparison_table):
+            with self.assertRaises(ValueError):render(data,p,s)
         data,p,s=matrix();data['rows'][0]['yosys']['samples'][1]['status']='timeout'
-        with self.assertRaises(ValueError):scaling_report.tables(data,p,s)
+        for render in (scaling_report.tables,scaling_report.comparison_table):
+            with self.assertRaises(ValueError):render(data,p,s)
 
 
 if __name__=='__main__':unittest.main()

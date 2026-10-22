@@ -2,6 +2,75 @@
 
 The [README comparison](https://github.com/lab-emi/RustSys#benchmarks) uses one common protocol for **Ibex, PicoRV32, SERV, VexRiscv and OpenC910**, each mapped to Sky130 HD and GF180 7T. The [complete unified archive](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) contains the raw samples, commands, input pins, limits, and proof receipts.
 
+## 16-core synthesis speed
+
+Both tools receive **16 physical host cores**. Times are end-to-end synthesis and
+Verilog export in seconds: one excluded warm-up and three measured runs, shown
+as medians. **Speedup = Yosys time ÷ RustSys time.**
+
+<div class="rustsys-comparison" markdown="1">
+
+<!-- benchmark-16-core:start -->
+
+| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys speedup ↑ |
+|---|---|---:|---:|---:|
+| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** |
+| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** |
+| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** |
+| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** |
+| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** |
+| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** |
+| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** |
+| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** |
+| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** |
+| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** |
+
+<!-- benchmark-16-core:end -->
+
+</div>
+
+Speedups use the recorded medians before display rounding. All **20 distinct
+netlists pass arbitrary-state RTL LEC**, with no reset or input assumptions.
+
+<details markdown="1">
+<summary>Full 1/16-core results, CPU use, area, setup-Fmax and LEC</summary>
+
+<!-- benchmark-full-matrix:start -->
+
+| Design · PDK | Tool<br>RustSys vs Yosys | 1 core, s ↓ | 16 cores, s ↓ | 1→16 speedup | Active cores / 16 | Cell area, µm² ↓ | Setup Fmax‡, MHz ↑ | Arbitrary-state RTL LEC |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| Ibex · Sky130 HD | RustSys | 1.65 | 0.89 | 1.85× | 3.76 | 117,405 | 42.92 | Proven · 1 & 16 cores |
+| Ibex · Sky130 HD | Yosys | 6.67 | 6.66 | 1.00× | 1.06 | 123,670 | 33.47 | Proven · 1 & 16 cores |
+| Ibex · GF180 7T | RustSys | 1.59 | 0.98 | 1.62× | 3.18 | 356,149 | 14.93 | Proven · 1 & 16 cores |
+| Ibex · GF180 7T | Yosys | 6.68 | 6.69 | 1.00× | 1.07 | 379,410 | 8.33 | Proven · 1 & 16 cores |
+| PicoRV32 · Sky130 HD | RustSys | 0.70 | 0.47 | 1.49× | 3.15 | 76,169 | 107.53 | Proven · 1 & 16 cores |
+| PicoRV32 · Sky130 HD | Yosys | 1.10 | 1.12 | 0.98× | 1.00 | 83,603 | 67.75 | Proven · 1 & 16 cores |
+| PicoRV32 · GF180 7T | RustSys | 0.74 | 0.57 | 1.30× | 2.35 | 233,097 | 26.65 | Proven · 1 & 16 cores |
+| PicoRV32 · GF180 7T | Yosys | 1.43 | 1.51 | 0.95× | 1.01 | 255,798 | 15.98 | Proven · 1 & 16 cores |
+| SERV · Sky130 HD | RustSys | 0.51 | 0.35 | 1.46× | 2.31 | 51,461 | 60.28 | Proven · 1 & 16 cores |
+| SERV · Sky130 HD | Yosys | 0.84 | 0.87 | 0.97× | 1.00 | 54,067 | 57.47 | Proven · 1 & 16 cores |
+| SERV · GF180 7T | RustSys | 1.05 | 0.76 | 1.38× | 1.95 | 163,404 | 43.27 | Proven · 1 & 16 cores |
+| SERV · GF180 7T | Yosys | 1.10 | 1.14 | 0.96× | 1.00 | 167,428 | 19.54 | Proven · 1 & 16 cores |
+| VexRiscv · Sky130 HD | RustSys | 9.89 | 2.46 | 4.02× | 6.67 | 2,399,458 | 10.22 | Proven · 1 & 16 cores |
+| VexRiscv · Sky130 HD | Yosys | 64.62 | 63.53 | 1.02× | 1.09 | 2,909,809 | 1.56 | Proven · 1 & 16 cores |
+| VexRiscv · GF180 7T | RustSys | 7.30 | 2.23 | 3.27× | 5.26 | 7,490,709 | 4.47 | Proven · 1 & 16 cores |
+| VexRiscv · GF180 7T | Yosys | 75.41 | 79.27 | 0.95× | 1.08 | 8,856,262 | 0.689 | Proven · 1 & 16 cores |
+| OpenC910 · Sky130 HD | RustSys | 177.21 | 69.06 | 2.57× | 4.17 | 53,453,688 | 0.69 | Proven · 1 & 16 cores |
+| OpenC910 · Sky130 HD | Yosys | 1489.95 | 1413.58 | 1.05× | 1.26 | 59,995,158 | 0.0486 | Proven · 1 & 16 cores |
+| OpenC910 · GF180 7T | RustSys | 152.26 | 64.41 | 2.36× | 3.78 | 165,273,357 | 0.0989 | Proven · 1 & 16 cores |
+| OpenC910 · GF180 7T | Yosys | 2754.81 | 2712.45 | 1.02× | 1.13 | 184,901,294 | 0.00397 | Proven · 1 & 16 cores |
+
+<!-- benchmark-full-matrix:end -->
+
+Each tool emits byte-identical netlists at both allocations, so area, timing and
+proof results apply to both. Setup-Fmax is an ideal-clock, zero-wire OpenSTA
+estimate. OpenC910 loads exceed Liberty characterization limits; these raw
+values do not establish achievable or signoff Fmax. See the
+[timing scope](performance.md#interpret-the-timing-estimate) and
+[complete receipts](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md).
+
+</details>
+
 ## One protocol for all five designs
 
 The unified matrix measures both tools on **1 and 16 physical host cores**, with one hardware thread per core. Every design/library/tool/core configuration has one excluded warm-up and three measured repetitions. Compare median wall time and actual CPU accounting; the allowed CPU count is not a utilization measurement. One-core reference times are measured, not inferred from the sixteen-core process's CPU use.

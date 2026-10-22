@@ -105,6 +105,21 @@ def tables(data,proofs,timing):
     return '\n'.join(main),('' if unified else '\n'.join(scale)),speedups,selfups
 
 
+def comparison_table(data,proofs,timing):
+    """A 16-core overview; retain the full campaign's proof and timing gates."""
+    tables(data,proofs,timing)
+    rows={(r['id'],r['library'],r['allocated_physical_cores']):r for r in data['rows']}
+    lines=['| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys speedup ↑ |',
+           '|---|---|---:|---:|---:|']
+    for did in ORDER:
+        for lib in LIBS:
+            row=rows[did,lib,16]
+            rustsys=row['rustsys']['median_wall_s'];yosys=row['yosys']['median_wall_s']
+            lines.append('| '+' | '.join([row['design'],PDK[lib],f'{rustsys:,.2f}',
+                f'{yosys:,.2f}',f'**{yosys/rustsys:.2f}×**'])+' |')
+    return '\n'.join(lines)
+
+
 def split_large(path):
     if path.stat().st_size<=1024**2:return path.name
     parts=[];digest=run.digest(path)
@@ -364,13 +379,22 @@ small models and complete solver receipts are included in the streamed archive.
     if a.root_readme:
         text=a.root_readme.read_text();before,after=text.split('## Benchmarks\n',1)
         _,rest=after.split(START,1)
-        text=before+'## Benchmarks\n\n'+scope+'\n'+START+rest
-        text=block(text,START,END,main)
+        overview_scope=('Five complete RISC-V designs × two PDKs. **16 physical host cores per tool**, '
+            'one warm-up and three measured runs; median wall times below.\n'
+            'Time includes workspace init/import, synthesis, mmap and full Verilog export; '
+            'source preparation, LEC and timing analysis are outside the timer.\n')
+        text=before+'## Benchmarks\n\n'+overview_scope+'\n'+START+rest
+        text=block(text,START,END,comparison_table(data,proofs,timing))
         end_index=text.index(END)+len(END);large_index=text.index(LARGE_START)
-        text=text[:end_index]+'\n\n'+timing_scope+f'\n\n[Complete measurements, scope and certificates]({relative}/README.md).\n\n'+text[large_index:]
-        text=block(text,LARGE_START,LARGE_END,large)
-        scale_section=('Both tools’ single-core and16-core comparisons are consolidated in the table above. '
-            'Thread count changes neither tool’s measured netlist bytes, area or timing under the same constraints.'.replace('and16','and 16') if unified else
+        summary=(f'Speedup = **Yosys time ÷ RustSys time**. All **20 distinct netlists pass '
+            'arbitrary-state RTL LEC**, with no reset or input assumption added.\n\n'
+            f'[Full 1/16-core results, CPU use, area, setup-Fmax and LEC certificates]({relative}/README.md).\n\n')
+        text=text[:end_index]+'\n\n'+summary+text[large_index:]
+        details='<details>\n<summary>Workload, proof and timing scope</summary>\n\n'+large+'\n'+timing_scope+'\n\n</details>'
+        text=block(text,LARGE_START,LARGE_END,details)
+        scale_section=('Both tools emit byte-identical netlists at 1 and 16 cores; '
+            'thread count preserves measured area and timing. The complete campaign linked above '
+            'retains the single-core comparisons and CPU scaling evidence.' if unified else
             ('### CPU scaling without changing the netlist\n\n'+scale+'\n\nAverage active cores = (user + system CPU seconds) / wall time, median of three runs.\nIdentical netlists preserve area and Fmax under the same constraints. The values show\nactual use of the allocated CPUs; they do not imply full16-core utilization.\n').replace('full16','full 16'))
         if SCALE_START in text:text=block(text,SCALE_START,SCALE_END,scale_section)
         else:text=text.replace('## Quick start',SCALE_START+'\n\n'+scale_section+'\n'+SCALE_END+'\n\n## Quick start',1)

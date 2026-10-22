@@ -1,6 +1,6 @@
 # RustSys
 
-> RustSys is the RustEDA logic synthesis CLI. It turns Verilog/SystemVerilog and a Liberty cell library into gate-level Verilog and structured reports. RustSys 0.1.0 is a source preview, not a crates.io release.
+> RustSys is a high-performance Verilog/SystemVerilog synthesizer written in Rust, with a CLI built for engineers and agents. It maps RTL and a Liberty cell library to gate-level Verilog and structured reports. RustSys 0.1.0 is a source preview, not a crates.io release.
 
 This is a navigation aid for agents, not a command protocol or an API guarantee.
 The canonical site URL is configured as https://lab-emi.github.io/RustSys/;

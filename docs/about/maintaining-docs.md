@@ -75,8 +75,11 @@ records. Retain the README's `open-hardware-benchmark` and
 `large-hardware-benchmark` marker pairs because the benchmark report tools
 replace their contents. The common multicore layout also keeps the
 `parallel-hardware-scaling` marker pair and is published by `scaling_report.py`;
-legacy campaign publishers must not overwrite its wider table or mix tool
-profiles. Do not revive a certificate listed in the historical
+legacy campaign publishers must not overwrite its compact 16-core overview or mix
+tool profiles. The dated archive retains the full single-core/multicore and quality
+table. Keep the README, homepage and benchmark guide's compact tables in sync using
+`scaling_report.comparison_table` and the same archived measurements and certificates.
+Do not revive a certificate listed in the historical
 proof invalidation registry.
 
 ## Publish to GitHub Pages

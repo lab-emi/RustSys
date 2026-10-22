@@ -1,6 +1,6 @@
 ---
-title: RustSys — Verilog to gates
-description: Synthesize Verilog, inspect structured results, and check equivalence from your terminal or agent workflow.
+title: RustSys — Ultrafast Verilog/SystemVerilog synthesis
+description: High-performance Verilog/SystemVerilog synthesis in Rust, built for terminals, CI and coding agents.
 hide:
   - navigation
   - toc
@@ -13,11 +13,14 @@ hide:
 
 <p class="rustsys-eyebrow">RUSTEDA / LOGIC SYNTHESIS</p>
 
-# From RTL to gates.<br>Built for the terminal.
+# Ultrafast RTL synthesis.<br>Ready for CLI and agents.
 
-RustSys turns Verilog and SystemVerilog into a standard-cell netlist.
-Give your scripts and agents explicit inputs, inspectable JSON results,
-recorded runs, and an equivalence check they can act on.
+RustSys is a high-performance Verilog/SystemVerilog synthesizer written in Rust.
+Turn RTL into standard cells with a CLI built for engineers, CI pipelines and coding
+agents: explicit inputs, JSON reports, recorded runs and equivalence checks.
+
+**1.50×–42.11× faster than Yosys** on the measured five-design, two-PDK suite at
+16 physical host cores. [See the results and method](guide/benchmarks.md).
 
 [Run your first synthesis](guide/quickstart.md){ .md-button .md-button--primary }
 [Build an agent workflow](guide/agents.md){ .md-button }
@@ -33,6 +36,35 @@ recorded runs, and an equivalence check they can act on.
   </picture>
   <figcaption>An illustration of RTL → synthesis → standard cells. <button type="button" class="rustsys-motion-control" aria-pressed="false" hidden>Pause animation</button></figcaption>
 </figure>
+
+## 16-core synthesis speed
+
+Same 16-core host allowance for both tools; median seconds after one warm-up and
+three timed runs. **Speedup = Yosys ÷ RustSys.**
+
+<div class="rustsys-comparison" markdown="1">
+
+<!-- benchmark-16-core:start -->
+
+| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys speedup ↑ |
+|---|---|---:|---:|---:|
+| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** |
+| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** |
+| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** |
+| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** |
+| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** |
+| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** |
+| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** |
+| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** |
+| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** |
+| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** |
+
+<!-- benchmark-16-core:end -->
+
+</div>
+
+All **20 distinct netlists pass arbitrary-state RTL LEC**, with no reset or input
+assumptions. [Method, full 1/16-core results, area and timing](guide/benchmarks.md).
 
 ## A CLI you can compose
 

@@ -4,16 +4,16 @@
 
 # RustSys
 
-**Verilog in. Standard cells out. A CLI your scripts and agents can drive.**
+**Ultrafast Verilog/SystemVerilog synthesis. Built for terminals and agents.**
 
 [![CI](https://github.com/lab-emi/RustSys/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lab-emi/RustSys/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Rust 1.97.1](https://img.shields.io/badge/rust-1.97.1-orange.svg?logo=rust)](rust-toolchain.toml)
 [![Documentation](https://img.shields.io/badge/docs-online-57D6BE)](https://lab-emi.github.io/RustSys/)
 
-RustSys turns synthesizable SystemVerilog and Liberty libraries into a gate-level Verilog
-netlist and a JSON report. Synthesize, check equivalence, inspect results, and repeat from your
-terminal, CI job, or coding agent. It is the logic synthesis tool in the **RustEDA** family.
+RustSys is a high-performance Verilog/SystemVerilog synthesizer written in Rust.
+Map RTL to standard cells, export gate-level Verilog and JSON reports, and check
+equivalence from your terminal, CI pipeline, or coding agent. Part of the **RustEDA** family.
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/rustsys-banner.svg">
@@ -25,7 +25,7 @@ terminal, CI job, or coding agent. It is the logic synthesis tool in the **RustE
 
 <!-- measured-performance-pitch -->
 
-- **Measured performance:** 1.50×–42.11× synthesis speedup over pinned Yosys 0.67 with the same 16-core allowance; up to 4.02× RustSys 1→16-core scaling with byte-identical netlists.
+- **High performance:** 1.50×–42.11× faster than pinned Yosys 0.67 on the measured five-design, two-PDK suite, with 16 physical host cores per tool.
 - **Easy to script:** result-only stdout, coded diagnostics on stderr, JSON output, fixed exit statuses.
 - **Easy to resume:** recorded commands, input hashes, artifacts, and event logs; query reports as JSON or TSV.
 - **Safe to coordinate:** daemonless disk workspaces, immutable revisions, and explicit `--base-rev` conflict checks.
@@ -36,63 +36,38 @@ terminal, CI job, or coding agent. It is the logic synthesis tool in the **RustE
 
 ## Benchmarks
 
-Five complete RISC-V designs × two PDKs, with **both tools measured at 1 and 16 physical host cores**.
-Each allocation uses one warm-up and three timed runs; the table shows medians.
-RustSys uses area/medium mapping and its default area-capped quality cleanup;
-Yosys 0.67 uses the same arbitrary-initial-state-preserving/default-ABC flow for every design.
-RustSys worker count follows the CPU allowance. Both tools use CPU 0 at one core and CPU 0–15 at 16 cores,
-with no SMT siblings. Host: AMD Ryzen 9 9950X3D; child limits: 32 GiB RAM + 1 GiB swap.
-
-Time covers prepared RTL through workspace init/import, synthesis, mmap and full Verilog export.
-Preparation, LEC and OpenSTA are outside the timer. Timed cases run serially on a shared host.
-Average active cores = (user+system CPU seconds)/wall seconds, median across three runs.
-Each tool's 1-core and 16-core netlists are byte-identical, so each displayed area/Fmax/LEC result applies to both.
-Peak process RSS and aggregate cgroup peaks remain in the complete measurement receipts.
-New Yosys 1-core measurements and unchanged earlier Yosys 16-core samples retain their separate provenance.
+Five complete RISC-V designs × two PDKs. **16 physical host cores per tool**,
+one warm-up and three measured runs; median wall times below.
+Time includes workspace init/import, synthesis, mmap and full Verilog export;
+source preparation, LEC and timing analysis are outside the timer.
 
 <!-- open-hardware-benchmark:start -->
 
-| Design · PDK | Tool<br>RustSys vs Yosys | 1 core, s ↓ | 16 cores, s ↓ | 1→16 speedup | Active cores / 16 | Cell area, µm² ↓ | Setup Fmax‡, MHz ↑ | Arbitrary-state RTL LEC |
-|---|---|---:|---:|---:|---:|---:|---:|---|
-| Ibex · Sky130 HD | RustSys | 1.65 | 0.89 | 1.85× | 3.76 | 117,405 | 42.92 | Proven · 1 & 16 cores |
-| Ibex · Sky130 HD | Yosys | 6.67 | 6.66 | 1.00× | 1.06 | 123,670 | 33.47 | Proven · 1 & 16 cores |
-| Ibex · GF180 7T | RustSys | 1.59 | 0.98 | 1.62× | 3.18 | 356,149 | 14.93 | Proven · 1 & 16 cores |
-| Ibex · GF180 7T | Yosys | 6.68 | 6.69 | 1.00× | 1.07 | 379,410 | 8.33 | Proven · 1 & 16 cores |
-| PicoRV32 · Sky130 HD | RustSys | 0.70 | 0.47 | 1.49× | 3.15 | 76,169 | 107.53 | Proven · 1 & 16 cores |
-| PicoRV32 · Sky130 HD | Yosys | 1.10 | 1.12 | 0.98× | 1.00 | 83,603 | 67.75 | Proven · 1 & 16 cores |
-| PicoRV32 · GF180 7T | RustSys | 0.74 | 0.57 | 1.30× | 2.35 | 233,097 | 26.65 | Proven · 1 & 16 cores |
-| PicoRV32 · GF180 7T | Yosys | 1.43 | 1.51 | 0.95× | 1.01 | 255,798 | 15.98 | Proven · 1 & 16 cores |
-| SERV · Sky130 HD | RustSys | 0.51 | 0.35 | 1.46× | 2.31 | 51,461 | 60.28 | Proven · 1 & 16 cores |
-| SERV · Sky130 HD | Yosys | 0.84 | 0.87 | 0.97× | 1.00 | 54,067 | 57.47 | Proven · 1 & 16 cores |
-| SERV · GF180 7T | RustSys | 1.05 | 0.76 | 1.38× | 1.95 | 163,404 | 43.27 | Proven · 1 & 16 cores |
-| SERV · GF180 7T | Yosys | 1.10 | 1.14 | 0.96× | 1.00 | 167,428 | 19.54 | Proven · 1 & 16 cores |
-| VexRiscv · Sky130 HD | RustSys | 9.89 | 2.46 | 4.02× | 6.67 | 2,399,458 | 10.22 | Proven · 1 & 16 cores |
-| VexRiscv · Sky130 HD | Yosys | 64.62 | 63.53 | 1.02× | 1.09 | 2,909,809 | 1.56 | Proven · 1 & 16 cores |
-| VexRiscv · GF180 7T | RustSys | 7.30 | 2.23 | 3.27× | 5.26 | 7,490,709 | 4.47 | Proven · 1 & 16 cores |
-| VexRiscv · GF180 7T | Yosys | 75.41 | 79.27 | 0.95× | 1.08 | 8,856,262 | 0.689 | Proven · 1 & 16 cores |
-| OpenC910 · Sky130 HD | RustSys | 177.21 | 69.06 | 2.57× | 4.17 | 53,453,688 | 0.69 | Proven · 1 & 16 cores |
-| OpenC910 · Sky130 HD | Yosys | 1489.95 | 1413.58 | 1.05× | 1.26 | 59,995,158 | 0.0486 | Proven · 1 & 16 cores |
-| OpenC910 · GF180 7T | RustSys | 152.26 | 64.41 | 2.36× | 3.78 | 165,273,357 | 0.0989 | Proven · 1 & 16 cores |
-| OpenC910 · GF180 7T | Yosys | 2754.81 | 2712.45 | 1.02× | 1.13 | 184,901,294 | 0.00397 | Proven · 1 & 16 cores |
+| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys speedup ↑ |
+|---|---|---:|---:|---:|
+| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** |
+| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** |
+| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** |
+| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** |
+| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** |
+| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** |
+| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** |
+| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** |
+| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** |
+| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** |
 
 <!-- open-hardware-benchmark:end -->
 
-The default area/medium flow raises SERV’s setup estimate from **17.99 to 60.28 MHz**
-(Sky130) and **7.18 to 43.27 MHz** (GF180), with area unchanged or lower than the previous
-measured RustSys build. All **20 distinct netlists pass arbitrary-state RTL LEC**, covering
-both core allocations; no reset or input assumption is added.
+Speedup = **Yosys time ÷ RustSys time**. All **20 distinct netlists pass
+arbitrary-state RTL LEC**, with no reset or input assumption added.
 
-‡ OpenSTA 3.1.0 setup-Fmax estimate at each library's TT corner: ideal clocks,
-100 ps input/clock slew, 10 fF output load, zero I/O delays and no wire parasitics.
-MHz = 1000 / reported minimum period in ns, within the report's printed precision.
-Same-clock, same-edge register paths only; port paths, cross-edge paths and
-level-sensitive latch paths are excluded by `report_clock_min_period`.
-Unclocked or otherwise unconstrained endpoints are outside this estimate;
-constraint-check receipts are retained. OpenC910 exceeds the default cleanup budget. OpenC910/Sky130 critical-path loads exceed the Liberty characterization range (RustSys/Yosys: 49.60/55.98 pF; respective cell limits 0.052195/0.190440 pF). These raw estimates do not establish achievable or signoff Fmax.
-
-[Complete measurements, scope and certificates](verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md).
+[Full 1/16-core results, CPU use, area, setup-Fmax and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) ·
+[Benchmark method](https://lab-emi.github.io/RustSys/guide/benchmarks/).
 
 <!-- large-hardware-benchmark:start -->
+
+<details>
+<summary>Workload, proof and timing scope</summary>
 
 ### OpenC910 configuration and proof scope
 
@@ -115,12 +90,23 @@ The same semantic contract applies to every tool/design pair. Every result
 keeps arbitrary implementation initial state under checked correspondence;
 **no reset sequence or input assumption is added**.
 
+‡ OpenSTA 3.1.0 setup-Fmax estimate at each library's TT corner: ideal clocks,
+100 ps input/clock slew, 10 fF output load, zero I/O delays and no wire parasitics.
+MHz = 1000 / reported minimum period in ns, within the report's printed precision.
+Same-clock, same-edge register paths only; port paths, cross-edge paths and
+level-sensitive latch paths are excluded by `report_clock_min_period`.
+Unclocked or otherwise unconstrained endpoints are outside this estimate;
+constraint-check receipts are retained. OpenC910 exceeds the default cleanup budget. OpenC910/Sky130 critical-path loads exceed the Liberty characterization range (RustSys/Yosys: 49.60/55.98 pF; respective cell limits 0.052195/0.190440 pF). These raw estimates do not establish achievable or signoff Fmax.
+
+</details>
 
 <!-- large-hardware-benchmark:end -->
 
 <!-- parallel-hardware-scaling:start -->
 
-Both tools’ single-core and 16-core comparisons are consolidated in the table above. Thread count changes neither tool’s measured netlist bytes, area or timing under the same constraints.
+Both tools emit byte-identical netlists at 1 and 16 cores; thread count preserves
+measured area and timing. The complete campaign linked above retains the
+single-core comparisons and CPU scaling evidence.
 
 <!-- parallel-hardware-scaling:end -->
 

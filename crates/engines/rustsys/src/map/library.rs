@@ -6,6 +6,9 @@
 use rustc_hash::FxHashMap;
 use rusteda_formats::liberty::{Cell, Direction, Func, Library, SeqKind};
 
+mod selector_costs;
+pub(crate) use selector_costs::prefer_narrow_muxes;
+
 /// Glob match with `*` and `?`.
 pub fn glob_match(pat: &str, s: &str) -> bool {
     let p: Vec<char> = pat.chars().collect();

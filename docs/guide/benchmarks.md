@@ -1,6 +1,6 @@
 # Understand the benchmarks
 
-The [README comparison](https://github.com/lab-emi/RustSys#benchmarks) uses one common protocol for **Ibex, PicoRV32, SERV, VexRiscv and OpenC910**, each mapped to Sky130 HD, GF180 7T, and **EZ130 8T v1.1 on IHP SG13G2 (TT 1.20 V / 25°C)**. The [complete unified archive](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) contains the baseline 1/16-core samples, commands, input pins, limits, and proof receipts. The [IHP/EZ130 extension](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md) adds the same five designs and both tools at 16 cores, using the exact same compiler binaries and RTL.
+The [README comparison](https://github.com/lab-emi/RustSys#benchmarks) uses one common protocol for **Ibex, PicoRV32, SERV, VexRiscv and OpenC910**, each mapped to Sky130 HD, GF180 7T, and **EZ130 8T v1.1 on IHP SG13G2 (TT 1.20 V / 25°C)**. The [complete unified archive](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) contains the baseline 1/16-core samples, commands, input pins, limits, and proof receipts. The [IHP/EZ130 extension](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md) adds the same five designs and both tools at 16 cores, using the exact same compiler binaries and RTL. The [current 16-core refresh](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-serv-area/README.md) remeasures all fifteen RustSys design/PDK combinations; unchanged Yosys measurements retain their original provenance. Changed netlists receive fresh LEC and OpenSTA; exact-byte reuse is explicit.
 
 ## 16-core synthesis speed
 
@@ -16,21 +16,21 @@ One warm-up and three measured synthesis/export runs; median seconds shown.
 
 | Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys<br>Speedup ↑ | RustSys<br>Peak mem, MiB ↓ | Yosys<br>Peak mem, MiB ↓ | RustSys<br>Area, µm² ↓ | Yosys<br>Area, µm² ↓ | RustSys<br>Setup Fmax†, MHz ↑ | Yosys<br>Setup Fmax†, MHz ↑ |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** | 91.9 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
-| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.6 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
-| Ibex | EZ130 8T | 0.84 | 6.80 | **8.10×** | 95.7 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
-| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 66.0 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
-| PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** | 117.3 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
-| PicoRV32 | EZ130 8T | 0.46 | 1.46 | **3.17×** | 69.0 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
-| SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** | 65.9 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
-| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 117.4 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
-| SERV | EZ130 8T | 0.35 | 1.10 | **3.14×** | 67.1 | 67.0 | 69,321 | 65,052 | 121.65 | 67.02 |
-| VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** | 449.8 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
-| VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** | 481.3 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
-| VexRiscv | EZ130 8T | 3.09 | 79.06 | **25.59×** | 863.1 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
-| OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** | 7,492.7 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
-| OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** | 7,543.2 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
-| OpenC910 | EZ130 8T | 83.37 | 2,811.45 | **33.72×** | 8,641.9 | 16,979.2 | 71,069,987 | 72,190,882 | 0.0171 | 0.0159 |
+| Ibex | Sky130 HD | 0.90 | 6.66 | **7.40×** | 93.4 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
+| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.9 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
+| Ibex | EZ130 8T | 0.77 | 6.80 | **8.83×** | 92.1 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
+| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 67.3 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
+| PicoRV32 | GF180 7T | 0.58 | 1.51 | **2.60×** | 117.2 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
+| PicoRV32 | EZ130 8T | 0.44 | 1.46 | **3.32×** | 68.4 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
+| SERV | Sky130 HD | 0.36 | 0.87 | **2.42×** | 66.2 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
+| SERV | GF180 7T | 0.77 | 1.14 | **1.48×** | 117.5 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
+| SERV | EZ130 8T | 0.31 | 1.10 | **3.55×** | 65.9 | 67.0 | 64,550 | 65,052 | 181.49 | 67.02 |
+| VexRiscv | Sky130 HD | 2.74 | 63.53 | **23.19×** | 472.9 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
+| VexRiscv | GF180 7T | 2.28 | 79.27 | **34.77×** | 483.6 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
+| VexRiscv | EZ130 8T | 3.24 | 79.06 | **24.40×** | 892.7 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
+| OpenC910 | Sky130 HD | 70.15 | 1,413.58 | **20.15×** | 7,490.5 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
+| OpenC910 | GF180 7T | 66.92 | 2,712.45 | **40.53×** | 7,648.0 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
+| OpenC910 | EZ130 8T | 75.75 | 2,811.45 | **37.11×** | 8,427.2 | 16,979.2 | 71,069,802 | 72,190,882 | 0.0171 | 0.0159 |
 
 <!-- benchmark-16-core:end -->
 
@@ -40,14 +40,14 @@ One warm-up and three measured synthesis/export runs; median seconds shown.
 in MiB. Aggregate cgroup memory peaks remain in the complete receipts.
 
 † **Setup-Fmax is an OpenSTA estimate** at the TT corner with ideal clocks and no wire
-parasitics. OpenC910 loads exceed Liberty characterization limits; its raw Fmax
-does not establish achievable frequency. [Timing scope](performance.md#interpret-the-timing-estimate).
+parasitics. SERV/EZ130 and OpenC910 loads exceed Liberty characterization limits;
+these raw estimates do not establish achievable frequency. [Timing scope](performance.md#interpret-the-timing-estimate).
 
 Speedups use the recorded medians before display rounding. All **30 distinct
 netlists pass arbitrary-state RTL LEC**, with no reset or input assumptions.
 
 <details markdown="1">
-<summary>Sky130/GF180: full 1/16-core results, CPU use, area, setup-Fmax and LEC</summary>
+<summary>Historical 2026-10-21 baseline: full 1/16-core results, CPU use, area, setup-Fmax and LEC</summary>
 
 <!-- benchmark-full-matrix:start -->
 
@@ -76,7 +76,7 @@ netlists pass arbitrary-state RTL LEC**, with no reset or input assumptions.
 
 <!-- benchmark-full-matrix:end -->
 
-Each tool emits byte-identical netlists at both allocations, so area, timing and
+In this historical baseline, each tool emits byte-identical netlists at both allocations, so area, timing and
 proof results apply to both. Setup-Fmax is an ideal-clock, zero-wire OpenSTA
 estimate. OpenC910 loads exceed Liberty characterization limits; these raw
 values do not establish achievable or signoff Fmax. See the
@@ -102,11 +102,11 @@ reused reference measurements are labeled as reuse.
 
 The IHP/EZ130 extension applies the same protocol at **16 physical cores**: ten
 additional tool/design configurations and ten new, independently checked netlists.
-Together the campaigns contain fifty measured configurations and thirty distinct
-netlists. EZ130 has no one-core measurements or within-tool scaling claim.
-RustSys is 3.14×–33.72× faster on the five EZ130 cases. Its SERV netlist uses 6.6%
-more area than Yosys; the other four use less area. All five have higher raw
-setup-Fmax estimates, subject to the timing limitations above.
+Those historical campaigns contain fifty measured configurations and thirty distinct
+netlists. The current refresh adds fifteen RustSys configurations at 16 cores. EZ130 has no one-core measurements or within-tool scaling claim.
+The current SERV/EZ130 result uses 0.77% less area than Yosys and synthesizes
+3.55× faster. All refreshed rows meet the previous RustSys area and raw setup-Fmax
+results; timing limitations and per-run variability remain visible in the receipts.
 
 The EZ130 release’s tie-cell Liberty driver-type tags conflict with its own
 constant-output Verilog models. Functional LEC uses the pinned vendor constants

@@ -36,6 +36,7 @@ pub fn elab(srcs: &[&str], top: Option<&str>) -> Result<Design, String> {
             .join("\n"));
     }
     let opts = ElabOptions {
+        prefer_narrow_muxes: false,
         parallel_carry: false,
         carry_cost_weight: None,
         xor_carry: false,

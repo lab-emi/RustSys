@@ -48,9 +48,9 @@ pub(crate) enum ElemSel {
     },
 }
 
-/// True when a one-hot decoded selection of one of `n` elements of `w` bits (position of `k`
-/// bits) needs fewer AND nodes than a multiplexer tree: the decoder has about `2n` nodes shared by
-/// all bits, then `2n - 1` per bit, against `3 (2^k - 1)` per bit for the tree.
+/// Generic AIG estimate. Narrow reads can instead preserve their mux tree when
+/// the target library has a cheaper four-way mux than decoded product gates.
+/// This keeps the existing wide-read and target-independent behavior.
 fn decoded_is_smaller(n: usize, k: usize, w: usize) -> bool {
     n >= 4 && 2 * n + (2 * n - 1) * w < 3 * ((1usize << k) - 1) * w
 }
@@ -70,11 +70,16 @@ pub(crate) struct DeferredSelect {
 
 /// Select at a dynamic position. Constant tables use shared Shannon cofactors: a decoder's
 /// generic data-input cost does not describe a ROM whose entries simplify to zero and one.
-pub(crate) fn lower_select(aig: &mut Aig, chunks: &[Bv], p: &[Lit]) -> Bv {
+pub(crate) fn lower_select(
+    aig: &mut Aig,
+    chunks: &[Bv],
+    p: &[Lit],
+    prefer_narrow_muxes: bool,
+) -> Bv {
     let w = chunks.first().map_or(0, Vec::len);
     let k = bits_for(chunks.len().saturating_sub(1) as u64);
     let constant = chunks.iter().flatten().all(|l| l.is_const());
-    if !constant && decoded_is_smaller(chunks.len(), k, w) {
+    if !constant && !(prefer_narrow_muxes && w <= 2) && decoded_is_smaller(chunks.len(), k, w) {
         return lower_decoded(aig, chunks, p, k);
     }
     let mut layer: Vec<Bv> = chunks.to_vec();
@@ -155,7 +160,7 @@ impl<'a> Elaborator<'a> {
                     });
                     outputs
                 } else {
-                    lower_select(&mut self.aig, chunks, p)
+                    lower_select(&mut self.aig, chunks, p, self.prefer_narrow_muxes)
                 }
             }
         }

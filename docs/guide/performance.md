@@ -4,7 +4,40 @@ Performance comparisons need the same design, technology library, resource alloc
 
 Captured tool messages are part of those timed jobs. The raw invocations retain each tool's logging options, thread environment and CPU affinity alongside wall time, CPU seconds and memory receipts.
 
-## Current RustSys CPU controls
+## Current 16-core refresh
+
+The [latest complete measurements](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-serv-area/README.md) cover all five designs on all three PDKs.
+RustSys is **1.48×–40.53× faster than Yosys** in these runs. The Yosys measurements retain
+their pinned original campaigns; the current RustSys producer is remeasured.
+All thirty compared netlists have complete arbitrary-state RTL LEC with no reset
+or input assumptions. Each refreshed RustSys result preserves or reduces area
+and preserves or improves the same raw OpenSTA setup estimate.
+
+SERV/EZ130 changes from an area disadvantage to **0.77% less area than Yosys**:
+
+| SERV / EZ130 8T | Before | After |
+|---|---:|---:|
+| Cell area, µm² | 69,321 | 64,550 |
+| 16-core synthesis, s | 0.35 | 0.31 |
+| Raw OpenSTA setup estimate, MHz | 121.65 | 181.49 |
+
+The mapper uses bounded Liberty truth/cost checks to preserve efficient mux trees
+for one- and two-bit variable-index reads. Clocked output drivers may use a
+compatible stronger cell when an affordable buffering plan is unavailable.
+Pin roles and state equations must match; the existing area ceiling remains.
+A feasible buffering plan keeps priority. No design names, PDK names, reset
+sequences or per-design timing targets select this behavior.
+
+An additional alternating-version check measured SERV at 0.37 / 0.36 s on
+Sky130, 0.76 / 0.77 s on GF180, and 0.34 / 0.32 s on EZ130 (before / after).
+The GF180 difference is one GNU-time reporting unit (0.01 s), with overlapping
+sample ranges. These paired observations and the VexRiscv controls remain in
+the archive; they do not replace the complete campaign's table or establish
+universal runtime equality on a shared host.
+
+The estimates below retain their original ideal-clock, zero-wire scope.
+
+## Historical 1/16-core CPU controls
 
 The [Sky130/GF180 baseline](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md)
 contains all forty configurations. At sixteen cores RustSys is **1.50×–42.11× faster**
@@ -13,7 +46,7 @@ in all ten design/PDK pairs. Maximum RustSys self-scaling is **4.02×**. All twe
 netlists have complete arbitrary-state LEC and independent timing evidence. The physical timing
 limits below remain part of the result.
 
-These controls use the frozen compiler in the current campaign, with one warm-up and three timed repetitions per allocation. The linked README archive identifies the exact producer and reference campaigns. Every one-core and sixteen-core RustSys pair emits identical netlist bytes.
+These historical controls use the frozen compiler in the 2026-10-21 campaign, with one warm-up and three timed repetitions per allocation. The linked README archive identifies the exact producer and reference campaigns. Every one-core and sixteen-core RustSys pair emits identical netlist bytes.
 
 | Design · PDK | RustSys 16 cores before / after, s | 1→16 scaling before / after | Average active cores before / after |
 |---|---:|---:|---:|
@@ -31,12 +64,10 @@ Default SERV cleanup also improves the independently measured setup estimate whi
 
 These are the ordinary area/medium pipeline results; no per-design timing target or reset assumption was supplied. Both resulting SERV netlists pass complete arbitrary-state RTL LEC. Electrical limits and the ideal-clock timing scope below still apply.
 
-The [IHP SG13G2 / EZ130 8T extension](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md)
-adds ten 16-core configurations using the same binaries and RTL. RustSys is
-3.14×–33.72× faster. Four designs use less area; SERV uses 6.6% more area than
-Yosys (69,321 versus 65,052 µm²), with a higher setup estimate (121.65 versus
-67.02 MHz). These are library-specific observations, not universal PPA claims.
-EZ130 adds no one-core scaling measurement. Its functional proof uses the
+The [earlier IHP SG13G2 / EZ130 8T extension](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md)
+remains an immutable record of the previous producer. The current refresh above
+supersedes its comparison table. EZ130 still has no one-core scaling measurement.
+Its functional proof uses the
 [explicit vendor tie-cell model supplement](../verification/pdk.md#additional-ihp-sg13g2-benchmark-library).
 
 ## Compare equal host resources
@@ -141,6 +172,12 @@ processor frequencies. On EZ130 8T, the selected critical-path INVX1 loads
 are 52.44 pF (RustSys) and 35.84 pF (Yosys), against a 0.10 pF Liberty limit.
 Those estimates also extrapolate beyond the characterized range. Usable Fmax requires electrical and physical closure,
 followed by new timing and equivalence checks of the resulting netlists.
+
+SERV/EZ130 also uses extrapolated timing before and after this change. The largest
+cell delay on its former critical path drives 0.5768 pF from an OAI21X2 whose
+characterized limit is 0.20 pF. The refreshed path drives 2.451 pF from a DFFQX6
+whose limit is 0.60 pF. The area and equivalence results do not imply electrical
+closure; these setup estimates require the same caution as the full-core results.
 
 ## Reproduce the campaign
 

@@ -1,0 +1,23 @@
+{
+  "arbitrary_state_lec_entries": 30,
+  "area_and_fmax_regression_rows": 15,
+  "benchmark_python_tests_passed": 114,
+  "input_assumptions": "none",
+  "logs_sha256": {
+    ".work/serv-area-20261023/clippy.log": "8f09af8622baf4e2a8c8c0643afebc8267305dcfaabd313b696e61f23de8648b",
+    ".work/serv-area-20261023/docs-links.log": "0923fbef76972a32e61a644bf15a1b2699b10077ce3e20654f9dd82c2fca6c3e",
+    ".work/serv-area-20261023/docs-source.log": "e4cd7fe3dc728b1d23ff85bdb1fe60508f102da1df9dd56f27bc2ba010cf988e",
+    ".work/serv-area-20261023/docs.log": "eaa038388ebe1364a3994e9be655dea260d87636618220bd8b9de8cfa5702a47",
+    ".work/serv-area-20261023/fixtures.log": "73d4402df2dde70cee1eaa302d10fd2a74bdb21a658711450c821b4bb345ebcd",
+    ".work/serv-area-20261023/harness-tests.log": "4a6a903a5107a15a09394b5e01b676b41fb79629de79ddb226438fa8e5c6b230",
+    ".work/serv-area-20261023/layout.log": "e3c0134e1ad03bfa9e4bc63d899f334c35cf2138ef860b596e4d61fe67a097dc",
+    ".work/serv-area-20261023/rebuild-final.log": "b9a7a833dc2c4cfd96d04ea905991469415cd771566d425408db5d814c6577c6",
+    ".work/serv-area-20261023/shared.log": "a11fe71983b9b62447c7e3574caeb54a018099d1d68280e67862d03a6713fc57",
+    ".work/serv-area-20261023/synth-verify.log": "eef68bfcc1eb1cd655a0ecefa48208985f79dd0b14de674b49cd37a191f56041",
+    ".work/serv-area-20261023/tests.log": "f3b9929fca9e7034e1bfd56d51dbf6ab911939c23063364af737a672864667a7"
+  },
+  "reset_assumptions": "none",
+  "source_binary_rebuild_identical": true,
+  "status": "passed",
+  "workspace_tests_passed": 810
+}

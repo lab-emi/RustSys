@@ -9,6 +9,45 @@ mod common;
 
 use common::{Eval, design};
 
+// Narrow, non-power-of-two tables must retain exact bounds whichever lowering
+// is selected. 14 input bits, 16K vectors, <100 AIG nodes and <1 MiB scratch.
+#[test]
+fn narrow_partial_table_has_exact_data_and_zero_padding() {
+    use rusteda_formats::verilog::{PpOptions, SourceMap, read_texts};
+    use rustsys::elab::{ElabOptions, elaborate};
+    let source = r"module partial_table(input [9:0] data, input [3:0] index, output [1:0] y);
+           logic [1:0] words [5];
+           always_comb for (int j=0; j<5; j++) words[j]=data[j*2 +: 2];
+           assign y=words[index];
+           endmodule";
+    let mut sm = SourceMap::new();
+    let (units, diagnostics) = read_texts(&mut sm, &[("partial.sv", source)], PpOptions::default());
+    assert!(!diagnostics.iter().any(|d| d.is_error()));
+    for prefer_narrow_muxes in [false, true] {
+        let opts = ElabOptions {
+            prefer_narrow_muxes,
+            ..Default::default()
+        };
+        let (d, diagnostics) = elaborate(&sm, &units, &opts);
+        assert!(!diagnostics.iter().any(|d| d.is_error()));
+        let d = d.unwrap();
+        for data in 0..1024u64 {
+            for index in 0..16u64 {
+                let expected = if index < 5 {
+                    (data >> (index * 2)) & 3
+                } else {
+                    0
+                };
+                let got = Eval::new(&d, &[("data", data), ("index", index)], &[]).out("y");
+                assert_eq!(
+                    got, expected,
+                    "muxes={prefer_narrow_muxes} data={data} index={index}"
+                );
+            }
+        }
+    }
+}
+
 // SYNTH-REQ-0201: an independently captured Icarus truth table is the oracle.
 // 8 inputs, 256 bounded vectors, <100 gates and <1 MiB test scratch.
 #[test]
@@ -180,6 +219,7 @@ fn design_cases(
     let (units, diags) = read_texts(&mut sm, &[("m.sv", src)], PpOptions::default());
     assert!(!diags.iter().any(|d| d.is_error()));
     let opts = ElabOptions {
+        prefer_narrow_muxes: false,
         parallel_carry: false,
         carry_cost_weight: None,
         xor_carry: false,

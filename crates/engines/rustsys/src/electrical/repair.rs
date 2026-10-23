@@ -8,6 +8,42 @@ use rusteda_core::job::{Ctx, JobError};
 
 use super::network::tree_size;
 
+/// Compatible sequential families preserve every state equation and pin role.
+/// Their output drive must be evaluated as a clock-to-Q launch, not as a
+/// combinational gate. No graph expansion or additional state is introduced.
+#[allow(clippy::too_many_arguments)]
+fn driver_value(
+    net: &Network,
+    lib: &Model<'_>,
+    timing: &Timing,
+    opts: &Options,
+    gate: usize,
+    cell: usize,
+    pin: usize,
+    node: usize,
+    inputs: &[usize],
+) -> (usize, super::timing::Value) {
+    if lib.cells[cell].comb {
+        (
+            lib.cells[cell].outputs[0],
+            timing.candidate_inputs(net, lib, gate, cell, true, inputs),
+        )
+    } else {
+        let old = &lib.cells[net.gates[gate].cell];
+        let name = &old.raw.pins[pin].name;
+        let output = lib.cells[cell]
+            .outputs
+            .iter()
+            .copied()
+            .find(|&p| lib.cells[cell].raw.pins[p].name == *name)
+            .expect("compatible state output");
+        (
+            output,
+            Timing::launch(lib, cell, output, timing.load[node], opts.clock_slew_ns),
+        )
+    }
+}
+
 #[cfg(test)]
 pub(super) fn run(
     net: &mut Network,
@@ -81,8 +117,8 @@ pub(super) fn run_modes(
                         if cost > available + 1e-8 {
                             continue;
                         }
-                        let p = c.outputs[0];
-                        let v = t.candidate_inputs(net, lib, g, cell, true, &snapshot_inputs[g]);
+                        let (p, v) =
+                            driver_value(net, lib, &t, opts, g, cell, op, n, &snapshot_inputs[g]);
                         if t.load[n] <= c.max_cap(p) + 1e-12
                             && v.slew[0].max(v.slew[1]) <= c.max_slew(p).min(lim.slew) + 1e-10
                             && (!include_fanout || lim.fanout_load <= c.max_fanout(p) + 1e-8)
@@ -140,13 +176,42 @@ pub(super) fn run_modes(
                 }
                 // No affordable change removes the violation: the affordable drive variant that
                 // reduces it most, if by at least a tenth (SYNTH-REQ-0551).
-                if sized.is_none() && branch.is_none() && old.comb {
-                    let excess = |c: &super::model::CellModel<'_>, slew: f64| {
-                        let p = c.outputs[0];
+                // Sequential sizing stays in this fallback: spending its budget
+                // ahead of a feasible buffer tree can displace critical-path repairs.
+                if sized.is_none() && branch.is_none() && (old.comb || old.clock.is_some()) {
+                    let excess = |c: &super::model::CellModel<'_>, p: usize, slew: f64| {
                         (t.load[n] / c.max_cap(p).max(1e-20))
                             .max(slew / c.max_slew(p).min(lim.slew).max(1e-20))
                     };
-                    let now = excess(old, t.value[n].slew[0].max(t.value[n].slew[1]));
+                    let state_excess = |cell| {
+                        net.gates[g]
+                            .outputs
+                            .iter()
+                            .fold(0.0_f64, |worst, &(pin, node)| {
+                                let (output, value) = driver_value(
+                                    net,
+                                    lib,
+                                    &t,
+                                    opts,
+                                    g,
+                                    cell,
+                                    pin,
+                                    node,
+                                    &snapshot_inputs[g],
+                                );
+                                let c = &lib.cells[cell];
+                                let limit = Limits::for_node(net, lib, node);
+                                worst.max((t.load[node] / c.max_cap(output).max(1e-20)).max(
+                                    value.slew[0].max(value.slew[1])
+                                        / c.max_slew(output).min(limit.slew).max(1e-20),
+                                ))
+                            })
+                    };
+                    let now = if old.comb {
+                        excess(old, op, t.value[n].slew[0].max(t.value[n].slew[1]))
+                    } else {
+                        state_excess(net.gates[g].cell)
+                    };
                     let mut best = (now * 0.9, None);
                     for &cell in &lib.families[old.family] {
                         let c = &lib.cells[cell];
@@ -154,8 +219,13 @@ pub(super) fn run_modes(
                         if cell == net.gates[g].cell || cost > available + 1e-8 {
                             continue;
                         }
-                        let v = t.candidate_inputs(net, lib, g, cell, true, &snapshot_inputs[g]);
-                        let e = excess(c, v.slew[0].max(v.slew[1]));
+                        let (p, v) =
+                            driver_value(net, lib, &t, opts, g, cell, op, n, &snapshot_inputs[g]);
+                        let e = if old.comb {
+                            excess(c, p, v.slew[0].max(v.slew[1]))
+                        } else {
+                            state_excess(cell)
+                        };
                         if e < best.0 {
                             best = (e, Some((cost, cell)));
                         }
@@ -185,4 +255,86 @@ pub(super) fn run_modes(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::electrical::tests::{inst, libs, port};
+    use crate::map::library::CellLib;
+    use rusteda_formats::liberty::Direction;
+    use rusteda_formats::verilog::write::{NlDir, NlModule};
+
+    /// One state, 32 sinks, two compatible variants: <1 MiB per test worker.
+    /// No reset or initial-state substitution is permitted by this repair.
+    #[test]
+    fn sequential_drive_repair_preserves_state_pins_and_respects_area() {
+        let mut libraries = libs();
+        let mut weak = libraries[0]
+            .cells
+            .iter()
+            .find(|c| c.name == "wt_dff_x1")
+            .unwrap()
+            .clone();
+        weak.name = "weak_state".into();
+        weak.area = 10.0;
+        for pin in weak
+            .pins
+            .iter_mut()
+            .filter(|p| p.direction == Direction::Output)
+        {
+            pin.max_capacitance = Some(0.001);
+        }
+        let mut strong = weak.clone();
+        strong.name = "strong_state".into();
+        strong.area = 10.5;
+        for pin in strong
+            .pins
+            .iter_mut()
+            .filter(|p| p.direction == Direction::Output)
+        {
+            pin.max_capacitance = Some(10.0);
+        }
+        libraries[0].cells.retain(|c| c.name == "wt_inv_x1");
+        libraries[0].cells.extend([weak, strong]);
+        let eligible = CellLib::build(&libraries, &[]).unwrap();
+        let model = Model::new(&libraries, &eligible);
+        let mut module = NlModule {
+            name: "state_load".into(),
+            ports: vec![port("clk", NlDir::Input), port("d", NlDir::Input)],
+            instances: vec![inst(
+                "state",
+                "weak_state",
+                &[("D", "d"), ("CK", "clk"), ("Q", "q"), ("QN", "qn")],
+            )],
+            ..Default::default()
+        };
+        for i in 0..32 {
+            let output = format!("y{i}");
+            module.ports.push(port(&output, NlDir::Output));
+            module.instances.push(inst(
+                &format!("load{i}"),
+                "wt_inv_x1",
+                &[("A", if i % 2 == 0 { "q" } else { "qn" }), ("Y", &output)],
+            ));
+        }
+        let original_pins = module.instances[0].conns.clone();
+        for (budget, expected) in [(0.0, "weak_state"), (0.5, "strong_state")] {
+            let mut net = Network::new(&module, &model).unwrap();
+            let initial_area = net.area(&model);
+            let opts = Options {
+                area_limit: Some(initial_area + budget),
+                ..Default::default()
+            };
+            let mut report = Report::default();
+            run_modes(&mut net, &model, &opts, &mut report, Ctx::NONE, &[false]).unwrap();
+            let mut output = module.clone();
+            net.write(&mut output, &model);
+            let state = output.instances.iter().find(|g| g.name == "state").unwrap();
+            assert_eq!(state.cell, expected);
+            assert_eq!(state.conns, original_pins);
+            assert!(net.area(&model) <= initial_area + budget + 1e-8);
+            assert_eq!(report.rule_resizes, usize::from(budget > 0.0));
+        }
+    }
 }

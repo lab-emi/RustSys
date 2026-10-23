@@ -290,7 +290,8 @@ impl Elaborator<'_> {
                         .map(|v| v.iter().copied().map(get).collect())
                         .collect();
                     let pos: Vec<_> = table.pos.iter().copied().map(get).collect();
-                    let values = super::select::lower_select(ng, &chunks, &pos);
+                    let values =
+                        super::select::lower_select(ng, &chunks, &pos, self.prefer_narrow_muxes);
                     for (old, value) in table.outputs.iter().zip(values) {
                         img[old.node() as usize] = value;
                         color[old.node() as usize] = 2;

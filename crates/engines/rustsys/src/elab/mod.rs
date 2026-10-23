@@ -194,6 +194,9 @@ impl Default for Env {
 /// Elaboration options.
 #[derive(Debug, Clone, Default)]
 pub struct ElabOptions {
+    /// Keep narrow variable-index reads as mux trees when the target library
+    /// implements four-way muxes more cheaply than decoded product gates.
+    pub prefer_narrow_muxes: bool,
     /// Lower long arithmetic carry chains to a sparse parallel prefix.
     pub parallel_carry: bool,
     /// Reuse the sum XOR as the carry-transfer propagate signal.
@@ -216,6 +219,7 @@ pub struct ElabOptions {
 pub struct Elaborator<'a> {
     pub sm: &'a SourceMap,
     pub aig: Aig,
+    pub(crate) prefer_narrow_muxes: bool,
     pub diags: Vec<Diagnostic>,
     modules: FxHashMap<String, &'a ast::Module>,
     packages: FxHashMap<String, &'a ast::Package>,
@@ -270,6 +274,7 @@ impl<'a> Elaborator<'a> {
         let mut e = Elaborator {
             sm,
             aig: Aig::new(),
+            prefer_narrow_muxes: false,
             diags: Vec::new(),
             modules: FxHashMap::default(),
             packages: FxHashMap::default(),
@@ -621,6 +626,7 @@ fn elaborate_impl<'a>(
     trace: bool,
 ) -> (Option<Design>, Vec<Diagnostic>) {
     let mut e = Elaborator::new(sm, units);
+    e.prefer_narrow_muxes = opts.prefer_narrow_muxes;
     if trace {
         e.aig.mul_sites = Some(Vec::new());
     }

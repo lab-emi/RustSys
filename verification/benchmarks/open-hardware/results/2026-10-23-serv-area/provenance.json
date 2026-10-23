@@ -1,0 +1,24 @@
+{
+  "evidence_files": 10446,
+  "evidence_raw_bytes": 15705767,
+  "host": {
+    "cpu": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "exclusive_host": false,
+    "kernel": "7.0.0-38-generic"
+  },
+  "large_artifacts": 12121,
+  "original_campaigns": {
+    "/mnt/data2/cgao/git/RustSys/.work/ez130-20261022/measurements-v2/results.json": "4c2cd6db18c2b156f95e4ebe8336a1994abb20ec462dc7e6dcf1cb8689d1642b",
+    "/mnt/data2/cgao/git/RustSys/.work/ez130-20261022/validation/proofs.json": "79684e9b44b8dc610a66fd4d74a983393bb95309d5fb7d94cb383ea623a74f8a",
+    "/mnt/data2/cgao/git/RustSys/.work/ez130-20261022/validation/timing.json": "350273403999765ef0d0bd782712ecc301d491b14a76f10db4b25eb9a4f4515c",
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/unified/results.json": "4d8bb931425825ddd7af3c5b64142c4f583b10157b3976d77818997070182c34",
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/validation/proofs.json": "c64818190bf613ae6121aaaaa55f100a5f1029f8bd056182b7fe6552f2e6b2ef",
+    "/mnt/data2/cgao/git/RustSys/.work/multicore-next-20261021/validation/timing.json": "cfef5ac935b158040334d8b1bf614f1eab0af691b5c7c7c29ea97f0912946959",
+    "/mnt/data2/cgao/git/RustSys/.work/serv-area-20261023/c910-v5-proof/proofs.json": "ccab5028dd1b4172c957cd3f99f242b45c551ac88863d95f9a32f54d8c5c1f02",
+    "/mnt/data2/cgao/git/RustSys/.work/serv-area-20261023/c910-v5-proof/timing.json": "7cb59a49f8b4e3a6490e99fa0bff434d3b2f526c880f5c020492c24fd96b1035"
+  },
+  "reporter_sha256": "0fed5a9fb4957b97576d5018c30666c2fff50597964dd44d9e250090039f30a8",
+  "scope": "new RustSys 16-core measurements; retained pinned Yosys measurements; exact-byte proof/timing reuse explicitly identified",
+  "source_workspace": "/mnt/data2/cgao/git/RustSys/.work/serv-area-20261023/measurements-v6",
+  "validation_workspace": "/mnt/data2/cgao/git/RustSys/.work/serv-area-20261023/validation-final"
+}

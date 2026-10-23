@@ -434,6 +434,7 @@ fn run(
         }
     }
     let eopts = elab::ElabOptions {
+        prefer_narrow_muxes: map::library::prefer_narrow_muxes(libs, &opts.dont_use),
         parallel_carry: opts.electrical.is_some() && carry != Carry::Ripple,
         carry_cost_weight: carry.area_weight(),
         xor_carry: matches!(carry, Carry::Xor | Carry::XorFast),

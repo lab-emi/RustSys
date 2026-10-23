@@ -1,0 +1,477 @@
+{
+  "asic_regression_proofs": {
+    "gf180mcu7t_tt": {
+      "library_sha256": "f9dee07cf158324934b0c59144d970a2e8313f43533ede6283ec3c136f82fe53",
+      "log": ".work/vivado-zynq-ibex/gf180-cec-2.log",
+      "log_sha256": "6f5804a894974b7b3b830e3ccd098fc0423b0d1f7c6b2c0eb217523af239cd95",
+      "memory_limit_mib": 2048,
+      "netlist_sha256": "be1be1d0fd4947fa409101a4e421fa0fd523a22c2534ecead4cfc90d817952cb",
+      "proven_equiv_cells": 18,
+      "rtl_sha256": "64b3d36f0a9f68e1cc3d8b0f160616edf85bcd500b2a87aa5fc9a0ab250ffcc6",
+      "scope": "18-bit enabled-state ASIC regression; not Ibex FPGA formal equivalence",
+      "script": ".work/vivado-zynq-ibex/dual-pdk-fixtures/gf180mcu7t_tt/equiv.ys",
+      "script_sha256": "2e17c0731319792efb04e4519a974c4760fe9d957c3abbe877a0453db4f8e03f",
+      "status": "passed",
+      "tool": "Yosys 0.69+154 (git sha1 30d62572e-dirty, Release, Clang /usr/bin/clang++ 21.1.8)",
+      "unproven_equiv_cells": 0,
+      "wall_limit_s": 60
+    },
+    "sky130hd_tt": {
+      "library_sha256": "8e78e14442062dba34d414fca6490b2f6b96038d4510d1438ca44fee31487135",
+      "log": ".work/vivado-zynq-ibex/sky130-cec-3.log",
+      "log_sha256": "5fcfe4abbdf5ad4ddfa0e596b6df06a58ac67d8c75f1e71342ce82b3755a5e90",
+      "memory_limit_mib": 2048,
+      "netlist_sha256": "6c6b6ebf90f3c1de412d7bf7eed470cd0add09263e46df7931813d261f3e0f01",
+      "proven_equiv_cells": 18,
+      "rtl_sha256": "64b3d36f0a9f68e1cc3d8b0f160616edf85bcd500b2a87aa5fc9a0ab250ffcc6",
+      "scope": "18-bit enabled-state ASIC regression; not Ibex FPGA formal equivalence",
+      "script": ".work/vivado-zynq-ibex/dual-pdk-fixtures/sky130hd_tt/equiv.ys",
+      "script_sha256": "80f3ec7bf3d19c20845b6351dbd9d00db66c642cfc806ef215cad88969890018",
+      "status": "passed",
+      "tool": "Yosys 0.69+154 (git sha1 30d62572e-dirty, Release, Clang /usr/bin/clang++ 21.1.8)",
+      "unproven_equiv_cells": 0,
+      "wall_limit_s": 60
+    }
+  },
+  "base_commit": "c5ec23cdc7591df99acb76cc7debc09bf1ddeff7",
+  "branch": "feat/vivado-zynq-ibex",
+  "delivered_harness_sha256": {
+    "ibex.json": "aa2a294eccb5727769b0159d240490c176b0b5343fcbb02c083501c403c8c43b",
+    "ibex_tb.sv": "a5f10a94e6e4373783312ccb319a9bfebcf9f6b0fa8b0ca65955072311f9e976",
+    "implement.tcl": "3610c31dc10d775739bcf70c4c6a72f6e55191a5c92f343779695c4798cbf708",
+    "primitives.v": "30230934f64e9d8aac98f102b3370612cb874c9a2c21d4ec33a3a111ad01298b",
+    "probe.sv": "79f3eeeb70519fc58951b077120ecb760ea328717864e9ac6cec3048627082fd",
+    "probe_tb.sv": "6519ed0c363beb3e93c1dfd4e49a625063af15bdc876624d246ed9e3fa28e9d1",
+    "run.py": "96a42eb1df8223f8140818f55fb88cd26e8b7e7370accce1f7c37b0276521be5"
+  },
+  "discovery": {
+    "permission_denied_entries": 176,
+    "podman_vivado_image_found": false,
+    "vivado_candidates": []
+  },
+  "formal_ibex_fpga_equivalence": "unchecked",
+  "harness_sha256": {
+    "ibex.json": "aa2a294eccb5727769b0159d240490c176b0b5343fcbb02c083501c403c8c43b",
+    "ibex_tb.sv": "a5f10a94e6e4373783312ccb319a9bfebcf9f6b0fa8b0ca65955072311f9e976",
+    "implement.tcl": "86868d0ffc5ef6cd944f4fccdaab2de375f69642e871760727f075fdb9c77375",
+    "primitives.v": "30230934f64e9d8aac98f102b3370612cb874c9a2c21d4ec33a3a111ad01298b",
+    "probe.sv": "79f3eeeb70519fc58951b077120ecb760ea328717864e9ac6cec3048627082fd",
+    "probe_tb.sv": "6519ed0c363beb3e93c1dfd4e49a625063af15bdc876624d246ed9e3fa28e9d1",
+    "run.py": "96a42eb1df8223f8140818f55fb88cd26e8b7e7370accce1f7c37b0276521be5"
+  },
+  "ibex_stages": {
+    "behavioral-compile": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/behavioral-compile.log",
+      "maximum_rss_kib": 27412,
+      "returncode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "passed",
+      "wall_s": 0.14398190699284896
+    },
+    "behavioral-seed1": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/behavioral-seed1.log",
+      "maximum_rss_kib": 13476,
+      "observations": [
+        "RUSTSYS_PASS ibex checks=1500 stores=89 loads=14 fetches=298 stalls=277 seed=1 diagnostic_defined=239810 diagnostic_unknown=190"
+      ],
+      "returncode": 0,
+      "sha256": "c6fb4959f11258518da999b80030e8dc011c7982567cfda69bd72b954eccf781",
+      "status": "passed",
+      "wall_s": 0.7071427240152843
+    },
+    "behavioral-seed7": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/behavioral-seed7.log",
+      "maximum_rss_kib": 13420,
+      "observations": [
+        "RUSTSYS_PASS ibex checks=1500 stores=89 loads=14 fetches=299 stalls=273 seed=7 diagnostic_defined=239810 diagnostic_unknown=190"
+      ],
+      "returncode": 0,
+      "sha256": "145e4942388c5dbb88627e87c80ff35754fbb721187ff29ed02b0e4fcf4e6b61",
+      "status": "passed",
+      "wall_s": 0.7045558820245788
+    },
+    "import": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/import.log",
+      "maximum_rss_kib": 14988,
+      "returncode": 0,
+      "sha256": "a1e925e195b7f8e06525c8555bbc3619c4e65bc73b3365d163c0bcf7885a5602",
+      "status": "passed",
+      "wall_s": 0.12665786902653053
+    },
+    "init": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/init.log",
+      "maximum_rss_kib": 8524,
+      "returncode": 0,
+      "sha256": "2a3ea4d7a8d860e9b8ce0c344e95b75f72220c3f6b7065aa8b2f66814ba217fc",
+      "status": "passed",
+      "wall_s": 0.04729383299127221
+    },
+    "mapped-functional-compile": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/mapped-functional-compile.log",
+      "maximum_rss_kib": 332340,
+      "returncode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "passed",
+      "wall_s": 1.6734219920472242
+    },
+    "mapped-functional-seed1": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/mapped-functional-seed1.log",
+      "maximum_rss_kib": 123960,
+      "observations": [
+        "RUSTSYS_PASS ibex checks=1500 stores=89 loads=14 fetches=298 stalls=277 seed=1 diagnostic_defined=239810 diagnostic_unknown=190"
+      ],
+      "returncode": 0,
+      "sha256": "c6fb4959f11258518da999b80030e8dc011c7982567cfda69bd72b954eccf781",
+      "status": "passed",
+      "wall_s": 5.606245913950261
+    },
+    "mapped-functional-seed7": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/mapped-functional-seed7.log",
+      "maximum_rss_kib": 123936,
+      "observations": [
+        "RUSTSYS_PASS ibex checks=1500 stores=89 loads=14 fetches=299 stalls=273 seed=7 diagnostic_defined=239810 diagnostic_unknown=190"
+      ],
+      "returncode": 0,
+      "sha256": "145e4942388c5dbb88627e87c80ff35754fbb721187ff29ed02b0e4fcf4e6b61",
+      "status": "passed",
+      "wall_s": 5.65470168198226
+    },
+    "synthesis": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/synthesis.log",
+      "maximum_rss_kib": 41420,
+      "returncode": 0,
+      "sha256": "ee435bb3b49145b3317b48979a67b2c3d319f1414dc641a98ccd473b82e7e92d",
+      "status": "passed",
+      "wall_s": 0.22738486400339752
+    },
+    "vivado-implementation": {
+      "reason": "Vivado installation not found",
+      "status": "unverified"
+    },
+    "xsim-behavioral": {
+      "reason": "Vivado installation not found",
+      "status": "unverified"
+    },
+    "xsim-post-implementation-functional": {
+      "reason": "Vivado installation not found",
+      "status": "unverified"
+    },
+    "xsim-post-implementation-timing": {
+      "reason": "Vivado installation not found",
+      "status": "unverified"
+    },
+    "xsim-post-synthesis-functional": {
+      "reason": "Vivado installation not found",
+      "status": "unverified"
+    },
+    "xsim-post-synthesis-timing": {
+      "reason": "Vivado installation not found",
+      "status": "unverified"
+    }
+  },
+  "implementation_sources_sha256": {
+    "crates/apps/rustsys-cli/src/args.rs": "c2739f773de3a354700ca06b81549d199f8e8495ba970472947acaab9936806b",
+    "crates/apps/rustsys-cli/src/lib.rs": "67fc1ef45b4b314e61e3e9acb74d406175d089c3fdfc08e3bd4f45cb33a2e159",
+    "crates/apps/rustsys-cli/src/ws/fpga.rs": "77e7df0f769da268f9a398ab3848226ee80dfb01efc4ab45ebcc7a6565e4f57e",
+    "crates/apps/rustsys-cli/src/ws/mod.rs": "344d0009c3cdde7422f33f7cb6054848594e1e8da735b6c81105f38f4abf6426",
+    "crates/engines/rustsys/src/fpga/emit.rs": "226bc5cdd4fb80fc64ecd754f026a4cf99ebd0053585ac31835dcb497bd10dc3",
+    "crates/engines/rustsys/src/fpga/mapping.rs": "d3fd313c988f3c3c63085715ea45762c11f9adea6a0a2d9826c0b6c4c382db72",
+    "crates/engines/rustsys/src/fpga/mod.rs": "10cb953e866b93730c1524920a4bf97002b8380552afecef5c2fc4ff060f5443",
+    "crates/engines/rustsys/src/lib.rs": "dc360c7a765d335ff48e37486561229433a3416e47d27e6d5e2ca80ee64d7108"
+  },
+  "overall_status": "unverified",
+  "peak_campaign_rss_kib": 332340,
+  "post_run_changes": [
+    "implement.tcl: removed an extra blank EOF line; Vivado path remains unverified"
+  ],
+  "primitive_controls": {
+    "bad-clock-compile": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/bad-clock-compile.log",
+      "maximum_rss_kib": 8636,
+      "returncode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "passed",
+      "wall_s": 0.0725610899971798
+    },
+    "bad-clock-seed1": {
+      "expected_counterexample": true,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/bad-clock-seed1.log",
+      "maximum_rss_kib": 8448,
+      "observations": [
+        "FATAL: .work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/inputs/probe_tb.sv:15: RUSTSYS_MISMATCH probe case=1 dut=39a1 gold=79a1"
+      ],
+      "returncode": 1,
+      "sha256": "7b0bbc2aa49c493c24b913abcccb4417f19246af5c98a59241da00fa6fbfd3ba",
+      "status": "passed",
+      "wall_s": 0.04919741698540747
+    },
+    "bad-lut-compile": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/bad-lut-compile.log",
+      "maximum_rss_kib": 8680,
+      "returncode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "passed",
+      "wall_s": 0.07264849200146273
+    },
+    "bad-lut-seed1": {
+      "expected_counterexample": true,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/bad-lut-seed1.log",
+      "maximum_rss_kib": 8420,
+      "observations": [
+        "FATAL: .work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/inputs/probe_tb.sv:15: RUSTSYS_MISMATCH probe case=0 dut=49e2 gold=49e3"
+      ],
+      "returncode": 1,
+      "sha256": "40e6ce08a8c4c6f5e7e50e8ca041c1d57eacbe4b6f992f79a1711c81b2e99981",
+      "status": "passed",
+      "wall_s": 0.04668355599278584
+    },
+    "bad-reset-compile": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/bad-reset-compile.log",
+      "maximum_rss_kib": 8800,
+      "returncode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "passed",
+      "wall_s": 0.07253704097820446
+    },
+    "bad-reset-seed1": {
+      "expected_counterexample": true,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/bad-reset-seed1.log",
+      "maximum_rss_kib": 8444,
+      "observations": [
+        "FATAL: .work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/inputs/probe_tb.sv:15: RUSTSYS_MISMATCH probe case=4 dut=0106 gold=8106"
+      ],
+      "returncode": 1,
+      "sha256": "39b00cf29a286ad76e4ca78c316a0b4dfdc6031c41bd38f35375d433a11f33a5",
+      "status": "passed",
+      "wall_s": 0.0590945309959352
+    },
+    "import": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/import.log",
+      "maximum_rss_kib": 9248,
+      "returncode": 0,
+      "sha256": "dd813af7f1248980bf1d61b95e489a62d9eba2d40a04585b9b68daaca3e20603",
+      "status": "passed",
+      "wall_s": 0.054473852971568704
+    },
+    "init": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/init.log",
+      "maximum_rss_kib": 8216,
+      "returncode": 0,
+      "sha256": "5b37ca21640db70d8fa308f02d07290fd58d343885c9db85e3606fe59e840d40",
+      "status": "passed",
+      "wall_s": 5.661475105967838
+    },
+    "mapped-functional-compile": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/mapped-functional-compile.log",
+      "maximum_rss_kib": 8488,
+      "returncode": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "passed",
+      "wall_s": 0.07563682895852253
+    },
+    "mapped-functional-seed1": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/mapped-functional-seed1.log",
+      "maximum_rss_kib": 8364,
+      "observations": [
+        "RUSTSYS_PASS probe vectors=512"
+      ],
+      "returncode": 0,
+      "sha256": "ece068c0d612b01ddf996a04d0dbc510848a6d8318ce0e4137d17ac837d0f470",
+      "status": "passed",
+      "wall_s": 0.061148287961259484
+    },
+    "synthesis": {
+      "expected_counterexample": false,
+      "log": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/synthesis.log",
+      "maximum_rss_kib": 10800,
+      "returncode": 0,
+      "sha256": "e42dfce45930cc677a050ab48e7dbb3a5d25a3e75497fefdefdaa7bafb607f4a",
+      "status": "passed",
+      "wall_s": 0.06158148299437016
+    }
+  },
+  "raw_receipts": {
+    "ibex": ".work/vivado-zynq-ibex/ibex-delivery/verification/fpga-20261023T191634584173Z/result.json",
+    "probe": ".work/vivado-zynq-ibex/probe-delivery/verification/fpga-20261023T191635748111Z/result.json"
+  },
+  "reason": "Vivado/XSim installation not found in accessible local installation paths, shell/desktop configuration or Podman images",
+  "recorded_utc": "2026-10-23T19:18:39.935826+00:00",
+  "resource_guard": {
+    "kind": "cgroup",
+    "lock_wait_seconds": 60,
+    "small_memory_mib": 2048,
+    "swap_mib": 1024,
+    "vivado_memory_mib": 8192,
+    "wall_seconds_per_stage": 180
+  },
+  "schema": 1,
+  "scope": {
+    "commit": "38c070939183cc10940b66c8e9e04eeca6b65470",
+    "configuration": "v2.1.0 upstream defaults; RV32IMC; flip-flop register file; generic clock gate; no instruction cache",
+    "default_part": "xc7z020clg400-1",
+    "design": "ibex",
+    "license": "Apache-2.0",
+    "period_ns": 100,
+    "physical_scope": "out-of-context core implementation; no board pins, PS integration or bitstream",
+    "preparation": "verification/benchmarks/open-hardware/run.py; pinned sv2v; SYNTHESIS; generic primitive bindings",
+    "prepared_sha256": "f2ac68c505c26aa7f4ee1fe68ef0639f3b39296b39a93f3a1a469f521c04d9f3",
+    "reference_versions": {
+      "iverilog": "Icarus Verilog version 14.0 (devel) (s20260301-488-g850838b55-dirty)",
+      "vvp": "Icarus Verilog runtime version 14.0 (devel) (s20260301-488-g850838b55-dirty)"
+    },
+    "repo": "https://github.com/lowRISC/ibex",
+    "schema": 1,
+    "simulation_scope": "reset-qualified RV32IM program, two seeds, stalls and repeated reset; checked external transactions/control; not a formal proof or full ISA coverage",
+    "top": "ibex_top"
+  },
+  "static_checks": {
+    "clippy_all_targets_all_features": "passed",
+    "diff_whitespace": "passed",
+    "format": "passed",
+    "python_compile": "passed"
+  },
+  "synthesis": {
+    "aig_nodes": 32879,
+    "cells": {
+      "BUFG": 2,
+      "FDCE": 1696,
+      "FDPE": 10,
+      "FDRE": 310,
+      "GND": 1,
+      "LDCE": 1,
+      "LUT1": 2086,
+      "LUT2": 144,
+      "LUT3": 799,
+      "LUT4": 735,
+      "LUT5": 1309,
+      "LUT6": 3722,
+      "VCC": 1
+    },
+    "corner": null,
+    "cut_merges": 1192693,
+    "drc_status": "unchecked",
+    "equivalence_status": "unchecked",
+    "family": "zynq7000",
+    "flip_flops": 2016,
+    "format": "rustsys-fpga-report",
+    "format_version": 1,
+    "implementation_status": "unchecked",
+    "initial_state": "source states retained; FPGA power-up uses vendor primitive defaults; reset-qualified simulation required",
+    "latches": 1,
+    "limits": {
+      "max_cut_merges": 64000000,
+      "max_cuts_per_node": 8,
+      "max_mapping_bytes": 536870912,
+      "max_nodes": 1000000,
+      "max_output_bytes": 268435456,
+      "part": "xc7z020clg400-1"
+    },
+    "lut_cells": 8795,
+    "lut_depth": 31,
+    "mapping_bytes_bound": 16604279,
+    "part": "xc7z020clg400-1",
+    "runtime_s": 0.151513391,
+    "timing_status": "unchecked",
+    "top": "ibex_top",
+    "unconstrained_endpoints": null,
+    "warnings": 2,
+    "wire_model": "unmodeled"
+  },
+  "tests": {
+    "cli_contract": {
+      "ignored": 0,
+      "log": ".work/vivado-zynq-ibex/final-cli-test.log",
+      "log_sha256": "bd084202325d1e854cb798b9f7e1c25ae87033ad0a502d5a4a7ab13a6f7601c9",
+      "passed": 9,
+      "status": "passed"
+    },
+    "fpga_engine": {
+      "ignored": 0,
+      "log": ".work/vivado-zynq-ibex/final-test.log",
+      "log_sha256": "8b59ba472c772ff11ab9015885332a9e64fa1bf3c36c670d974ee5cc22efdeef",
+      "passed": 3,
+      "status": "passed"
+    },
+    "known_answer": {
+      "ignored": 0,
+      "log": ".work/vivado-zynq-ibex/targeted-tests.log",
+      "log_sha256": "0e9daaa00930bf129006534aeaa46591b73282e244bb4bfd0025d2516921839c",
+      "passed": 1,
+      "status": "passed"
+    },
+    "real_dual_pdk": {
+      "ignored": 0,
+      "log": ".work/vivado-zynq-ibex/dual-pdk-tests.log",
+      "log_sha256": "89a98ab8ff86b936892a5eb8c855d138fd3dda3fb4d1d1aa305a3a79464d79bf",
+      "passed": 2,
+      "status": "passed"
+    },
+    "rustsys_lib": {
+      "ignored": 1,
+      "log": ".work/vivado-zynq-ibex/final-test.log",
+      "log_sha256": "8b59ba472c772ff11ab9015885332a9e64fa1bf3c36c670d974ee5cc22efdeef",
+      "passed": 78,
+      "status": "passed"
+    },
+    "synth_backends": {
+      "ignored": 1,
+      "log": ".work/vivado-zynq-ibex/targeted-tests.log",
+      "log_sha256": "0e9daaa00930bf129006534aeaa46591b73282e244bb4bfd0025d2516921839c",
+      "passed": 3,
+      "status": "passed"
+    },
+    "workspace_cli": {
+      "ignored": 0,
+      "log": ".work/vivado-zynq-ibex/targeted-tests.log",
+      "log_sha256": "0e9daaa00930bf129006534aeaa46591b73282e244bb4bfd0025d2516921839c",
+      "passed": 6,
+      "status": "passed"
+    },
+    "workspace_fpga": {
+      "ignored": 0,
+      "log": ".work/vivado-zynq-ibex/final-cli-test.log",
+      "log_sha256": "bd084202325d1e854cb798b9f7e1c25ae87033ad0a502d5a4a7ab13a6f7601c9",
+      "passed": 2,
+      "status": "passed"
+    }
+  },
+  "tools": {
+    "iverilog": {
+      "path": "/home/cgao/eda/tools/oss-cad-suite/bin/iverilog",
+      "sha256": "6d84be4052a92cf7184c7149506f5db6ac251f99e438a96ae3ce33f326e2ff9d",
+      "version_first_line": "Icarus Verilog version 14.0 (devel) (s20260301-488-g850838b55-dirty)"
+    },
+    "rusteda": {
+      "path": ".work/vivado-zynq-ibex/target/debug/rusteda",
+      "sha256": "51e21bbf2b19d8701d41230e905fd90c501fb1793e8679e34843d23ae30b927d",
+      "version_first_line": "rusteda 0.1.0"
+    },
+    "rustsys": {
+      "path": ".work/vivado-zynq-ibex/target/debug/rustsys",
+      "sha256": "4827ad9c7cdaaa602e19a8b23ce37eee2fe131d7bbf164cd7fb00db6e9864dd8",
+      "version_first_line": "rustsys 0.1.0 (runtimes: cpu)"
+    },
+    "vvp": {
+      "path": "/home/cgao/eda/tools/oss-cad-suite/bin/vvp",
+      "sha256": "9f6d770762b5e77d81216e5f21a634028a9ee062a724eeb116980bdb6cb110cc",
+      "version_first_line": "Icarus Verilog runtime version 14.0 (devel) (s20260301-488-g850838b55-dirty)"
+    }
+  },
+  "unique_rust_tests_passed": 104
+}

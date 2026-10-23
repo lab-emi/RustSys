@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "design": "ibex",
+  "repo": "https://github.com/lowRISC/ibex",
+  "commit": "38c070939183cc10940b66c8e9e04eeca6b65470",
+  "license": "Apache-2.0",
+  "top": "ibex_top",
+  "configuration": "v2.1.0 upstream defaults; RV32IMC; flip-flop register file; generic clock gate; no instruction cache",
+  "prepared_sha256": "f2ac68c505c26aa7f4ee1fe68ef0639f3b39296b39a93f3a1a469f521c04d9f3",
+  "preparation": "verification/benchmarks/open-hardware/run.py; pinned sv2v; SYNTHESIS; generic primitive bindings",
+  "default_part": "xc7z020clg400-1",
+  "period_ns": 100,
+  "reference_versions": {
+    "iverilog": "Icarus Verilog version 14.0 (devel) (s20260301-488-g850838b55-dirty)",
+    "vvp": "Icarus Verilog runtime version 14.0 (devel) (s20260301-488-g850838b55-dirty)"
+  },
+  "physical_scope": "out-of-context core implementation; no board pins, PS integration or bitstream",
+  "simulation_scope": "reset-qualified RV32IM program, two seeds, stalls and repeated reset; checked external transactions/control; not a formal proof or full ISA coverage"
+}

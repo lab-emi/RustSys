@@ -91,6 +91,8 @@ pub enum Cmd {
         after_help = "Example:\n  rustsys synth --lib cells.lib --out top_mapped.v --report top.json top.sv"
     )]
     Synth(SynthArgs),
+    /// Map workspace RTL to native Zynq-7000 LUT/FF primitives.
+    SynthFpga(FpgaArgs),
     /// The independent synthesis checker.
     Check(CheckArgs),
     /// Show sections of a run or report.
@@ -106,6 +108,26 @@ pub enum Cmd {
     Resize(ResizeArgs),
     /// Print a shell completion script.
     Completions(CompletionsArgs),
+}
+
+#[derive(Args, Debug)]
+pub struct FpgaArgs {
+    /// Expected workspace HEAD (required; rejects stale writes).
+    #[arg(long)]
+    pub base_rev: String,
+    /// Zynq-7000 part; Vivado validates the exact package/speed grade.
+    #[arg(long, default_value = "xc7z020clg400-1")]
+    pub part: String,
+    #[arg(long, default_value_t = 1_000_000)]
+    pub max_nodes: usize,
+    #[arg(long, default_value_t = 8)]
+    pub max_cuts_per_node: usize,
+    #[arg(long, default_value_t = 64_000_000)]
+    pub max_cut_merges: u64,
+    #[arg(long, default_value_t = 536_870_912)]
+    pub max_mapping_bytes: u64,
+    #[arg(long, default_value_t = 268_435_456)]
+    pub max_output_bytes: usize,
 }
 
 #[derive(Args, Debug)]

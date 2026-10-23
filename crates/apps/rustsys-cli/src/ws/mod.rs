@@ -7,6 +7,7 @@
 
 pub mod check;
 mod constraints;
+mod fpga;
 pub mod opt;
 mod opt_timing;
 pub mod report;
@@ -97,7 +98,7 @@ impl Prescan {
             || self.has_format
             || matches!(
                 self.subcommand.as_deref(),
-                Some("report" | "opt-timing" | "resize")
+                Some("report" | "opt-timing" | "resize" | "synth-fpga")
             )
     }
 }
@@ -111,6 +112,7 @@ pub(crate) fn prescan(args: &[OsString]) -> Prescan {
         .collect();
     let known_subs = [
         "synth",
+        "synth-fpga",
         "check",
         "show",
         "report",
@@ -299,7 +301,10 @@ fn maybe_log_usage_rejection(pre: &Prescan, argv_strings: &[String], err: &Error
     let Some(sub) = pre.subcommand.as_deref() else {
         return;
     };
-    if !matches!(sub, "synth" | "check" | "opt-timing" | "resize") {
+    if !matches!(
+        sub,
+        "synth" | "synth-fpga" | "check" | "opt-timing" | "resize"
+    ) {
         return;
     }
     let Some(ws_dir) = pre.workspace.as_deref() else {
@@ -441,6 +446,7 @@ pub(crate) fn dispatch_workspace(cli: &Cli, g: &Globals, raw_args: &[OsString]) 
 
     let sub_name = match &cli.cmd {
         Cmd::Synth(_) => "rustsys synth",
+        Cmd::SynthFpga(_) => "rustsys synth-fpga",
         Cmd::Check(_) => "rustsys check",
         Cmd::Show(_) => "rustsys show",
         Cmd::Report(_) => "rustsys report",
@@ -465,6 +471,7 @@ pub(crate) fn dispatch_workspace(cli: &Cli, g: &Globals, raw_args: &[OsString]) 
 
     match &cli.cmd {
         Cmd::Synth(args) => synth::run_ws_synth(&ws, &ws_arg, args, g, &inv, format, quiet),
+        Cmd::SynthFpga(args) => fpga::run(&ws, &ws_arg, args, &inv, format, quiet),
         Cmd::Check(check_args) => {
             let a = match &check_args.what {
                 Some(CheckCmd::Synth(s)) => s,

@@ -13,6 +13,7 @@ pub mod elab;
 pub mod electrical;
 pub mod emit;
 pub mod estimate;
+pub mod fpga;
 pub mod ingest;
 pub mod map;
 pub mod opt;

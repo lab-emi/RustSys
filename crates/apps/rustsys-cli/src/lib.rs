@@ -256,7 +256,7 @@ pub fn run(args: Vec<OsString>) -> ExitCode {
         || pre.has_format
         || matches!(
             &cli.cmd,
-            Cmd::Report(_) | Cmd::OptTiming(_) | Cmd::Resize(_)
+            Cmd::Report(_) | Cmd::OptTiming(_) | Cmd::Resize(_) | Cmd::SynthFpga(_)
         );
     if cli.threads > 0 {
         if let Err(e) = rayon::ThreadPoolBuilder::new()
@@ -321,7 +321,9 @@ fn dispatch(cli: &Cli, g: &Globals) -> ExitCode {
             }
         },
         Cmd::Show(a) => show::show(g, a),
-        Cmd::Report(_) | Cmd::OptTiming(_) | Cmd::Resize(_) => ws::dispatch_workspace(cli, g, &[]),
+        Cmd::Report(_) | Cmd::OptTiming(_) | Cmd::Resize(_) | Cmd::SynthFpga(_) => {
+            ws::dispatch_workspace(cli, g, &[])
+        }
         Cmd::Completions(a) => completions(g, a),
     }
 }

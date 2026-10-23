@@ -969,6 +969,74 @@ not copied into RustSys's implementation or synthetic unit-test corpus.
 
 ## Recorded results
 
+### GF180 paired runtime audit
+
+The [extended GF180 audit](results/2026-10-23-gf180-runtime-audit/README.md)
+compares the frozen pre-SERV-area producer with the frozen runtime-repair producer.
+All five complete designs use the same 16 physical cores. Primary cohorts contain
+40 A/B pairs each for Ibex, PicoRV32 and SERV, 64 for VexRiscv and 12 for OpenC910.
+Each has two excluded paired warm-ups. Same-binary A/A controls use eight pairs
+per smaller design and two for OpenC910. Earlier 20- and 40-pair cohorts remain
+separate sensitivity evidence, alongside the original `9afbf2b` cohorts and a
+32-pair `9afbf2b` versus repair VexRiscv control. No successful timed observation
+is discarded.
+
+The runtime repair also receives 20-pair `9afbf2b`/repair controls for all four
+smaller designs on both Sky130 and EZ130: two paired warm-ups, four A/A control
+pairs and a fifteen-comparison Holm family. Their raw samples and intervals
+remain separate from the five-design GF180 primary cohort.
+
+`paired_audit.py` fixes and records balanced A/B and B/A order before execution.
+`precise_command.rs` measures the unchanged complete CLI pipeline with a native
+monotonic clock. It includes Python startup/shutdown, all four CLI processes,
+workspace initialization/import, mmap, synthesis and complete Verilog export.
+Resource-guard startup is outside that clock. This is a different boundary from
+the original GNU-time overview; it does not silently replace RustSys/Yosys medians.
+Nanosecond clock storage does not imply nanosecond measurement accuracy.
+
+Campaign-wide file scans run outside the primary timer; the large-case periodic
+scanner checks only its current case. Trials run serially under `scale.lock`.
+Small cases have an 8 GiB RAM guard; OpenC910 has 32 GiB RAM, 1 GiB swap and
+40 GiB address space, with a 600 s per-case wall guard. The upfront large-case
+estimate is about 20 GiB: six million objects × 256 bytes, a shared 4 GiB cut
+budget, 12 GiB frontend/tables, and sixteen 32 MiB worker scratch buffers.
+The parent has no graph and at most 1,024 samples / 64 MiB JSON per cohort.
+
+After preparing the pinned inputs as above, a bounded SERV reproduction is:
+
+```sh
+BENCH=verification/benchmarks/open-hardware
+free -h
+mkdir -p .work
+(ulimit -v 8388608; timeout 120s systemd-run --user --scope \
+  -p MemoryMax=2G -p MemorySwapMax=512M \
+  rustc --edition 2024 -O -C link-arg=-Wl,--threads=2 \
+  crates/verify/rustsys-check/examples/precise_command.rs -o .work/precise-command)
+(ulimit -v 41943040; /usr/bin/time -v timeout 7200s \
+  python3 "$BENCH/paired_audit.py" --workspace .work/serv-paired \
+  --baseline /path/to/frozen-before --candidate /path/to/frozen-current \
+  --timer .work/precise-command --design serv --library gf180mcu7t_tt \
+  --pairs 40 --warmups 2 --controls 8 --seed 20261027)
+(ulimit -v 2097152; timeout 120s python3 "$BENCH/paired_statistics.py" \
+  --input .work/serv-paired/results.json --output .work/serv-paired/statistics.json)
+```
+
+Both producer directories contain `rustsys` and `rusteda`. Omit `--design` to
+cover all five designs; samples and work remain bounded. Publication uses
+`paired_report.py`, which refuses incomplete schedules or a confirmed regression,
+checks every measured netlist against complete arbitrary-state LEC/STA receipts,
+and revalidates all thirty retained tool/design/PDK certificates. Exact-byte
+reuse is labeled explicitly; it is not a fresh solver or OpenSTA invocation.
+
+`paired_statistics.py` reports paired mean and median differences, exact 99%
+binomial median intervals, seeded 10,000-replicate 99% bootstrap mean/log-ratio
+intervals, exact one-sided sign tests and Holm correction across five designs.
+A regression requires a positive 99% median or mean log-ratio interval and a
+Holm-adjusted sign-test p-value ≤ 0.05. A/A controls are separate, never subtracted.
+An interval containing zero is inconclusive, not proof of equality; two A/A pairs
+do not support a 99% interval. Original clocks, ranges, CPU/RSS, phase times,
+environment snapshots, commands and hashes remain in the public receipts.
+
 The [current unified campaign](results/2026-10-21-default-multicore/README.md)
 contains all forty RustSys/Yosys design, PDK and host-core configurations, with
 three-run measurements, complete arbitrary-state LEC, OpenSTA receipts and source pins.

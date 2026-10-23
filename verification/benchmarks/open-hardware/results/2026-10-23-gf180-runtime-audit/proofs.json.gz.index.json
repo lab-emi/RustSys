@@ -1,0 +1,9 @@
+{
+  "original_name": "proofs.json.gz",
+  "parts": [
+    "proofs.json.gz.part-0000",
+    "proofs.json.gz.part-0001"
+  ],
+  "reassemble": "concatenate listed parts in order",
+  "sha256": "a67a94af0e396b18ddc1684d6f8f3727df766c00afbd07352c5e4191794e86aa"
+}

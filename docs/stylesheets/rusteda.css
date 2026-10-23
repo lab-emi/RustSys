@@ -104,6 +104,28 @@
 .rustsys-comparison td:nth-child(5) { color: var(--md-typeset-a-color); }
 .rustsys-comparison-hint { display: none; }
 
+.rustsys-audit { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.rustsys-audit:focus-visible { outline: 2px solid var(--md-typeset-a-color); outline-offset: 2px; }
+.md-typeset .rustsys-audit .md-typeset__scrollwrap { margin: 0; overflow: visible; }
+.md-typeset .rustsys-audit .md-typeset__table { display: block; width: 100%; padding: 0; }
+.md-typeset .rustsys-audit table:not([class]) {
+  display: table;
+  width: 100%;
+  min-width: 32rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rustsys-audit :is(th, td):first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--md-default-bg-color);
+}
+.md-typeset .rustsys-audit table:not([class]) th:first-child {
+  z-index: 2;
+  background: var(--md-code-bg-color);
+}
+
 .rustsys-hero { padding: 1.2rem 0 1.05rem; max-width: 58rem; }
 .rustsys-hero h1 {
   font-size: clamp(2rem, 4.8vw, 3.4rem);

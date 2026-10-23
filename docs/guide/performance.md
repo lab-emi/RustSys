@@ -6,14 +6,14 @@ Captured tool messages are part of those timed jobs. The raw invocations retain 
 
 ## Current 16-core refresh
 
-The [latest complete measurements](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-serv-area/README.md) cover all five designs on all three PDKs.
-RustSys is **1.48×–40.53× faster than Yosys** in these runs. The Yosys measurements retain
+The [latest complete measurements](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md) cover all five designs on all three PDKs.
+RustSys is **1.50×–42.46× faster than Yosys** in these runs. The Yosys measurements retain
 their pinned original campaigns; the current RustSys producer is remeasured.
 All thirty compared netlists have complete arbitrary-state RTL LEC with no reset
 or input assumptions. Each refreshed RustSys result preserves or reduces area
 and preserves or improves the same raw OpenSTA setup estimate.
 
-SERV/EZ130 changes from an area disadvantage to **0.77% less area than Yosys**:
+The earlier SERV/EZ130 area fix changed an area disadvantage to **0.77% less area than Yosys**:
 
 | SERV / EZ130 8T | Before | After |
 |---|---:|---:|
@@ -28,12 +28,22 @@ Pin roles and state equations must match; the existing area ceiling remains.
 A feasible buffering plan keeps priority. No design names, PDK names, reset
 sequences or per-design timing targets select this behavior.
 
-An additional alternating-version check measured SERV at 0.37 / 0.36 s on
-Sky130, 0.76 / 0.77 s on GF180, and 0.34 / 0.32 s on EZ130 (before / after).
-The GF180 difference is one GNU-time reporting unit (0.01 s), with overlapping
-sample ranges. These paired observations and the VexRiscv controls remain in
-the archive; they do not replace the complete campaign's table or establish
-universal runtime equality on a shared host.
+The [expanded GF180 audit](benchmarks.md#gf180-runtime-audit) uses a native
+monotonic clock, 40 paired observations each for Ibex/PicoRV32/SERV, 64 for
+VexRiscv and 12 for full OpenC910, plus same-binary controls. The repaired small
+cores do not reproduce the original fixed 0.01 s slowdown. VexRiscv's earlier
+positive shifts motivated removal of duplicate drive/launch/sink calculations
+and work on unaffordable alternatives. Sequential pin compatibility and the
+original area ceiling remain. A balanced-truth precheck rejects impossible mux
+functions before the bounded cofactor search. Every selected three-PDK netlist
+is unchanged; area, raw timing and complete arbitrary-state LEC are preserved.
+
+The audit publishes 99% paired median intervals, mean/bootstrap intervals and
+Holm-adjusted sign tests. No confirmed regression is detected, but an interval
+crossing zero does not prove equality. VexRiscv and OpenC910 cannot resolve a
+0.01 s change at this confidence level on this shared host. All prior cohorts,
+A/A controls, commands and resource receipts remain in the archive. The overview
+keeps a separate fresh three-run RustSys measurement and the pinned Yosys runs.
 
 The estimates below retain their original ideal-clock, zero-wire scope.
 

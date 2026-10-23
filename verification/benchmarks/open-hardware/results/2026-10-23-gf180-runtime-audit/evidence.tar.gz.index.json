@@ -1,0 +1,26 @@
+{
+  "original_name": "evidence.tar.gz",
+  "parts": [
+    "evidence.tar.gz.part-0000",
+    "evidence.tar.gz.part-0001",
+    "evidence.tar.gz.part-0002",
+    "evidence.tar.gz.part-0003",
+    "evidence.tar.gz.part-0004",
+    "evidence.tar.gz.part-0005",
+    "evidence.tar.gz.part-0006",
+    "evidence.tar.gz.part-0007",
+    "evidence.tar.gz.part-0008",
+    "evidence.tar.gz.part-0009",
+    "evidence.tar.gz.part-0010",
+    "evidence.tar.gz.part-0011",
+    "evidence.tar.gz.part-0012",
+    "evidence.tar.gz.part-0013",
+    "evidence.tar.gz.part-0014",
+    "evidence.tar.gz.part-0015",
+    "evidence.tar.gz.part-0016",
+    "evidence.tar.gz.part-0017",
+    "evidence.tar.gz.part-0018"
+  ],
+  "reassemble": "concatenate listed parts in order",
+  "sha256": "5b500a2ec15c111ed4762040a5ca7356b540bb3ef60aaa06bf46334bf4173e2e"
+}

@@ -19,7 +19,7 @@ RustSys is a high-performance Verilog/SystemVerilog synthesizer written in Rust.
 Turn RTL into standard cells with a CLI built for engineers, CI pipelines and coding
 agents: explicit inputs, JSON reports, recorded runs and equivalence checks.
 
-**1.48×–40.53× faster than Yosys** on the measured five-design, three-PDK suite at
+**1.50×–42.46× faster than Yosys** on the measured five-design, three-PDK suite at
 16 physical host cores. [See the results and method](guide/benchmarks.md).
 
 [Run your first synthesis](guide/quickstart.md){ .md-button .md-button--primary }
@@ -51,21 +51,21 @@ One warm-up and three measured synthesis/export runs; median seconds shown.
 
 | Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys<br>Speedup ↑ | RustSys<br>Peak mem, MiB ↓ | Yosys<br>Peak mem, MiB ↓ | RustSys<br>Area, µm² ↓ | Yosys<br>Area, µm² ↓ | RustSys<br>Setup Fmax†, MHz ↑ | Yosys<br>Setup Fmax†, MHz ↑ |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Ibex | Sky130 HD | 0.90 | 6.66 | **7.40×** | 93.4 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
-| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.9 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
-| Ibex | EZ130 8T | 0.77 | 6.80 | **8.83×** | 92.1 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
-| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 67.3 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
-| PicoRV32 | GF180 7T | 0.58 | 1.51 | **2.60×** | 117.2 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
-| PicoRV32 | EZ130 8T | 0.44 | 1.46 | **3.32×** | 68.4 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
-| SERV | Sky130 HD | 0.36 | 0.87 | **2.42×** | 66.2 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
-| SERV | GF180 7T | 0.77 | 1.14 | **1.48×** | 117.5 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
-| SERV | EZ130 8T | 0.31 | 1.10 | **3.55×** | 65.9 | 67.0 | 64,550 | 65,052 | 181.49 | 67.02 |
-| VexRiscv | Sky130 HD | 2.74 | 63.53 | **23.19×** | 472.9 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
-| VexRiscv | GF180 7T | 2.28 | 79.27 | **34.77×** | 483.6 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
-| VexRiscv | EZ130 8T | 3.24 | 79.06 | **24.40×** | 892.7 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
-| OpenC910 | Sky130 HD | 70.15 | 1,413.58 | **20.15×** | 7,490.5 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
-| OpenC910 | GF180 7T | 66.92 | 2,712.45 | **40.53×** | 7,648.0 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
-| OpenC910 | EZ130 8T | 75.75 | 2,811.45 | **37.11×** | 8,427.2 | 16,979.2 | 71,069,802 | 72,190,882 | 0.0171 | 0.0159 |
+| Ibex | Sky130 HD | 0.90 | 6.66 | **7.40×** | 92.1 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
+| Ibex | GF180 7T | 1.00 | 6.69 | **6.69×** | 122.8 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
+| Ibex | EZ130 8T | 0.79 | 6.80 | **8.61×** | 91.9 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
+| PicoRV32 | Sky130 HD | 0.50 | 1.12 | **2.24×** | 67.4 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
+| PicoRV32 | GF180 7T | 0.59 | 1.51 | **2.56×** | 117.4 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
+| PicoRV32 | EZ130 8T | 0.44 | 1.46 | **3.32×** | 68.3 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
+| SERV | Sky130 HD | 0.37 | 0.87 | **2.35×** | 65.8 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
+| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 117.4 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
+| SERV | EZ130 8T | 0.31 | 1.10 | **3.55×** | 62.1 | 67.0 | 64,550 | 65,052 | 181.49 | 67.02 |
+| VexRiscv | Sky130 HD | 2.47 | 63.53 | **25.72×** | 461.7 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
+| VexRiscv | GF180 7T | 2.34 | 79.27 | **33.88×** | 496.0 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
+| VexRiscv | EZ130 8T | 2.95 | 79.06 | **26.80×** | 879.8 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
+| OpenC910 | Sky130 HD | 68.79 | 1,413.58 | **20.55×** | 7,702.1 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
+| OpenC910 | GF180 7T | 63.88 | 2,712.45 | **42.46×** | 7,731.3 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
+| OpenC910 | EZ130 8T | 74.44 | 2,811.45 | **37.77×** | 8,559.3 | 16,979.2 | 71,069,802 | 72,190,882 | 0.0171 | 0.0159 |
 
 <!-- benchmark-16-core:end -->
 
@@ -83,8 +83,12 @@ assumptions. EZ130 8T means **IHP SG13G2, library v1.1, TT 1.20 V / 25°C**.
 Its functional proof uses the vendor’s nominal tie-cell models through an
 [explicitly checked supplement](verification/pdk.md#additional-ihp-sg13g2-benchmark-library).
 SERV/EZ130 is 3.55× faster and uses 0.77% less cell area than Yosys.
-[Current measurements and regression evidence](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-serv-area/README.md); pinned Yosys runs are retained with their original provenance.
+[Current measurements and regression evidence](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md); pinned Yosys runs are retained with their original provenance.
 [Method, complete results and timing scope](guide/benchmarks.md).
+
+The [extended GF180 audit](guide/benchmarks.md#gf180-runtime-audit) adds 40–64 paired
+runs for the smaller designs and 12 for OpenC910, with same-binary controls and
+99% intervals. All three-PDK implementations preserve area, timing and arbitrary-state LEC.
 
 ## A CLI you can compose
 

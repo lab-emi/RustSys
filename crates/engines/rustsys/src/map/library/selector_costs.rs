@@ -9,6 +9,11 @@
 use super::{Direction, FxHashMap, Library, glob_match, special_cell_reason};
 
 fn mux4(tt: u64) -> bool {
+    // Each of four select cofactors is one (possibly complemented) data pin,
+    // hence every real mux is balanced. Reject other functions in one step.
+    if tt.count_ones() != 32 {
+        return false;
+    }
     const VARS: [u16; 4] = [0xaaaa, 0xcccc, 0xf0f0, 0xff00];
     for a in 0..6 {
         for b in a + 1..6 {

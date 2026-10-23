@@ -1,0 +1,9 @@
+{
+  "original_name": "all-cohorts.json.gz",
+  "parts": [
+    "all-cohorts.json.gz.part-0000",
+    "all-cohorts.json.gz.part-0001"
+  ],
+  "reassemble": "concatenate listed parts in order",
+  "sha256": "a0a47b319cb3687eaa0b3a92e8d94fc5600bd0f7625d034846a86bbf8aa70d17"
+}

@@ -25,7 +25,7 @@ equivalence from your terminal, CI pipeline, or coding agent. Part of the **Rust
 
 <!-- measured-performance-pitch -->
 
-- **High performance:** 1.48×–40.53× faster than pinned Yosys 0.67 on the measured five-design, three-PDK suite, with 16 physical host cores per tool.
+- **High performance:** 1.50×–42.46× faster than pinned Yosys 0.67 on the measured five-design, three-PDK suite, with 16 physical host cores per tool.
 - **Easy to script:** result-only stdout, coded diagnostics on stderr, JSON output, fixed exit statuses.
 - **Easy to resume:** recorded commands, input hashes, artifacts, and event logs; query reports as JSON or TSV.
 - **Safe to coordinate:** daemonless disk workspaces, immutable revisions, and explicit `--base-rev` conflict checks.
@@ -48,21 +48,21 @@ source preparation, LEC and timing analysis are outside the timer.
 
 | Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys<br>Speedup ↑ | RustSys<br>Peak mem, MiB ↓ | Yosys<br>Peak mem, MiB ↓ | RustSys<br>Area, µm² ↓ | Yosys<br>Area, µm² ↓ | RustSys<br>Setup Fmax†, MHz ↑ | Yosys<br>Setup Fmax†, MHz ↑ |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Ibex | Sky130 HD | 0.90 | 6.66 | **7.40×** | 93.4 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
-| Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.9 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
-| Ibex | EZ130 8T | 0.77 | 6.80 | **8.83×** | 92.1 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
-| PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 67.3 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
-| PicoRV32 | GF180 7T | 0.58 | 1.51 | **2.60×** | 117.2 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
-| PicoRV32 | EZ130 8T | 0.44 | 1.46 | **3.32×** | 68.4 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
-| SERV | Sky130 HD | 0.36 | 0.87 | **2.42×** | 66.2 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
-| SERV | GF180 7T | 0.77 | 1.14 | **1.48×** | 117.5 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
-| SERV | EZ130 8T | 0.31 | 1.10 | **3.55×** | 65.9 | 67.0 | 64,550 | 65,052 | 181.49 | 67.02 |
-| VexRiscv | Sky130 HD | 2.74 | 63.53 | **23.19×** | 472.9 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
-| VexRiscv | GF180 7T | 2.28 | 79.27 | **34.77×** | 483.6 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
-| VexRiscv | EZ130 8T | 3.24 | 79.06 | **24.40×** | 892.7 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
-| OpenC910 | Sky130 HD | 70.15 | 1,413.58 | **20.15×** | 7,490.5 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
-| OpenC910 | GF180 7T | 66.92 | 2,712.45 | **40.53×** | 7,648.0 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
-| OpenC910 | EZ130 8T | 75.75 | 2,811.45 | **37.11×** | 8,427.2 | 16,979.2 | 71,069,802 | 72,190,882 | 0.0171 | 0.0159 |
+| Ibex | Sky130 HD | 0.90 | 6.66 | **7.40×** | 92.1 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
+| Ibex | GF180 7T | 1.00 | 6.69 | **6.69×** | 122.8 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
+| Ibex | EZ130 8T | 0.79 | 6.80 | **8.61×** | 91.9 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
+| PicoRV32 | Sky130 HD | 0.50 | 1.12 | **2.24×** | 67.4 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
+| PicoRV32 | GF180 7T | 0.59 | 1.51 | **2.56×** | 117.4 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
+| PicoRV32 | EZ130 8T | 0.44 | 1.46 | **3.32×** | 68.3 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
+| SERV | Sky130 HD | 0.37 | 0.87 | **2.35×** | 65.8 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
+| SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 117.4 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
+| SERV | EZ130 8T | 0.31 | 1.10 | **3.55×** | 62.1 | 67.0 | 64,550 | 65,052 | 181.49 | 67.02 |
+| VexRiscv | Sky130 HD | 2.47 | 63.53 | **25.72×** | 461.7 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
+| VexRiscv | GF180 7T | 2.34 | 79.27 | **33.88×** | 496.0 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
+| VexRiscv | EZ130 8T | 2.95 | 79.06 | **26.80×** | 879.8 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
+| OpenC910 | Sky130 HD | 68.79 | 1,413.58 | **20.55×** | 7,702.1 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
+| OpenC910 | GF180 7T | 63.88 | 2,712.45 | **42.46×** | 7,731.3 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
+| OpenC910 | EZ130 8T | 74.44 | 2,811.45 | **37.77×** | 8,559.3 | 16,979.2 | 71,069,802 | 72,190,882 | 0.0171 | 0.0159 |
 
 <!-- open-hardware-benchmark:end -->
 
@@ -76,17 +76,44 @@ these raw estimates do not establish achievable frequency. [Timing scope](https:
 Speedup = **Yosys time ÷ RustSys time**. All **30 distinct netlists pass
 arbitrary-state RTL LEC**, with no reset or input assumption added.
 
-[Current 16-core refresh, LEC and regression checks](verification/benchmarks/open-hardware/results/2026-10-23-serv-area/README.md) ·
+[Current runtime audit, three-PDK refresh and LEC](verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md) ·
 [Historical Sky130/GF180: full 1/16-core results and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) ·
 [IHP/EZ130: 16-core results and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md) ·
 [Benchmark method](https://lab-emi.github.io/RustSys/guide/benchmarks/).
 
-SERV/EZ130 now uses **0.77% less cell area than Yosys**, with **3.55×** faster synthesis.
-The refresh remeasures RustSys at 16 cores and retains the pinned Yosys runs;
-exact-byte proof and timing reuse is recorded alongside fresh checks.
+SERV/EZ130 uses **0.77% less cell area than Yosys**, with **3.55×** faster synthesis.
+The current runtime repair remeasures RustSys across all three PDKs and retains
+the pinned Yosys runs. All fifteen RustSys netlists are unchanged from the area
+fix; exact-byte LEC and timing reuse is explicit.
 EZ130 functional LEC follows the vendor’s nominal tie-cell Verilog
 models; the Liberty driver-type conflict and checked supplement are
 [documented explicitly](https://lab-emi.github.io/RustSys/verification/pdk/#additional-ihp-sg13g2-benchmark-library).
+
+<!-- gf180-audit:start -->
+
+**GF180 repeated before/current RustSys audit · 16 physical cores.**
+Two excluded paired warm-ups; 40 A/B pairs for Ibex/PicoRV32/SERV, 64 for
+VexRiscv and 12 for complete OpenC910. Eight same-binary control pairs per
+smaller design, two for OpenC910. These use a high-resolution complete-CLI timer;
+the RustSys/Yosys overview above keeps its separate three-run protocol.
+
+| Design · GF180 7T | A/B pairs | Paired median Δ, ms | 99% interval, ms |
+|---|---:|---:|---:|
+| Ibex | 40 | -2.898 | [-9.946, +1.393] |
+| PicoRV32 | 40 | -5.063 | [-9.458, -2.269] |
+| SERV | 40 | -6.113 | [-12.138, -2.229] |
+| VexRiscv | 64 | -0.463 | [-48.791, +37.252] |
+| OpenC910 | 12 | -221.553 | [-1352.275, +880.824] |
+
+Δ = current minus before; positive means slower. Δ is the median of paired differences. Before is the frozen
+pre-SERV-area producer; current includes the runtime repair. No confirmed
+regression was detected. Intervals crossing zero do not prove exact equality;
+VexRiscv and OpenC910 cannot resolve a 0.01 s change at this confidence level.
+All measured GF180 netlists match the checked implementation bytes; area and
+raw setup-Fmax are unchanged. [All rounds, A/A controls, limits and 30 revalidated
+arbitrary-state LEC certificates](verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md).
+
+<!-- gf180-audit:end -->
 
 <!-- large-hardware-benchmark:start -->
 

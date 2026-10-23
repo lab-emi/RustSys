@@ -1,0 +1,34 @@
+{
+  "host": {
+    "cpu": "AMD Ryzen 9 9950X3D 16-Core Processor",
+    "exclusive_host": false,
+    "kernel": "7.0.0-38-generic"
+  },
+  "inventory": "large-artifacts.json.gz",
+  "native_timer_build_source": {
+    "compiled_source": "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/gf180-small/harness/precise_command.rs",
+    "current_source_only_updates_memory_estimate_comment": true,
+    "sha256": "d33dc8075ae355fab25eae99ec529ed465829ba3e90fe370fa06736c5f1ddb81"
+  },
+  "omitted_files": 32948,
+  "primary_cohorts": [
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/repair-small",
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/repair-vex",
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/repair-fullcore"
+  ],
+  "published_samples": 2068,
+  "receipt_bytes": 145159467,
+  "receipt_files": 37297,
+  "receipts": "evidence.tar.gz.index.json",
+  "reporter_sha256": "029ace4621929049794771533d9c32cd2c11b58a4b642e2a030842c12111c3c9",
+  "statistics_sha256": "822c0c907e9d58b0df0c61863b20182266d59a54f6d8318bf24a085a6d85f5e8",
+  "supplemental_cohorts": [
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/gf180-small",
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/gf180-confirm",
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/gf180-fullcore",
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/gf180-vex-clean",
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/gf180-small-clean",
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/repair-direct-vex",
+    "/mnt/data2/cgao/git/RustSys/.work/gf180-audit-20261023/other-pdk-paired"
+  ]
+}

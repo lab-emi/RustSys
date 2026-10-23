@@ -8,42 +8,6 @@ use rusteda_core::job::{Ctx, JobError};
 
 use super::network::tree_size;
 
-/// Compatible sequential families preserve every state equation and pin role.
-/// Their output drive must be evaluated as a clock-to-Q launch, not as a
-/// combinational gate. No graph expansion or additional state is introduced.
-#[allow(clippy::too_many_arguments)]
-fn driver_value(
-    net: &Network,
-    lib: &Model<'_>,
-    timing: &Timing,
-    opts: &Options,
-    gate: usize,
-    cell: usize,
-    pin: usize,
-    node: usize,
-    inputs: &[usize],
-) -> (usize, super::timing::Value) {
-    if lib.cells[cell].comb {
-        (
-            lib.cells[cell].outputs[0],
-            timing.candidate_inputs(net, lib, gate, cell, true, inputs),
-        )
-    } else {
-        let old = &lib.cells[net.gates[gate].cell];
-        let name = &old.raw.pins[pin].name;
-        let output = lib.cells[cell]
-            .outputs
-            .iter()
-            .copied()
-            .find(|&p| lib.cells[cell].raw.pins[p].name == *name)
-            .expect("compatible state output");
-        (
-            output,
-            Timing::launch(lib, cell, output, timing.load[node], opts.clock_slew_ns),
-        )
-    }
-}
-
 #[cfg(test)]
 pub(super) fn run(
     net: &mut Network,
@@ -117,8 +81,8 @@ pub(super) fn run_modes(
                         if cost > available + 1e-8 {
                             continue;
                         }
-                        let (p, v) =
-                            driver_value(net, lib, &t, opts, g, cell, op, n, &snapshot_inputs[g]);
+                        let p = c.outputs[0];
+                        let v = t.candidate_inputs(net, lib, g, cell, true, &snapshot_inputs[g]);
                         if t.load[n] <= c.max_cap(p) + 1e-12
                             && v.slew[0].max(v.slew[1]) <= c.max_slew(p).min(lim.slew) + 1e-10
                             && (!include_fanout || lim.fanout_load <= c.max_fanout(p) + 1e-8)
@@ -179,33 +143,58 @@ pub(super) fn run_modes(
                 // Sequential sizing stays in this fallback: spending its budget
                 // ahead of a feasible buffer tree can displace critical-path repairs.
                 if sized.is_none() && branch.is_none() && (old.comb || old.clock.is_some()) {
+                    let current = net.gates[g].cell;
+                    let mut choices = lib.families[old.family]
+                        .iter()
+                        .copied()
+                        .filter(|&cell| {
+                            cell != current
+                                && lib.cells[cell].raw.area - old.raw.area <= available + 1e-8
+                        })
+                        .peekable();
+                    // No candidate can be selected, so do not walk state-output
+                    // sink lists or evaluate the current driver's launch tables.
+                    if choices.peek().is_none() {
+                        continue;
+                    }
                     let excess = |c: &super::model::CellModel<'_>, p: usize, slew: f64| {
                         (t.load[n] / c.max_cap(p).max(1e-20))
                             .max(slew / c.max_slew(p).min(lim.slew).max(1e-20))
                     };
+                    // A sequential family has identical pin names, order and
+                    // state equations (Model::new). Reuse the existing pin ID;
+                    // the two normal Q/QN slew bounds need one sink scan each.
+                    // Larger output sets retain the same per-output fallback.
+                    let mut state_slew = [f64::INFINITY; 2];
+                    if !old.comb {
+                        for (limit, &(_, node)) in state_slew.iter_mut().zip(&net.gates[g].outputs)
+                        {
+                            *limit = Limits::for_node(net, lib, node).slew;
+                        }
+                    }
                     let state_excess = |cell| {
-                        net.gates[g]
-                            .outputs
-                            .iter()
-                            .fold(0.0_f64, |worst, &(pin, node)| {
-                                let (output, value) = driver_value(
-                                    net,
+                        net.gates[g].outputs.iter().enumerate().fold(
+                            0.0_f64,
+                            |worst, (i, &(pin, node))| {
+                                let value = Timing::launch(
                                     lib,
-                                    &t,
-                                    opts,
-                                    g,
                                     cell,
                                     pin,
-                                    node,
-                                    &snapshot_inputs[g],
+                                    t.load[node],
+                                    opts.clock_slew_ns,
                                 );
                                 let c = &lib.cells[cell];
-                                let limit = Limits::for_node(net, lib, node);
-                                worst.max((t.load[node] / c.max_cap(output).max(1e-20)).max(
+                                let slew_limit = if i < state_slew.len() {
+                                    state_slew[i]
+                                } else {
+                                    Limits::for_node(net, lib, node).slew
+                                };
+                                worst.max((t.load[node] / c.max_cap(pin).max(1e-20)).max(
                                     value.slew[0].max(value.slew[1])
-                                        / c.max_slew(output).min(limit.slew).max(1e-20),
+                                        / c.max_slew(pin).min(slew_limit).max(1e-20),
                                 ))
-                            })
+                            },
+                        )
                     };
                     let now = if old.comb {
                         excess(old, op, t.value[n].slew[0].max(t.value[n].slew[1]))
@@ -213,16 +202,13 @@ pub(super) fn run_modes(
                         state_excess(net.gates[g].cell)
                     };
                     let mut best = (now * 0.9, None);
-                    for &cell in &lib.families[old.family] {
+                    for cell in choices {
                         let c = &lib.cells[cell];
                         let cost = c.raw.area - old.raw.area;
-                        if cell == net.gates[g].cell || cost > available + 1e-8 {
-                            continue;
-                        }
-                        let (p, v) =
-                            driver_value(net, lib, &t, opts, g, cell, op, n, &snapshot_inputs[g]);
                         let e = if old.comb {
-                            excess(c, p, v.slew[0].max(v.slew[1]))
+                            let value =
+                                t.candidate_inputs(net, lib, g, cell, true, &snapshot_inputs[g]);
+                            excess(c, c.outputs[0], value.slew[0].max(value.slew[1]))
                         } else {
                             state_excess(cell)
                         };

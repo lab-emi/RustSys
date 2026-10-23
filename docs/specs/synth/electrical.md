@@ -358,6 +358,10 @@ arrival at a primary output or an input of a sequential cell, with primary input
 outputs of sequential and tie cells at 0, through the per-input delays of every combinational
 instance; assignments are aliases. Instances of cells outside the classified library start
 paths and combinational instances on a cycle are not timed; both are counted. On every netlist
-synthesis writes, the counts equal those of its report, and the logic depth and delay are equal
-when every cell belongs to the mapped cover and otherwise at least as large (the estimate also
-counts cells emitted after covering), by at most one level.
+synthesis writes, the cell counts equal those of its report. For the original mapped cover,
+with default cleanup and explicit electrical refinement disabled, logic depth and delay equal
+the mapping report when every cell belongs to the cover; otherwise the netlist estimate also
+counts cells emitted after covering and can add at most one level. After refinement, the
+report's logic depth describes the selected netlist, while `estimated_delay` retains the
+original mapper proxy. Re-estimating a changed netlist need not reproduce that original delay
+or its ordering; use the separately scoped load-aware report or independent STA for timing.

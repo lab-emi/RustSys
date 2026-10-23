@@ -196,8 +196,13 @@ fn choose(
     }
     best.map(|(_, choice)| choice).ok_or_else(|| {
         format!(
-            "no usable library cell implements state '{}' (SYNTH-REQ-0520)",
-            s.name
+            "no usable library cell implements {} state '{}' (SYNTH-REQ-0520)",
+            if s.kind == StateKind::Latch {
+                "latch"
+            } else {
+                "flip-flop"
+            },
+            s.name,
         )
     })
 }

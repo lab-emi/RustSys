@@ -50,9 +50,16 @@ pub(crate) fn write(path: &Path, text: &str) -> Result<(), String> {
 
 fn fixtures() -> Result<(), String> {
     let base = root().join("verification/fixtures/synthetic/synth");
-    if base.exists() {
-        std::fs::remove_dir_all(&base).map_err(|e| e.to_string())?;
-    }
+    fixtures_at(&base)?;
+    println!("wrote {}", base.display());
+    Ok(())
+}
+
+/// Overwrite only the files owned by the corpus generator. This directory also
+/// contains handwritten regression RTL and independently captured oracle data.
+/// Current corpus: <1 MiB written, one library/source string at a time; no graph
+/// traversal or build workers. Never delete the containing fixture directory.
+fn fixtures_at(base: &Path) -> Result<(), String> {
     for v in rustsys_fixtures::liberty::Variant::ALL {
         write(
             &base.join("lib").join(format!("{}.lib", v.name())),
@@ -78,7 +85,6 @@ fn fixtures() -> Result<(), String> {
         ));
     }
     write(&base.join("rtl/index.toml"), &index)?;
-    println!("wrote {}", base.display());
     Ok(())
 }
 
@@ -169,6 +175,33 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// <1 MiB corpus output plus two tiny independent fixtures, one worker.
+    #[test]
+    fn fixture_regeneration_preserves_handwritten_rtl_and_oracles() {
+        let tree = testutil::Tree::new("fixture-ownership");
+        let rtl = "// Handwritten independent regression fixture.\nmodule manual; endmodule\n";
+        let oracle = "{\"oracle\":\"independent simulator\",\"values\":[0,1]}\n";
+        tree.file("rtl/manual.v", rtl)
+            .file("independent-truth.json", oracle);
+        fixtures_at(tree.root()).unwrap();
+        let generated = tree.root().join("rtl/counter/counter.sv");
+        let first = std::fs::read(&generated).unwrap();
+        let inventory = tree.files();
+        // An owned generated file is repaired; unrelated data remains byte-identical.
+        std::fs::write(&generated, "stale generated content\n").unwrap();
+        fixtures_at(tree.root()).unwrap();
+        assert_eq!(std::fs::read(&generated).unwrap(), first);
+        assert_eq!(tree.files(), inventory);
+        assert_eq!(
+            std::fs::read_to_string(tree.root().join("rtl/manual.v")).unwrap(),
+            rtl
+        );
+        assert_eq!(
+            std::fs::read_to_string(tree.root().join("independent-truth.json")).unwrap(),
+            oracle
+        );
+    }
 
     // `verify synth --gpu` parses and the product defaults to `synth`; unknown options and a
     // second product fail.

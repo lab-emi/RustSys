@@ -206,12 +206,9 @@ fn cell_model(c: &rusteda_formats::liberty::Cell) -> Option<String> {
                         _ => None,
                     }
                 };
-                let (Some((clk, clk_low)), Some((data, data_inv))) =
-                    (single(&s.clock), single(&s.data))
-                else {
-                    return None;
-                };
+                let (clk, clk_low) = single(&s.clock)?;
                 let _ = writeln!(out, "  logic {};", s.state);
+                let _ = writeln!(out, "  wire {} = !{};", s.state_n, s.state);
                 let ctrl = [(&s.clear, false), (&s.preset, true)];
                 let asyncs: Vec<(String, bool, bool)> = ctrl
                     .iter()
@@ -221,11 +218,9 @@ fn cell_model(c: &rusteda_formats::liberty::Cell) -> Option<String> {
                     // Two asynchronous controls on one bit are outside the synthesizable subset.
                     return None;
                 }
-                let d = if data_inv {
-                    format!("!{data}")
-                } else {
-                    data.clone()
-                };
+                // next_state is a Boolean function, including enabled-FF
+                // feedback; requiring one data pin silently omitted those cells.
+                let d = s.data.to_string();
                 if s.kind == SeqKind::Latch {
                     let en = if clk_low {
                         format!("!{clk}")

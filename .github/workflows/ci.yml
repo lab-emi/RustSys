@@ -10,26 +10,45 @@ env:
   CARGO_INCREMENTAL: 0
   CARGO_PROFILE_DEV_DEBUG: line-tables-only
   CARGO_PROFILE_TEST_DEBUG: line-tables-only
+  CARGO_BUILD_JOBS: 2
+  RUST_TEST_THREADS: 2
+  RUSTEDA_VERIFY_MEMORY_MAX: 6G
 
 jobs:
   static:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - run: rustup show
+      - run: free -h
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo xtask layout
       - run: cargo xtask shared check
-      - run: cargo xtask fixtures
-      - run: test -z "$(git status --porcelain -- verification/fixtures)"
+      - name: Check fixture regeneration without deleting regression data
+        run: |
+          cargo xtask fixtures
+          git status --short -- verification/fixtures
+          git diff --exit-code -- verification/fixtures
+          test -z "$(git status --porcelain -- verification/fixtures)"
+      - name: Test benchmark harness
+        run: timeout 120s python3 -m unittest discover -s verification/benchmarks/open-hardware -p 'test_*.py'
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - run: rustup show
-      - run: cargo test --workspace
-      - run: cargo xtask verify synth
+      - name: Test workspace
+        run: |
+          free -h
+          ulimit -v 6291456
+          /usr/bin/time -v timeout --kill-after=5s 1200s cargo test --workspace --no-fail-fast
+      - name: Verify synthesis suites
+        run: |
+          ulimit -v 6291456
+          /usr/bin/time -v timeout --kill-after=5s 1200s cargo xtask verify synth
   deny:
     runs-on: ubuntu-latest
     steps:

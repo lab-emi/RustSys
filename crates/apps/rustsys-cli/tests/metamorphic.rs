@@ -12,6 +12,43 @@ use rustsys_fixtures::liberty::Variant;
 use rustsys_fixtures::random::{random_comb, random_seq};
 use rustsys_fixtures::rtl::CORPUS;
 
+/// Two one-bit cases, <100 circuit nodes and <1 MiB model scratch per worker.
+/// The generated RTL is checked against the independent Liberty gate model;
+/// all initial states are free, and an inverted enable must be rejected.
+#[test]
+fn enabled_cell_behavioral_model_preserves_arbitrary_state() {
+    let l = lib(Variant::Rich);
+    let rtl = vec![
+        ("cells.sv".into(), cell_models(&l)),
+        ("m.sv".into(), "module m(input clk,en,d,output q); wt_edff_x1 f(.CK(clk),.E(en),.D(d),.Q(q)); endmodule".into()),
+    ];
+    for bad_enable in [false, true] {
+        let (extra, enable) = if bad_enable {
+            ("wire ne; wt_inv_x1 inv(.A(en),.Y(ne));", "ne")
+        } else {
+            ("", "en")
+        };
+        let netlist = format!(
+            r"module m(input clk,en,d,output q);
+            wire \f.IQ ; {extra}
+            wt_edff_x1 f(.CK(clk),.E({enable}),.D(d),.Q(\f.IQ ));
+            assign q = \f.IQ ; endmodule"
+        );
+        let report = check_texts(&rtl, "m", &netlist, &l);
+        assert_eq!(
+            report.verdict,
+            if bad_enable {
+                Verdict::NotEquivalent
+            } else {
+                Verdict::Equivalent
+            },
+            "{report:?}"
+        );
+        assert!(report.after_reset.is_empty());
+        assert!(report.uninitialized_choices.is_empty());
+    }
+}
+
 /// Resynthesizing a synthesized netlist (with behavioral models of its cells) yields a netlist
 /// equivalent to it.
 #[test]

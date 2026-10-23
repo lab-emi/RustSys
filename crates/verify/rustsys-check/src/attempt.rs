@@ -289,11 +289,14 @@ pub fn prove(
             || !corr.unused.is_empty()
             || corr.constants.iter().any(Option::is_some)
             || !corr.equivalents.is_empty()
-            || !corr.discovered.is_empty()
+            || corr
+                .discovered
+                .iter()
+                .any(|(_, relation)| !matches!(relation, crate::corr::Relation::Cell(..)))
             || !mismatches.is_empty()
             || pairs != nm.seq.len()
         {
-            return Err(Stop::Undecided("obligation export requires a complete named state correspondence with no reset/initial-state choices or discovered relations".into()));
+            return Err(Stop::Undecided("obligation export requires a complete one-to-one state correspondence with no reset, initial-state choices, constants or sharing relations".into()));
         }
         // Quantify even unused RTL inputs/state in the exported interface.
         // Each implementation state has its own named RTL representative.

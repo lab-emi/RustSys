@@ -17,6 +17,7 @@ import fcntl
 import json
 import math
 import os
+import re
 import shutil
 import statistics
 import subprocess
@@ -39,7 +40,7 @@ def atomic_save(path, value):
     temporary.replace(path)
 
 
-def configurations(inputs=None, large_input=None, pdks=None, yosys=None):
+def configurations(inputs=None, large_input=None, pdks=None, yosys=None, extra_pdks=None):
     """Construct commands from local pinned preparation manifests, not archived paths."""
     inputs=inputs or run.ROOT/'.work/open-hardware/inputs.json'
     large_input=large_input or run.ROOT/'.work/large-hardware-20261020/prepared-final/input.json'
@@ -49,6 +50,16 @@ def configurations(inputs=None, large_input=None, pdks=None, yosys=None):
     specs={d['id']:d for d in run.MANIFEST['designs']}
     large_spec=run.read_json(run.HERE/'large-designs.json');specs['openc910']=large_spec['design']
     libraries={x['name']:x for x in tomllib.loads((run.ROOT/'verification/pdks.toml').read_text())['library']}
+    selected_libraries=['sky130hd_tt','gf180mcu7t_tt']
+    if extra_pdks is not None:
+        if Path(extra_pdks).stat().st_size>32768:raise ValueError('additional library manifest byte budget')
+        extra=run.read_json(extra_pdks)['library']
+        if not 1<=len(extra)<=8:raise ValueError('additional library count budget')
+        for pdk in extra:
+            name=pdk['name'];filename=pdk['filename']
+            if name in libraries or not re.fullmatch(r'[a-zA-Z0-9_-]+',name):raise ValueError('duplicate or invalid additional PDK name')
+            if Path(filename).name!=filename or not filename.endswith('.lib'):raise ValueError('additional Liberty file must be a plain filename')
+            libraries[name]=pdk;selected_libraries.append(name)
     result={}
     for design in designs:
         spec=specs.get(design['id'])
@@ -56,12 +67,14 @@ def configurations(inputs=None, large_input=None, pdks=None, yosys=None):
             raise ValueError('prepared design identity differs from the pinned manifest')
         if design['id']=='openc910' and (len(design['files'])!=1 or run.digest(design['files'][0])!=large_spec['prepared_sha256']):
             raise ValueError('full-core preparation differs from the pinned complete RTL')
-        for name in ('sky130hd_tt','gf180mcu7t_tt'):
-            pdk=libraries[name];library=pdks/f"{pdk['library']}__{pdk['corner']}.lib"
+        for name in selected_libraries:
+            pdk=libraries[name];library=pdks/pdk.get('filename',f"{pdk['library']}__{pdk['corner']}.lib")
             if run.digest(library)!=pdk['sha256']:raise ValueError('PDK checksum differs from pinned baseline')
             for tool in ('rustsys','yosys'):
                 c={'design':design,'tool':tool,'library':str(library),'corner':pdk['corner'],
                    'yosys':str(yosys),'quiet_yosys':True}
+                if pdk.get('latch_map'):
+                    c['latch_map']=str(run.ROOT/pdk['latch_map'])
                 if design['id']=='openc910':
                     c.update(yosys_noshare=True)
                     if tool=='yosys':c.update(yosys_flow='arbitrary-initial-state-bounded-map-v1',yosys_bounded_map=True)
@@ -109,6 +122,7 @@ def main():
     p.add_argument('--inputs',type=Path,default=run.ROOT/'.work/open-hardware/inputs.json')
     p.add_argument('--large-input',type=Path,default=run.ROOT/'.work/large-hardware-20261020/prepared-final/input.json')
     p.add_argument('--pdks',type=Path,default=run.ROOT/'target/pdk')
+    p.add_argument('--extra-pdks',type=Path,help='additional pinned benchmark libraries; default dual-PDK coverage remains available')
     p.add_argument('--yosys',type=Path,default=run.ROOT/'.work/open-hardware/yosys')
     p.add_argument('--reference-executables',type=Path,help='optional manifest of actual reference executables and pinned hashes behind launchers')
     a=p.parse_args()
@@ -132,7 +146,7 @@ def main():
     cpus=list(physical.values())
     if not a.cores or len(set(a.cores))!=len(a.cores) or any(c<1 or c>len(cpus) for c in a.cores):p.error('invalid physical CPU count')
     if a.reference_cores and not set(a.reference_cores)<=set(a.cores):p.error('reference CPU counts must be in --cores')
-    all_configs=configurations(a.inputs,a.large_input,a.pdks,a.yosys)
+    all_configs=configurations(a.inputs,a.large_input,a.pdks,a.yosys,a.extra_pdks)
     rustsys_profile={'rustsys_goal':a.goal,'rustsys_effort':a.effort,'timing_period':a.timing_period,
                      'area_limit':a.area_limit,'buffer_fanout':a.buffer_fanout,'profile_commands':a.profile_commands}
     if profile:
@@ -164,6 +178,8 @@ def main():
     else:
         out.mkdir(parents=True,exist_ok=False)
     source_pins={p:run.digest(p) for _,c in selected for p in [c['library'],*c['design']['files']]}
+    source_pins.update({c['latch_map']:run.digest(c['latch_map']) for _,c in selected if c.get('latch_map')})
+    if a.extra_pdks:source_pins[str(a.extra_pdks.resolve())]=run.digest(a.extra_pdks)
     for _,c in selected:
         if any(run.digest(f)!=c['design']['sha256'][Path(f).name] for f in c['design']['files']):raise ValueError('prepared RTL changed')
     binaries={name:a.binaries.resolve()/name for name in ('rustsys','rusteda')}

@@ -70,8 +70,9 @@ def validate(p):
     return p
 
 
-def prove(config,directory,checker,arisca,cpu=22):
+def prove(config,directory,checker,arisca,cpu=22,event_checker=None):
     d=Path(directory).resolve();d.mkdir(parents=True,exist_ok=False);started=time.monotonic()
+    event_checker=Path(event_checker) if event_checker else run.ROOT/'target/release/examples/check_config'
     cfg=copy.deepcopy(config);netlist=Path(cfg['directory'])/'netlist.v'
     inputs=[*map(Path,cfg['design']['files']),Path(cfg['library']),netlist]
     pins={str(p):run.digest(p) for p in inputs}
@@ -79,7 +80,7 @@ def prove(config,directory,checker,arisca,cpu=22):
     abc=run.ROOT/'.work/lec-followup/oss-cad-20261014/oss-cad-suite/bin/yosys-abc'
     tools={name:{'path':str(Path(path).resolve()),'sha256':run.digest(path)} for name,path in
         [('abc',abc),('arisca',arisca),('observation_checker',checker),('measurement_yosys',cfg['yosys']),
-         ('checker',run.ROOT/'target/release/examples/check_config'),('rusteda',run.ROOT/'target/release/rusteda')]}
+         ('checker',event_checker),('rusteda',run.ROOT/'target/release/rusteda')]}
     certificate={'arithmetic':[],'cec':[]}
     result={'method':METHOD,'status':'unverified','verdict':'unverified','partitions':0,
         'source_sha256':pins,'artifact_sha256':{},'tools':tools,'harness_sha256':harness,
@@ -110,10 +111,15 @@ def prove(config,directory,checker,arisca,cpu=22):
         certificate['cec'].append({'name':label,'proven':yes,'measurement':measurement,'stdout':str(log),'sha256':before})
         if not yes:raise ValueError('external CEC incomplete: '+label)
     try:
-        pre=observe_lec.prepare(cfg,d/'checkpoint',checker,cpu)
+        checkpoint_cfg=copy.deepcopy(cfg)
+        if cfg['tool']=='rustsys':
+            checkpoint_cfg.update(yosys_flow='arbitrary-initial-state-full-map-v3',
+                yosys_bounded_map=False,yosys_delay_ff_optimization=True,
+                yosys_abc_fast=False,yosys_noshare=True,normalize_case_promises=True)
+        pre=observe_lec.prepare(checkpoint_cfg,d/'checkpoint',checker,cpu)
         if not complete_export(pre):raise ValueError('checkpoint export is incomplete')
         certificate['checkpoint_export']=pre
-        args=Namespace(checker=run.ROOT/'target/release/examples/check_config',rusteda=run.ROOT/'target/release/rusteda',
+        args=Namespace(checker=event_checker,rusteda=run.ROOT/'target/release/rusteda',
             abc=abc,cpu=cpu,model_seconds=1800,seconds=1800,memory_gib=4,swap_gib=1,
             export_only=True,reimport_netlists=True,require_full_core=False)
         post=large_lec.prove(cfg,d/'measured-export',args,{'netlist_sha256':run.digest(netlist)})
@@ -189,7 +195,8 @@ def prove(config,directory,checker,arisca,cpu=22):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('config','directory','checker','arisca'):p.add_argument('--'+name,type=Path,required=True)
+    p.add_argument('--event-checker',type=Path,help='independent complete event exporter; observation driver remains separate')
     p.add_argument('--cpu',type=int,default=22);a=p.parse_args()
-    value=prove(run.read_json(a.config),a.directory,a.checker.resolve(),a.arisca.resolve(),a.cpu)
+    value=prove(run.read_json(a.config),a.directory,a.checker.resolve(),a.arisca.resolve(),a.cpu,a.event_checker)
     print(value['verdict'],value.get('diagnostic',''),flush=True)
     raise SystemExit(0 if complete(value) else 2)

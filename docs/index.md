@@ -19,7 +19,7 @@ RustSys is a high-performance Verilog/SystemVerilog synthesizer written in Rust.
 Turn RTL into standard cells with a CLI built for engineers, CI pipelines and coding
 agents: explicit inputs, JSON reports, recorded runs and equivalence checks.
 
-**1.50×–42.11× faster than Yosys** on the measured five-design, two-PDK suite at
+**1.50×–42.11× faster than Yosys** on the measured five-design, three-PDK suite at
 16 physical host cores. [See the results and method](guide/benchmarks.md).
 
 [Run your first synthesis](guide/quickstart.md){ .md-button .md-button--primary }
@@ -53,14 +53,19 @@ One warm-up and three measured synthesis/export runs; median seconds shown.
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** | 91.9 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
 | Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.6 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
+| Ibex | EZ130 8T | 0.84 | 6.80 | **8.10×** | 95.7 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
 | PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 66.0 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
 | PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** | 117.3 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
+| PicoRV32 | EZ130 8T | 0.46 | 1.46 | **3.17×** | 69.0 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
 | SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** | 65.9 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
 | SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 117.4 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
+| SERV | EZ130 8T | 0.35 | 1.10 | **3.14×** | 67.1 | 67.0 | 69,321 | 65,052 | 121.65 | 67.02 |
 | VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** | 449.8 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
 | VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** | 481.3 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
+| VexRiscv | EZ130 8T | 3.09 | 79.06 | **25.59×** | 863.1 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
 | OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** | 7,492.7 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
 | OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** | 7,543.2 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
+| OpenC910 | EZ130 8T | 83.37 | 2,811.45 | **33.72×** | 8,641.9 | 16,979.2 | 71,069,987 | 72,190,882 | 0.0171 | 0.0159 |
 
 <!-- benchmark-16-core:end -->
 
@@ -73,8 +78,12 @@ in MiB. Aggregate cgroup memory peaks remain in the complete receipts.
 parasitics. OpenC910 loads exceed Liberty characterization limits; its raw Fmax
 does not establish achievable frequency. [Timing scope](guide/performance.md#interpret-the-timing-estimate).
 
-All **20 distinct netlists pass arbitrary-state RTL LEC**, with no reset or input
-assumptions. [Method, full 1/16-core results, area and timing](guide/benchmarks.md).
+All **30 distinct netlists pass arbitrary-state RTL LEC**, with no reset or input
+assumptions. EZ130 8T means **IHP SG13G2, library v1.1, TT 1.20 V / 25°C**.
+Its functional proof uses the vendor’s nominal tie-cell models through an
+[explicitly checked supplement](verification/pdk.md#additional-ihp-sg13g2-benchmark-library).
+SERV/EZ130 is 3.14× faster and uses 6.6% more cell area than Yosys.
+[Method, complete results and timing scope](guide/benchmarks.md).
 
 ## A CLI you can compose
 

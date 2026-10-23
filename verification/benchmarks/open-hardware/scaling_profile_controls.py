@@ -21,6 +21,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--directory',type=Path,required=True)
     p.add_argument('--cpu',type=int,default=29)
+    p.add_argument('--library',type=Path,action='append',help='explicit additional library; default covers both baseline PDKs')
+    p.add_argument('--latch-map',type=Path,help='public techmap wrappers for an additional library')
     a=p.parse_args();out=a.directory.resolve();out.mkdir(parents=True,exist_ok=False)
     rtl=out/'initial_state_control.sv'
     rtl.write_text('''module initial_state_control(
@@ -43,13 +45,16 @@ endmodule
         return run.execute(['systemd-run','--user','--scope','--quiet','--unit='+unit,
             '-p','MemoryMax=4G','-p','MemorySwapMax=1G','taskset','-c',str(a.cpu),*map(str,argv)],
             d,label,seconds=600,memory_gib=12,max_file_bytes=128*1024**2)
-    for lib in ('sky130_fd_sc_hd__tt_025C_1v80.lib','gf180mcu_fd_sc_mcu7t5v0__tt_025C_3v30.lib'):
-        library=root/'target/pdk'/lib
+    libraries=a.library or [root/'target/pdk'/name for name in
+        ('sky130_fd_sc_hd__tt_025C_1v80.lib','gf180mcu_fd_sc_mcu7t5v0__tt_025C_3v30.lib')]
+    for library in libraries:
+        library=library.resolve()
         for profile in ('v1','v3'):
             d=out/library.stem/profile;d.mkdir(parents=True)
             cfg={'directory':str(d),'design':{'top':'initial_state_control','files':[str(rtl)]},
                 'library':str(library),'yosys':str(tools[0]),'yosys_bounded_map':False,
                 'yosys_delay_ff_optimization':profile=='v3','normalize_case_promises':True}
+            if a.latch_map:cfg['latch_map']=str(a.latch_map.resolve())
             run.save(d/'config.json',cfg)
             (d/'synth.ys').write_text(yosys_initial.script(cfg,d))
             synth=execute(['env','-C',d,tools[0],'-Q','-T','-s',d/'synth.ys'],d,'synth')
@@ -75,7 +80,7 @@ endmodule
                 'reset_assumptions':[],'initial_state_choices':[],
                 'sha256':{str(x):run.digest(x) for x in (rtl,library,*tools,d/'netlist.v',d/'synth.ys',d/'obligations/manifest.json',d/'abc.stdout')},
                 'measurement':checked})
-            run.save(out/'profile-controls.json',{'status':'passed' if len(rows)==4 else 'incomplete','rows':rows})
+            run.save(out/'profile-controls.json',{'status':'passed' if len(rows)==2*len(libraries) else 'incomplete','rows':rows})
             print(library.name,profile,'passed',flush=True)
 
 

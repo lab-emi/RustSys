@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "library": [
+    {
+      "name": "ez130_8t_tt",
+      "library": "ez130_8t",
+      "filename": "ez130_8t_tt_1p20v_25c.lib",
+      "corner": "tt_1p20v_25c",
+      "latch_map": "verification/fixtures/synthetic/lec/latches-ez130.v",
+      "process": "IHP SG13G2 130 nm",
+      "version": "EZ130 8T v1.1",
+      "license": "Apache-2.0",
+      "source": "https://iip.ethz.ch/ez-library/ihp130-8t.html",
+      "archive_url": "https://iis-people.ee.ethz.ch/~iisdatasets/iip/ezlib/ihp130_8t/v1p1/ez130_8t_v1p1.zip",
+      "archive_sha256": "4c072bae2089f13d258f7c8a9b2bdb4e74002791cc30be89f6d2beac3069d517",
+      "archive_bytes": 6192012,
+      "member": "ez130_8t_v1p1/lib/ez130_8t_tt_1p20v_25c.lib",
+      "sha256": "847cb30b38f15ef0b9c4a735cfaf96c1782c013b1952261b25e5e38cd3ae072c",
+      "size": 9292203,
+      "citation": "https://arxiv.org/abs/2609.29965"
+    }
+  ]
+}

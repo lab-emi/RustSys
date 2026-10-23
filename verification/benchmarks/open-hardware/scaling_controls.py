@@ -21,12 +21,18 @@ import transition
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--directory',type=Path,required=True)
+    p.add_argument('--library',type=Path,action='append',help='explicit additional library; defaults retain both baseline PDKs')
     a=p.parse_args();out=a.directory.resolve();out.mkdir(parents=True,exist_ok=False)
     root=run.ROOT;suite=root/'.work/lec-followup/oss-cad-20261014/oss-cad-suite/bin'
     fixture=root/'verification/fixtures/synthetic/synth/rtl/counter/counter.sv'
     rows=[]
-    for lib,name in [('sky130_fd_sc_hd__tt_025C_1v80.lib','sky130hd_tt'),('gf180mcu_fd_sc_mcu7t5v0__tt_025C_3v30.lib','gf180mcu7t_tt')]:
-        d=out/name;d.mkdir();library=root/'target/pdk'/lib
+    libraries=a.library or [root/'target/pdk'/name for name in
+        ('sky130_fd_sc_hd__tt_025C_1v80.lib','gf180mcu_fd_sc_mcu7t5v0__tt_025C_3v30.lib')]
+    labels={'sky130_fd_sc_hd__tt_025C_1v80.lib':'sky130hd_tt',
+            'gf180mcu_fd_sc_mcu7t5v0__tt_025C_3v30.lib':'gf180mcu7t_tt'}
+    for library in libraries:
+        library=library.resolve();name=labels.get(library.name,library.stem)
+        d=out/name;d.mkdir()
         old=d/'gold.v'
         sample=run.execute([str(root/'target/release/rustsys'),'--threads','1','synth','--top','counter','--goal','area',
                             '--lib',str(library),'--out',str(old),str(fixture)],d,'synth-control',seconds=120,memory_gib=8)
@@ -48,7 +54,7 @@ def main():
                 raise ValueError('negative control lacks an external inequivalence verdict: '+str(result.get('diagnostic')))
             rows.append({'library':name,'case':kind,'expected':'proven' if kind=='correct' else 'external inequivalence',
                          'accepted_as_equivalent':accepted,'status':'passed','result':result})
-            run.save(out/'controls.json',{'status':'passed' if len(rows)==6 else 'incomplete','rows':rows})
+            run.save(out/'controls.json',{'status':'passed' if len(rows)==3*len(libraries) else 'incomplete','rows':rows})
             print(name,kind,'control passed',flush=True)
 
 

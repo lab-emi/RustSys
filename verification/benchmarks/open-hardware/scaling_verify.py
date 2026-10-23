@@ -82,14 +82,14 @@ def bridge_worker(cfg_path,directory):
     return 0 if report.complete_external_proof(result) else 2
 
 
-def native_case(cfg,dest,sample):
+def native_case(cfg,dest,sample,event_checker=None):
     """All original event obligations, with an exact-output projection fallback.
 
     A counterexample is never retried as if it were only a resource limit.
     Projection changes neither logic nor assumptions and covers every output.
     """
     dest=Path(dest);big=cfg['design']['id']=='openc910'
-    args=Namespace(checker=run.ROOT/'target/release/examples/check_config',
+    args=Namespace(checker=Path(event_checker) if event_checker else run.ROOT/'target/release/examples/check_config',
         rusteda=run.ROOT/'target/release/rusteda',
         abc=run.ROOT/'.work/lec-followup/oss-cad-20261014/oss-cad-suite/bin/yosys-abc',
         cpu=30,model_seconds=7200 if big else 1800,seconds=7200 if big else 600,
@@ -114,7 +114,7 @@ def native_case(cfg,dest,sample):
         return proof
     compared=slice_lec.compare(export/'obligations',dest/'projected',
         run.ROOT/'target/release/examples/aig_slices',args.abc,
-        cpu=16 if big else 30,seconds=900,jobs=4 if big else 1)
+        cpu=16 if big else 30,seconds=900,jobs=4 if big else 1,solver=cfg.get('cec_solver','default'))
     yes=compared.get('equivalent') is True
     result={'method':slice_lec.METHOD,'status':'ok' if yes else 'unverified',
         'verdict':'proven' if yes else 'unverified','partitions':len(compared.get('slices',[])),
@@ -125,7 +125,7 @@ def native_case(cfg,dest,sample):
     return result
 
 
-def observed_case(cfg,dest,observation_checker=None,arisca=None):
+def observed_case(cfg,dest,observation_checker=None,arisca=None,event_checker=None):
     """Run the complete observed arithmetic proof in an aggregate bounded worker."""
     dest=Path(dest)
     if (dest/'result.json').exists():return observed_proof.validate(run.read_json(dest/'result.json'))
@@ -144,6 +144,7 @@ def observed_case(cfg,dest,observation_checker=None,arisca=None):
     command=['systemd-run','--user','--scope','--quiet','--unit='+unit,'-p','MemoryMax=4G','-p','MemorySwapMax=1G',
         'taskset','-c','22',sys.executable,str(run.HERE/'observed_proof.py'),'--config',str(path),'--directory',str(dest),
         '--checker',str(Path(observation_checker).resolve()),'--arisca',str(Path(arisca).resolve())]
+    if event_checker:command+=['--event-checker',str(Path(event_checker).resolve())]
     try:value=run.execute(command,dest.parent,'observed-worker',seconds=21630,memory_gib=12,max_file_bytes=128*1024**2)
     finally:subprocess.run(['systemctl','--user','kill','--signal=KILL',unit],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     if value['status']!='ok':raise ValueError('observed arithmetic proof incomplete: '+str(dest))

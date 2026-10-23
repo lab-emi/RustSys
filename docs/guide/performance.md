@@ -6,7 +6,7 @@ Captured tool messages are part of those timed jobs. The raw invocations retain 
 
 ## Current RustSys CPU controls
 
-The [complete unified comparison](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md)
+The [Sky130/GF180 baseline](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md)
 contains all forty configurations. At sixteen cores RustSys is **1.50×–42.11× faster**
 than the pinned Yosys reference across this suite, with lower area and a higher setup estimate
 in all ten design/PDK pairs. Maximum RustSys self-scaling is **4.02×**. All twenty distinct
@@ -31,13 +31,21 @@ Default SERV cleanup also improves the independently measured setup estimate whi
 
 These are the ordinary area/medium pipeline results; no per-design timing target or reset assumption was supplied. Both resulting SERV netlists pass complete arbitrary-state RTL LEC. Electrical limits and the ideal-clock timing scope below still apply.
 
+The [IHP SG13G2 / EZ130 8T extension](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md)
+adds ten 16-core configurations using the same binaries and RTL. RustSys is
+3.14×–33.72× faster. Four designs use less area; SERV uses 6.6% more area than
+Yosys (69,321 versus 65,052 µm²), with a higher setup estimate (121.65 versus
+67.02 MHz). These are library-specific observations, not universal PPA claims.
+EZ130 adds no one-core scaling measurement. Its functional proof uses the
+[explicit vendor tie-cell model supplement](../verification/pdk.md#additional-ihp-sg13g2-benchmark-library).
+
 ## Compare equal host resources
 
 At each allocation, both tools receive the same **1 or 16 physical host cores**, with one hardware thread per core. RustSys's `--threads` value follows that allocation; Yosys runs the published initial-state-preserving reference flow inside the same affinity set. Its library mapping uses the default ABC settings for every design. The process environment also follows the allocation where tools support it. An allocated CPU is a resource allowance, not evidence that a tool used it.
 
 The reference completes ordinary X/Z **data** before optimizing flip-flops. A flip-flop whose next value is X must retain its arbitrary current value until its first clock under RustSys's two-valued contract. Folding it into an undriven X wire and then completing that wire to zero changes the initial behavior. Dual-PDK controls check this case alongside constant-next, independently initialized, enabled, latched and memory state. Later flip-flop enable extraction remains enabled.
 
-Each selected design/library/tool/core configuration has one excluded warm-up and three measured repetitions. The unified matrix contains five designs, two libraries and both tools at 1 and 16 physical cores: forty measured configurations. Earlier three-allocation campaigns retain their original scope and are labeled as historical evidence.
+Each selected design/library/tool/core configuration has one excluded warm-up and three measured repetitions. The baseline matrix contains five designs, two libraries and both tools at 1 and 16 physical cores: forty measured configurations. Earlier three-allocation campaigns retain their original scope and are labeled as historical evidence.
 
 The RTL is unchanged between CPU allocations. OpenC910 remains the complete `ct_core` processor design with its default 64 KiB instruction and data caches. The 16 cores in a benchmark configuration refer to the **host computer**, not extra processors in the RTL. RAM models are lowered to standard cells inside the measured interval.
 
@@ -129,7 +137,9 @@ OpenC910 exceeds the default cleanup budget. Its current Sky130 critical-path
 loads are 49.60 pF for RustSys and 55.98 pF for Yosys, against the respective
 cells' Liberty limits of 0.052195 pF and 0.190440 pF. These loads are outside
 the characterized range, so the raw setup estimates do not establish achievable
-processor frequencies. Usable Fmax requires electrical and physical closure,
+processor frequencies. On EZ130 8T, the selected critical-path INVX1 loads
+are 52.44 pF (RustSys) and 35.84 pF (Yosys), against a 0.10 pF Liberty limit.
+Those estimates also extrapolate beyond the characterized range. Usable Fmax requires electrical and physical closure,
 followed by new timing and equivalence checks of the resulting netlists.
 
 ## Reproduce the campaign
@@ -145,6 +155,7 @@ The repository's [benchmark harness](https://github.com/lab-emi/RustSys/tree/mai
 | `observed_proof.py` | Complete arithmetic/context composition with externally checked reconstruction and measured-netlist transport. |
 | `observed_controls.py` | Independent signed/overflow, low/high-bit and dual-PDK transport controls. |
 | `sta_benchmark.py` | Guarded OpenSTA execution with explicit constraints and raw receipts. |
+| `additional_verify.py` / `additional_report.py` | Validate the optional EZ130 campaign and combine its 16-core results with the baseline. |
 | `scaling_report.py` | Publish the complete selected matrix and quality-preservation controls. |
 
 First prepare the pinned hardware and libraries using the [reproduction instructions](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/README.md). The current campaign runner consumes the prepared input manifests and baseline configurations in that documented workspace layout. Freeze the producer binaries before starting; do not rebuild them during measurements.

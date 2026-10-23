@@ -1,6 +1,6 @@
 # Understand the benchmarks
 
-The [README comparison](https://github.com/lab-emi/RustSys#benchmarks) uses one common protocol for **Ibex, PicoRV32, SERV, VexRiscv and OpenC910**, each mapped to Sky130 HD and GF180 7T. The [complete unified archive](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) contains the raw samples, commands, input pins, limits, and proof receipts.
+The [README comparison](https://github.com/lab-emi/RustSys#benchmarks) uses one common protocol for **Ibex, PicoRV32, SERV, VexRiscv and OpenC910**, each mapped to Sky130 HD, GF180 7T, and **EZ130 8T v1.1 on IHP SG13G2 (TT 1.20 V / 25°C)**. The [complete unified archive](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) contains the baseline 1/16-core samples, commands, input pins, limits, and proof receipts. The [IHP/EZ130 extension](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md) adds the same five designs and both tools at 16 cores, using the exact same compiler binaries and RTL.
 
 ## 16-core synthesis speed
 
@@ -18,14 +18,19 @@ One warm-up and three measured synthesis/export runs; median seconds shown.
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** | 91.9 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
 | Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.6 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
+| Ibex | EZ130 8T | 0.84 | 6.80 | **8.10×** | 95.7 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
 | PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 66.0 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
 | PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** | 117.3 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
+| PicoRV32 | EZ130 8T | 0.46 | 1.46 | **3.17×** | 69.0 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
 | SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** | 65.9 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
 | SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 117.4 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
+| SERV | EZ130 8T | 0.35 | 1.10 | **3.14×** | 67.1 | 67.0 | 69,321 | 65,052 | 121.65 | 67.02 |
 | VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** | 449.8 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
 | VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** | 481.3 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
+| VexRiscv | EZ130 8T | 3.09 | 79.06 | **25.59×** | 863.1 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
 | OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** | 7,492.7 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
 | OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** | 7,543.2 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
+| OpenC910 | EZ130 8T | 83.37 | 2,811.45 | **33.72×** | 8,641.9 | 16,979.2 | 71,069,987 | 72,190,882 | 0.0171 | 0.0159 |
 
 <!-- benchmark-16-core:end -->
 
@@ -38,11 +43,11 @@ in MiB. Aggregate cgroup memory peaks remain in the complete receipts.
 parasitics. OpenC910 loads exceed Liberty characterization limits; its raw Fmax
 does not establish achievable frequency. [Timing scope](performance.md#interpret-the-timing-estimate).
 
-Speedups use the recorded medians before display rounding. All **20 distinct
+Speedups use the recorded medians before display rounding. All **30 distinct
 netlists pass arbitrary-state RTL LEC**, with no reset or input assumptions.
 
 <details markdown="1">
-<summary>Full 1/16-core results, CPU use, area, setup-Fmax and LEC</summary>
+<summary>Sky130/GF180: full 1/16-core results, CPU use, area, setup-Fmax and LEC</summary>
 
 <!-- benchmark-full-matrix:start -->
 
@@ -82,7 +87,7 @@ values do not establish achievable or signoff Fmax. See the
 
 ## One protocol for all five designs
 
-The unified matrix measures both tools on **1 and 16 physical host cores**, with one hardware thread per core. Every design/library/tool/core configuration has one excluded warm-up and three measured repetitions. Compare median wall time and actual CPU accounting; the allowed CPU count is not a utilization measurement. One-core reference times are measured, not inferred from the sixteen-core process's CPU use.
+The Sky130/GF180 baseline measures both tools on **1 and 16 physical host cores**, with one hardware thread per core. Every design/library/tool/core configuration has one excluded warm-up and three measured repetitions. Compare median wall time and actual CPU accounting; the allowed CPU count is not a utilization measurement. One-core reference times are measured, not inferred from the sixteen-core process's CPU use.
 
 The timer starts with prepared RTL and includes process startup, workspace initialization/import, synthesis, mmap I/O, and complete gate-level Verilog export. Download, source preparation, LEC and static timing analysis run outside the synthesis timer. Each large child has an explicit memory, swap, file-size and wall-clock guard; high-memory jobs run serially. The host is shared, not an isolated benchmark appliance.
 
@@ -94,6 +99,21 @@ Default cleanup uses the original cover's area as its ceiling and applies the sa
 rules to every design. It adds no per-design timing target or reset assumption. Explicit timed
 profiles remain separate experiments. Each published sample retains its original source campaign;
 reused reference measurements are labeled as reuse.
+
+The IHP/EZ130 extension applies the same protocol at **16 physical cores**: ten
+additional tool/design configurations and ten new, independently checked netlists.
+Together the campaigns contain fifty measured configurations and thirty distinct
+netlists. EZ130 has no one-core measurements or within-tool scaling claim.
+RustSys is 3.14×–33.72× faster on the five EZ130 cases. Its SERV netlist uses 6.6%
+more area than Yosys; the other four use less area. All five have higher raw
+setup-Fmax estimates, subject to the timing limitations above.
+
+The EZ130 release’s tie-cell Liberty driver-type tags conflict with its own
+constant-output Verilog models. Functional LEC uses the pinned vendor constants
+through an externally checked, verification-only supplement. Synthesis, area and
+STA use the original Liberty bytes. This nominal functional scope excludes
+electrical strengths and high impedance; it adds no initial-state or reset
+assumptions. See [the exact model scope](../verification/pdk.md#additional-ihp-sg13g2-benchmark-library).
 
 ## What each design includes
 

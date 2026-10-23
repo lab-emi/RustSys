@@ -19,6 +19,38 @@ Every design of `verification/fixtures/synthetic/synth/rtl/index.toml` runs with
 (31 designs and 155 runs today), with the default synthesis options and no `--dont-use` patterns.
 A full run takes about a minute on a workstation.
 
+## Additional IHP SG13G2 benchmark library
+
+The separate five-design synthesis benchmark also uses
+[ETH Zurich's EZ130 8T v1.1](https://iip.ethz.ch/ez-library/ihp130-8t.html)
+on IHP SG13G2 130 nm, at **TT, 1.20 V, 25°C**. This supplements the required
+Sky130/GF180 fixture matrix above.
+
+| Field | Pinned value |
+|---|---|
+| Library | `ez130_8t` / EZ130 8T v1.1 |
+| Benchmark ID | `ez130_8t_tt` |
+| Liberty file | `ez130_8t_tt_1p20v_25c.lib` |
+| License | Apache-2.0 |
+| Liberty SHA-256 | `847cb30b38f15ef0b9c4a735cfaf96c1782c013b1952261b25e5e38cd3ae072c` |
+
+`verification/benchmarks/open-hardware/additional-pdks.json` pins the archive,
+member, size, checksum and latch wrappers. `fetch_additional_pdks.py` verifies
+both compressed and decoded bytes before writing the Liberty file. An existing
+file with different bytes is preserved and rejected. The required baseline PDK
+manifest and fixture coverage stay separate.
+
+The release's TIEHI/TIELO Liberty driver-type tags conflict with its own
+constant-output Verilog models. Benchmark functional LEC uses those pinned
+vendor Verilog constants through an explicitly recorded supplement, with
+external positive and corrupted-constant checks. Original synthesis and timing
+library bytes stay pinned. This scope covers functional logic under nominal
+cell models; electrical strengths and high impedance remain outside the proof.
+
+See the [EZ130 CLI example](../guide/synthesis.md#use-ez130-cells-on-ihp-sg13g2)
+and [benchmark protocol and evidence](../guide/benchmarks.md). Please cite
+Castañeda et al., [An Open-Source Standard-Cell Library for IHP 130 nm Developed by Students](https://arxiv.org/abs/2609.29965).
+
 ## Sources and licenses
 
 Every file comes from the vendor repository at a pinned commit, through the raw-file address of

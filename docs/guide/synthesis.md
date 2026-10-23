@@ -18,6 +18,35 @@ List packages before modules that use them. Repeat `-I`, `-D`, `-P` and `--lib` 
 
 Keep the same source files, macros, parameters, libraries and semantic options when checking. Recording a run and passing `check synth --from-run` avoids copying that configuration manually.
 
+## Use EZ130 cells on IHP SG13G2
+
+The optional [EZ130 8T v1.1 library](https://iip.ethz.ch/ez-library/ihp130-8t.html)
+targets IHP SG13G2 130 nm. The benchmark pins TT, 1.20 V and 25°C, plus the
+download and Liberty checksums. From the repository root:
+
+```sh
+(
+  ulimit -v 2097152
+  timeout 120s python3 verification/benchmarks/open-hardware/fetch_additional_pdks.py
+)
+mkdir -p .work
+rustsys --threads 16 synth --top counter --goal area --effort medium \
+  --lib target/pdk/ez130_8t_tt_1p20v_25c.lib \
+  --out .work/counter_ez130.v --report .work/counter_ez130.json \
+  verification/fixtures/synthetic/synth/rtl/counter/counter.sv
+```
+
+The Python helper downloads library data; synthesis runs in the native Rust CLI.
+Keep the exact Liberty file with the result. See [library provenance](../verification/pdk.md#additional-ihp-sg13g2-benchmark-library)
+and the [five-design comparison](benchmarks.md).
+
+EZ130 v1.1 has a documented tie-cell driver-type conflict between Liberty and
+the vendor Verilog models. The benchmark verification workflow certifies an
+explicit functional supplement for these two cells; the native checker keeps
+rejecting unmodeled strength/high-impedance attributes in an unadapted library.
+Read the [cell-model scope](../verification/pdk.md#additional-ihp-sg13g2-benchmark-library)
+when reproducing its LEC results.
+
 ## Choose the mapping tradeoff
 
 | Option | Effect |

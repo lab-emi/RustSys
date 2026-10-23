@@ -15,6 +15,7 @@ from array import array
 import argparse
 import json
 import os
+import re
 import hashlib
 import subprocess
 import sys
@@ -29,6 +30,15 @@ import large_lec
 METHOD='abc-independent-rtl-event-sliced-v1'
 
 
+def cec_command(seconds,gold,gate,solver='default'):
+    if solver not in ('default','new'):raise ValueError('unsupported public CEC solver')
+    command=transition.cec_command(transition.Limits(),seconds,gold,gate)
+    if solver=='new':
+        if not command.startswith('&cec '):raise ValueError('unexpected public CEC command')
+        command='&cec -x '+command[len('&cec '):]
+    return command
+
+
 def bounded(argv,directory,name,seconds,cpu,memory_gib=4):
     unit='rustsys-slice-'+hashlib.sha256((str(directory)+name).encode()).hexdigest()[:16]+'.scope'
     try:
@@ -41,7 +51,7 @@ def bounded(argv,directory,name,seconds,cpu,memory_gib=4):
 
 
 def check_slice(job):
-    folder,destination,row,original_inputs,abc,seconds,cpu,memory_gib=job
+    folder,destination,row,original_inputs,abc,seconds,cpu,memory_gib,solver=job
     path=folder/f"slice{row['id']:05}";n=row['cec_outputs']
     if (path/'output_ids.u32le').stat().st_size>4*16384 or (path/'input_ids.u32le').stat().st_size>4*2_000_000:
         raise ValueError('slice interface allocation budget')
@@ -59,18 +69,27 @@ def check_slice(job):
         if l or i!=row['inputs'] or o!=n or a!=row['ands'] or m!=i+a:raise ValueError('slice header differs from coverage')
     before={name:run.digest(path/name) for name in ('gold.aig','gate.aig','input_ids.u32le','output_ids.u32le')}
     checked=destination/f"check{row['id']:05}";checked.mkdir()
-    command=transition.cec_command(transition.Limits(),seconds,path/'gold.aig',path/'gate.aig')
-    r=bounded([abc,'-c',command],checked,'abc',seconds+5,cpu,memory_gib)
-    yes=r['status']=='ok' and transition.cec_equivalent((checked/'abc.stdout').read_text())
+    attempts=[];yes=False
+    for engine in (('new','default') if solver=='new' else ('default',)):
+        command=cec_command(seconds,path/'gold.aig',path/'gate.aig',engine)
+        label='abc' if not attempts else 'abc-fallback'
+        r=bounded([abc,'-c',command],checked,label,seconds+5,cpu,memory_gib)
+        output=(checked/(label+'.stdout')).read_text()
+        attempts.append({'solver':engine,'measurement':r,'stdout':str(checked/(label+'.stdout'))})
+        yes=r['status']=='ok' and transition.cec_equivalent(output)
+        # An explicit counterexample is final. Only an incomplete solver may
+        # use the other bounded algorithm on the exact same AIGER interface.
+        if yes or re.search(r'Networks are NOT equivalent|Verification failed',output,re.I):break
     if before!={name:run.digest(path/name) for name in before}:raise ValueError('slice changed during external proof')
-    item={'id':row['id'],'start':row['start'],'end':row['end'],'outputs':n,'proven':yes,'measurement':r,'sha256':before}
+    item={'id':row['id'],'start':row['start'],'end':row['end'],'outputs':n,'proven':yes,'measurement':r,'attempts':attempts,'sha256':before}
     run.save(checked/'certificate.json',item);return item
 
 
-def compare(source,destination,slicer,abc,cpu=8,seconds=300,prepared=None,jobs=1):
+def compare(source,destination,slicer,abc,cpu=8,seconds=300,prepared=None,jobs=1,solver='default'):
     if prepared is not None:
         raise ValueError('fresh projections from the checked source AIGERs are required; cached projection reuse is disabled')
     if not 1<=jobs<=4:raise ValueError('CEC worker budget must be between one and four')
+    if solver not in ('default','new'):raise ValueError('unsupported public CEC solver')
     cores=list(range(cpu,cpu+jobs))
     if not set(cores)<=os.sched_getaffinity(0):raise ValueError('CEC CPU budget is outside host affinity')
     destination.mkdir(parents=True,exist_ok=False);steps=[];start=time.monotonic()
@@ -98,7 +117,7 @@ def compare(source,destination,slicer,abc,cpu=8,seconds=300,prepared=None,jobs=1
             # Four workers plan <1.5 GiB combined RSS; each parallel child has
             # a 1 GiB physical guard. Projection runs separately at 4 GiB.
             pending_jobs.append((folder,destination,row,plan['original_inputs'],abc,seconds,
-                                 ','.join(map(str,cores)) if jobs>1 else cpu,1 if jobs>1 else 4))
+                                 ','.join(map(str,cores)) if jobs>1 else cpu,1 if jobs>1 else 4,solver))
     def record(item):
         certificates.append(item)
         if not item['proven']:failed.append(item['id'])
@@ -129,7 +148,7 @@ def compare(source,destination,slicer,abc,cpu=8,seconds=300,prepared=None,jobs=1
         'source_sha256':hashes,'tool_sha256':tool_hashes,'source_artifacts_unchanged':unchanged,
         'harness_sha256':harness_hashes,'fresh_source_projection':True,
         'coverage_checked':True,'interface_checked':True,'projection':'exact original cone; only unused inputs removed and variables consistently renumbered',
-        'wall_s':time.monotonic()-start,'steps':steps,'workers':jobs,
+        'wall_s':time.monotonic()-start,'steps':steps,'workers':jobs,'cec_solver':solver,
         'limits':{'solver_memory_gib':1 if jobs>1 else 4,'solver_swap_mib':512,'cpu_affinity':cores,'max_pending_jobs':2*jobs}}
     run.save(destination/'comparison.json',result);return result
 
@@ -165,7 +184,7 @@ def main(args):
             for name in ('gold','gate'):
                 if run.digest(source/'obligations'/(name+'.aig'))!=export[name+'_sha256']:raise ValueError('original obligation file changed')
             folder=args.workspace/row['library']/tool;prepared=args.prepared if row['library']=='sky130hd_tt' else None
-            compared=compare(source/'obligations',folder,args.slicer,args.abc,args.cpu,args.seconds,prepared,jobs=args.jobs)
+            compared=compare(source/'obligations',folder,args.slicer,args.abc,args.cpu,args.seconds,prepared,jobs=args.jobs,solver=args.cec_solver)
             result={'method':METHOD,'status':'ok' if compared['equivalent'] else 'unverified','verdict':'proven' if compared['equivalent'] else 'unverified',
                 'partitions':len(compared.get('slices',[])),'scope':prior['scope'],'source_sha256':prior['source_sha256'],'tools':prior['tools'],
                 'certificate':{'source_export':export,'comparison':compared}}
@@ -178,6 +197,7 @@ if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--original',type=Path,required=True);p.add_argument('--workspace',type=Path,required=True)
     p.add_argument('--slicer',type=Path,default=run.ROOT/'target/release/examples/aig_slices');p.add_argument('--abc',type=Path,required=True)
     p.add_argument('--prepared',type=Path);p.add_argument('--cpu',type=int,default=8);p.add_argument('--seconds',type=int,default=300);p.add_argument('--jobs',type=int,choices=range(1,5),default=1)
+    p.add_argument('--cec-solver',choices=('default','new'),default='default')
     a=p.parse_args()
     for key in ('original','workspace','slicer','abc','prepared'):
         if getattr(a,key)is not None:setattr(a,key,getattr(a,key).resolve())

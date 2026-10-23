@@ -26,7 +26,10 @@ import tomllib
 import rtl_semantics
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[2]
+# Measured drivers also run from a frozen snapshot below .work/. Find the
+# owning checkout rather than interpreting the snapshot depth as the root.
+ROOT = next(p for p in HERE.parents if (p / 'Cargo.toml').is_file()
+            and (p / 'verification/benchmarks/open-hardware/designs.json').is_file())
 LEC_FIXTURES = ROOT / "verification/fixtures/synthetic/lec"
 MANIFEST = json.loads((HERE / "designs.json").read_text())
 MAX_FILE = 128 * 1024 * 1024
@@ -223,6 +226,14 @@ def quote(path):
     return '"' + str(path).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def latch_map(config):
+    if config.get('latch_map'):return Path(config['latch_map'])
+    library=str(config['library'])
+    if 'sky130' in library:return LEC_FIXTURES/'latches-sky130.v'
+    if 'gf180' in library:return LEC_FIXTURES/'latches-gf180.v'
+    raise ValueError('explicit latch map required for this library')
+
+
 def pipeline(config):
     """Child entrypoint: include all CLI startup, disk IO and mmap in the timer."""
     c = read_json(Path(config))
@@ -280,7 +291,7 @@ def pipeline(config):
             f"read_liberty -lib {quote(lib)}\n"
             + read_design
             + f"synth -top {design['top']} -flatten -noabc -nofsm -nordff{no_share}\n"
-            f"techmap -map {quote(LEC_FIXTURES / ('latches-sky130.v' if 'sky130' in lib else 'latches-gf180.v'))}\n"
+            f"techmap -map {quote(latch_map(c))}\n"
             "techmap\n"
             f"dfflibmap -liberty {quote(lib)}\n"
             f"abc -liberty {quote(lib)}\n"

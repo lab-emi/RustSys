@@ -170,6 +170,119 @@ up to 32 KiB each, with a 256 MiB copied-data budget and a 65,536-file scan cap.
 Larger model files remain in the local workspace and the SHA-256 inventory;
 the publication records its exact limits. Archive parts are at most 1 MiB.
 
+## IHP SG13G2 / EZ130 8T extension
+
+`additional-pdks.json` pins ETH Zurich's [EZ130 8T v1.1](https://iip.ethz.ch/ez-library/ihp130-8t.html)
+at TT, 1.20 V, 25°C, including the original download and decoded Liberty SHA-256.
+The library is Apache-2.0; cite [Castañeda et al.](https://arxiv.org/abs/2609.29965).
+This optional benchmark library supplements the required Sky130/GF180 baseline;
+it does not replace the shared `verification/pdks.toml` or its dual-PDK tests.
+
+Fetch only the pinned Liberty data under a 2 GiB address-space / 120 s guard:
+
+```sh
+(
+  ulimit -v 2097152
+  timeout 120s python3 verification/benchmarks/open-hardware/fetch_additional_pdks.py
+)
+```
+
+Use the exact frozen producers and prepared inputs from the common campaign.
+The extension measures all five designs at **16 physical cores**, with the
+same one-warm-up/three-repetition protocol, full CLI timing and default mapping.
+It does not infer one-core results or within-tool CPU scaling for the new library.
+Inspect available RAM and keep large cases serialized:
+
+```sh
+free -h
+(
+  ulimit -v 41943040
+  /usr/bin/time -v -o .work/ez130-driver.time timeout 86400s \
+    python3 verification/benchmarks/open-hardware/scaling.py \
+    --workspace .work/ez130-measurements --binaries .work/bench-binaries \
+    --extra-pdks verification/benchmarks/open-hardware/additional-pdks.json \
+    --library ez130_8t_tt --cores 16 --reference-full-map \
+    --repetitions 3 --warmups 1 --memory-gib 32 --timeout 10800
+)
+```
+
+`latches-ez130.v` binds the Liberty-defined positive and negative latch functions;
+reset wrappers preserve arbitrary initial state and give the reset input priority.
+The reference uses these wrappers with ordinary default ABC mapping, adding no
+reset sequence or initialization assumption. Every exported implementation still
+needs its own complete RTL proof.
+
+After measurement finishes, run `scaling_controls.py --library target/pdk/ez130_8t_tt_1p20v_25c.lib`
+and `scaling_profile_controls.py` with the same `--library` and
+`--latch-map verification/fixtures/synthetic/lec/latches-ez130.v`, each in a fresh
+`--directory`. Their existing per-child memory and time guards apply. Require a
+positive proof, explicit external data/clock counterexamples, and the v1/v3
+arbitrary-state calibration. Retain the outputs as `controls.json` and
+`profile-controls.json` in a common controls directory.
+
+OpenC910's mapped reference loses some public state names. Before LEC, capture
+an **untimed** public pre-ABC Verilog checkpoint and derive bounded, untrusted
+state hints. This invokes the same measured public script prefix; it does not
+change the timed netlist. Run under a 40 GiB address-space / 2600 s parent guard:
+
+```sh
+python3 verification/benchmarks/open-hardware/ez130_state_hints.py \
+  --config .work/ez130-measurements/openc910/ez130_8t_tt/16c/yosys-3/config.json \
+  --directory .work/ez130-state-hints
+```
+
+The capture has its own 32 GiB physical-memory limit and scale lock. Existing
+public checkpoints can be supplied with `--preabc FILE` under a 2 GiB / 180 s
+guard instead. Matching uses scalar-Q order, public name anchors and explicit
+inverter aliases; it never accepts the result as equivalent.
+
+Freeze an updated `rustsys-check` development `check_config` executable in a
+separate build target, preserving all measured producers. Run
+`additional_verify.py --workspace .work/ez130-measurements --directory .work/ez130-validation --sta /path/to/pinned/sta --event-checker /path/to/frozen/check_config --state-proposals-file .work/ez130-state-hints/proposals.json --cec-solver new`
+under the same guarded parent invocation. It performs fresh independent event
+LEC, ABC/Arisca arithmetic composition where required, and OpenSTA for all ten
+new netlists. Changed-library certificates cannot be taken from the baseline.
+Full-core exports use a 24 GiB guard; full-core STA uses 32 GiB, one case at a time.
+Actual child peak RSS, stdout, stderr and all artifact hashes remain in the receipts.
+
+For the separately reported critical-path load scope, run
+`inspect_timing_load.py --validation .work/ez130-validation --library ez130_8t_tt --record-any-load`
+under a 2 GiB / 60 s guard. It inspects the largest reported cell delay on the
+worst same-clock/same-edge path, with no new path enumeration. The selected
+load and its Liberty limits are observations, not a global electrical pass.
+
+`additional_report.py --workspace .work/ez130-measurements --validation .work/ez130-validation --controls .work/ez130-controls --output verification/benchmarks/open-hardware/results/YYYY-MM-DD-ez130 --update-docs`
+publishes only the complete, bound five-design matrix. Use a 2 GiB / 600 s parent
+guard. The combined overview retains all baseline rows and adds EZ130 area,
+setup-Fmax, process RSS and speedup rows in README, documentation homepage and
+benchmark guide. Its archive retains the sampling, proof and timing scope.
+
+The EZ130 release's TIEHI/TIELO Liberty `driver_type` attributes conflict with
+its own Verilog models (`Y=1` and `Y=0`). `functional_models.py` checks the pinned
+vendor models with external ABC, including corrupted-constant controls, and
+records an explicit two-attribute functional supplement. Functional LEC uses
+these nominal vendor constants. The original synthesis and timing library
+bytes remain pinned; electrical strengths and high impedance are outside the
+functional proof. Other unsupported driver types remain errors.
+
+When mapping removes state wire names, the event checker can propose bounded
+one-to-one RTL/state bindings. Proposals introduce no initial-state choices,
+constants, sharing or reset assumptions. Every original RTL state stays free,
+including states excluded from the proposal search. Complete external checks
+of all outputs and retained data/clock/asynchronous controls are still required.
+Definition, candidate, support-storage, traversal, round and evaluation limits
+stop discovery as undecided when exhausted. Use a separate build target and
+pass a frozen `additional_verify.py --event-checker PATH --attempt HANDLE` to
+preserve earlier diagnostics and the measured producers. `validate_state_proposals.py`
+provides six external positive/data/clock/encoded-state controls for this exporter.
+Use `--cec-solver new` with the optional public ABC `-x` algorithm; an incomplete
+result can retry the bounded default algorithm on the identical AIGER interface.
+An explicit counterexample is final. Export and partial proofs remain undecided.
+Run it with the same frozen `--checker` and
+`--directory .work/ez130-controls/state-proposals` under a 2 GiB / 600 s parent
+guard. Publication requires those controls too; `additional_report.py
+--state-controls FILE` accepts a separately named control receipt.
+
 ## Large-design stress run
 
 This section describes the historical single-sample stress profile. The common

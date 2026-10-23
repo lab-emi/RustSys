@@ -18,6 +18,7 @@ use crate::circ::{B, Circuit};
 use crate::corr::{Corr, Relation, Setting};
 use crate::netlist;
 use crate::prove::Rng;
+use crate::reset;
 
 /// Rounds of 64 lanes that must all accept the current relations.
 const ROUNDS: usize = 32;
@@ -79,12 +80,30 @@ struct Search<'a, 'b> {
     cell_base: Vec<Option<bool>>,
     /// Support of each RTL state's next function without the state itself, sorted.
     supports: HashMap<usize, Vec<u32>>,
+    /// Optional charge for dense evaluation work; export proposals always set it.
+    remaining_work: Option<u64>,
+    /// Structural support sets are ranking hints, never proof premises.
+    /// Disable them before allocation when their conservative size exceeds the budget.
+    rank_supports: bool,
+    sketch_bytes: usize,
+    /// Normalize only proposal samples to each register's reset encoding.
+    /// This is a heuristic environment, never a reset or proof premise.
+    normalized_own: bool,
 }
 
 impl<'a, 'b> Search<'a, 'b> {
     fn new(s: &'a Setting<'b>, corr: &'a Corr, seed: u64) -> Result<Self, String> {
-        let (c, model, nm) = (s.c, s.model, s.nm);
         let needed = needed(s, corr)?;
+        Self::with_needed(s, corr, seed, needed)
+    }
+
+    fn with_needed(
+        s: &'a Setting<'b>,
+        corr: &'a Corr,
+        seed: u64,
+        needed: Vec<usize>,
+    ) -> Result<Self, String> {
+        let (c, model, nm) = (s.c, s.model, s.nm);
         let flop = |si: usize| !s.restricted(si);
         let consts: Vec<usize> = needed
             .iter()
@@ -164,6 +183,10 @@ impl<'a, 'b> Search<'a, 'b> {
             unused: corr.unused.clone(),
             cell_base,
             supports: HashMap::new(),
+            remaining_work: None,
+            rank_supports: true,
+            sketch_bytes: 0,
+            normalized_own: false,
         })
     }
 
@@ -209,6 +232,17 @@ impl<'a, 'b> Search<'a, 'b> {
         self.s.nm.seq[ci].iq as usize
     }
 
+    fn rtl_phase(&self, si: usize) -> bool {
+        self.normalized_own && self.s.model.states[si].arst.is_some_and(|(_, value)| value)
+    }
+
+    fn cell_phase(&self, ci: usize) -> bool {
+        let cell = &self.s.nm.seq[ci];
+        self.normalized_own
+            && reset::constant(self.s.c, cell.clear) == Some(false)
+            && reset::constant(self.s.c, cell.preset) != Some(false)
+    }
+
     /// Fresh random values for every free variable.
     fn randomize(&mut self) {
         for &v in &self.frees {
@@ -234,12 +268,12 @@ impl<'a, 'b> Search<'a, 'b> {
                     Some(Relation::Shares(..) | Relation::Cell(..))
                 ) {
                     let q = self.q(si);
-                    self.fv[q] = mask(x);
+                    self.fv[q] = mask(x ^ self.rtl_phase(self.unmatched[i]));
                 }
             }
             for i in 0..self.unused.len() {
                 let iq = self.iq(self.unused[i]);
-                self.fv[iq] = mask(x);
+                self.fv[iq] = mask(x ^ self.cell_phase(self.unused[i]));
             }
         }
         for (&si, rel) in hyp {
@@ -273,11 +307,26 @@ impl<'a, 'b> Search<'a, 'b> {
         }
     }
 
-    fn evaluate(&mut self) {
+    fn evaluate(&mut self) -> Result<(), Stop> {
+        if let Some(left) = &mut self.remaining_work {
+            let work = self
+                .order
+                .len()
+                .saturating_add(self.frees.len())
+                .saturating_add(self.s.model.states.len())
+                .saturating_add(self.s.nm.seq.len()) as u64;
+            if work > *left {
+                return Err(Stop::Undecided(
+                    "state proposal evaluation-work budget reached".into(),
+                ));
+            }
+            *left -= work;
+        }
         let fv = &self.fv;
         self.s
             .c
             .eval_dense(&self.order, &|v| fv[v as usize], &mut self.vals);
+        Ok(())
     }
 
     fn v(&self, b: B) -> u64 {
@@ -337,15 +386,26 @@ impl<'a, 'b> Search<'a, 'b> {
     /// Drops relations until all of them hold in `ROUNDS` rounds: in a failing round only the
     /// least trusted failing relations go. An unreset constant chosen under CHECK-REQ-0050 may
     /// change its value once.
-    fn refine(&mut self, hyp: &mut Hyp, failures: &mut HashMap<(usize, Relation), u32>) {
+    fn refine(
+        &mut self,
+        hyp: &mut Hyp,
+        failures: &mut HashMap<(usize, Relation), u32>,
+    ) -> Result<(), Stop> {
         'again: loop {
             for _ in 0..ROUNDS {
                 if hyp.is_empty() {
-                    return;
+                    return Ok(());
                 }
                 self.randomize();
                 self.derive(hyp, None);
-                self.evaluate();
+                self.evaluate().map_err(|error| match error {
+                    Stop::Undecided(message) => Stop::Undecided(format!(
+                        "{message}; {} of {} state proposals remain",
+                        hyp.len(),
+                        self.corr.unused.len()
+                    )),
+                    other => other,
+                })?;
                 let bad: Vec<(usize, Relation)> = hyp
                     .iter()
                     .filter(|(si, rel)| !self.holds(**si, **rel, hyp))
@@ -366,12 +426,12 @@ impl<'a, 'b> Search<'a, 'b> {
                 }
                 continue 'again;
             }
-            return;
+            return Ok(());
         }
     }
 
     /// Records `f` of every item in the three environments of `PROPOSE_ROUNDS` rounds.
-    fn record(&mut self, hyp: &Hyp, items: &[B]) -> Vec<Words> {
+    fn record(&mut self, hyp: &Hyp, items: &[B]) -> Result<Vec<Words>, Stop> {
         let mut out = vec![Words::default(); items.len()];
         for _ in 0..PROPOSE_ROUNDS {
             self.randomize();
@@ -379,7 +439,7 @@ impl<'a, 'b> Search<'a, 'b> {
             for own in [None, Some(false), Some(true)] {
                 self.fv.copy_from_slice(&base);
                 self.derive(hyp, own);
-                self.evaluate();
+                self.evaluate()?;
                 for (w, b) in out.iter_mut().zip(items) {
                     // A state value is a free variable that may lie outside the evaluated cones.
                     let x = match *b {
@@ -395,7 +455,7 @@ impl<'a, 'b> Search<'a, 'b> {
             }
             self.fv.copy_from_slice(&base);
         }
-        out
+        Ok(out)
     }
 
     /// Proposes shared (b) and cell (c) relations for states without one.
@@ -403,7 +463,7 @@ impl<'a, 'b> Search<'a, 'b> {
         &mut self,
         hyp: &Hyp,
         failures: &HashMap<(usize, Relation), u32>,
-    ) -> Vec<(usize, Relation)> {
+    ) -> Result<Vec<(usize, Relation)>, Stop> {
         let (model, nm) = (self.s.model, self.s.nm);
         let free_sharers: Vec<usize> = self
             .sharers
@@ -440,7 +500,7 @@ impl<'a, 'b> Search<'a, 'b> {
         if (free_sharers.is_empty() || anchors.is_empty())
             && (free_cells.is_empty() || free_rtl.is_empty())
         {
-            return Vec::new();
+            return Ok(Vec::new());
         }
         // Items: for every RTL state of interest next, clock and asynchronous condition and the
         // state value itself; for every free element its four functions.
@@ -463,7 +523,7 @@ impl<'a, 'b> Search<'a, 'b> {
             let x = &nm.seq[ci];
             items.extend([x.next, x.clk, x.clear, x.preset]);
         }
-        let w = self.record(hyp, &items);
+        let w = self.record(hyp, &items)?;
         let at: HashMap<usize, usize> = rtl_ids
             .iter()
             .enumerate()
@@ -538,8 +598,30 @@ impl<'a, 'b> Search<'a, 'b> {
         }
         // (c) Cells: an unused element and an unmatched RTL state of the same kind with equal
         // clock and asynchronous behavior whose next values agree under one parity in most lanes.
-        let (rtl_support, cell_support) =
-            support::signatures(self.s, self.corr, hyp, &free_rtl, &free_cells);
+        let support_hints = self
+            .rank_supports
+            .then(|| support::signatures(self.s, self.corr, hyp, &free_rtl, &free_cells));
+        let sketch_hints = if !self.rank_supports && self.sketch_bytes > 0 {
+            let work = (self.order.len() as u64).saturating_mul(4);
+            if let Some(left) = &mut self.remaining_work {
+                if work > *left {
+                    return Err(Stop::Undecided(
+                        "state proposal sketch-work budget reached".into(),
+                    ));
+                }
+                *left -= work;
+            }
+            support::sketches(
+                self.s,
+                self.corr,
+                &free_rtl,
+                &free_cells,
+                &self.order,
+                self.sketch_bytes,
+            )
+        } else {
+            None
+        };
         let mut used: HashSet<usize> = out.iter().map(|x| x.0).collect();
         for (n, &ci) in free_cells.iter().enumerate() {
             let x = &nm.seq[ci];
@@ -561,6 +643,8 @@ impl<'a, 'b> Search<'a, 'b> {
                         }
                     }
                     let (mut bad, mut active, mut forced) = (0, 0, false);
+                    let parity = mask(p);
+                    let cross = p ^ self.rtl_phase(si) ^ self.cell_phase(ci);
                     for t in 0..PROPOSE_ROUNDS {
                         let (clear, preset) = (w[k + 2].rnd[t], w[k + 3].rnd[t]);
                         let (f0, f1) = if p { (preset, clear) } else { (clear, preset) };
@@ -577,15 +661,26 @@ impl<'a, 'b> Search<'a, 'b> {
                         }
                         let (c0, c1) = (w[k].zero[t], w[k].one[t]);
                         let (s0, s1) = (w[r].zero[t], w[r].one[t]);
-                        let differ = if p {
-                            (c1 ^ !s0) | (c0 ^ !s1)
+                        let differ = if cross {
+                            (c1 ^ parity ^ s0) | (c0 ^ parity ^ s1)
                         } else {
-                            (c0 ^ s0) | (c1 ^ s1)
+                            (c0 ^ parity ^ s0) | (c1 ^ parity ^ s1)
                         };
                         bad += (differ & live).count_ones();
                         active += live.count_ones();
                     }
-                    let similarity = support::similarity(&rtl_support[&si], &cell_support[&ci]);
+                    let similarity = support_hints.as_ref().map_or_else(
+                        || {
+                            sketch_hints
+                                .as_ref()
+                                .map_or(0.0, |(rtl_support, cell_support)| {
+                                    support::sketch_similarity(rtl_support[&si], cell_support[&ci])
+                                })
+                        },
+                        |(rtl_support, cell_support)| {
+                            support::similarity(&rtl_support[&si], &cell_support[&ci])
+                        },
+                    );
                     if !forced
                         && ok(bad, active)
                         && best
@@ -600,7 +695,7 @@ impl<'a, 'b> Search<'a, 'b> {
                 out.push((si, Relation::Cell(ci, p)));
             }
         }
-        out
+        Ok(out)
     }
 }
 
@@ -614,6 +709,14 @@ fn variable(name: &str) -> &str {
 
 /// RTL state bits without a counterpart that the compared logic reads, transitively.
 fn needed(s: &Setting<'_>, corr: &Corr) -> Result<Vec<usize>, String> {
+    needed_limited(s, corr, None)
+}
+
+fn needed_limited(
+    s: &Setting<'_>,
+    corr: &Corr,
+    max_walks: Option<usize>,
+) -> Result<Vec<usize>, String> {
     let model = s.model;
     let q_of: HashMap<u32, usize> = corr
         .unmatched
@@ -639,7 +742,12 @@ fn needed(s: &Setting<'_>, corr: &Corr) -> Result<Vec<usize>, String> {
     let mut found: Vec<usize> = Vec::new();
     let mut seen: HashSet<usize> = HashSet::new();
     let mut visited: HashSet<u32> = HashSet::new();
+    let mut walks = 0usize;
     while !roots.is_empty() {
+        if max_walks.is_some_and(|limit| walks >= limit) {
+            return Err("warning[C0005]: state-proposal support-walk budget reached".into());
+        }
+        walks += 1;
         let order =
             s.c.order(&roots)
                 .map_err(|cy| format!("combinational cycle through circuit variable {}", cy.0))?;
@@ -674,10 +782,90 @@ pub(crate) fn discover(
     excluded: &HashSet<(usize, Relation)>,
     ctx: Ctx<'_>,
 ) -> Result<Vec<(usize, Relation)>, Stop> {
+    discover_inner(s, corr, seed, excluded, ctx, None)
+}
+
+/// Name-free bindings are proposals only. A bijection leaves every gate bit
+/// arbitrary; the exported complete event frame must still pass external CEC.
+/// Memory plan, one corner/worker: <=64M definitions * (3*8+4) bytes of dense
+/// scratch, <=64M support entries *4 bytes, plus bounded names/signatures;
+/// Optional 16-byte/definition support sketches use at most 1 GiB;
+/// <4 GiB additional RAM. Pair, round and evaluation budgets bound all work.
+pub(crate) fn for_export(
+    s: &Setting<'_>,
+    corr: &Corr,
+    seed: u64,
+    limits: &crate::ObligationExport,
+    ctx: Ctx<'_>,
+) -> Result<Vec<(usize, Relation)>, Stop> {
+    if !s.pulse.is_empty()
+        || s.uninitialized_dont_care
+        || s.c.defs.len() > limits.max_discovery_definitions
+        || limits.max_discovery_rounds == 0
+        || limits.max_discovery_work == 0
+    {
+        return Err(Stop::Undecided(format!(
+            "one-to-one export proposal scope/definition budget reached: {} definitions (max {})",
+            s.c.defs.len(),
+            limits.max_discovery_definitions
+        )));
+    }
+    // Search only relevant unmatched states; every other original RTL state
+    // stays free in the final export. This restricts proposals, not the theorem.
+    let mut search_corr = corr.clone();
+    search_corr.unmatched =
+        needed_limited(s, corr, Some(limits.max_discovery_rounds)).map_err(Stop::Undecided)?;
+    let candidates = search_corr.unmatched.len() as u128 * corr.unused.len() as u128;
+    if !s.pulse.is_empty()
+        || s.uninitialized_dont_care
+        || s.c.defs.len() > limits.max_discovery_definitions
+        || candidates > limits.max_discovery_candidates as u128
+        || limits.max_discovery_rounds == 0
+        || limits.max_discovery_work == 0
+    {
+        return Err(Stop::Undecided(format!(
+            "one-to-one export state-proposal budget or scope reached: {} definitions (max {}), {} candidate pairs (max {})",
+            s.c.defs.len(),
+            limits.max_discovery_definitions,
+            candidates,
+            limits.max_discovery_candidates
+        )));
+    }
+    let proposals = discover_inner(s, &search_corr, seed, &HashSet::new(), ctx, Some(limits))?;
+    if proposals
+        .iter()
+        .any(|(_, relation)| !matches!(relation, Relation::Cell(..)))
+    {
+        return Err(Stop::Internal(
+            "export discovery proposed a constant or shared state".into(),
+        ));
+    }
+    Ok(proposals)
+}
+
+fn discover_inner(
+    s: &Setting<'_>,
+    corr: &Corr,
+    seed: u64,
+    excluded: &HashSet<(usize, Relation)>,
+    ctx: Ctx<'_>,
+    limits: Option<&crate::ObligationExport>,
+) -> Result<Vec<(usize, Relation)>, Stop> {
     if corr.unmatched.is_empty() && corr.unused.is_empty() {
         return Ok(Vec::new());
     }
-    let mut search = Search::new(s, corr, seed)?;
+    let mut search = if limits.is_some() {
+        Search::with_needed(s, corr, seed, corr.unmatched.clone())?
+    } else {
+        Search::new(s, corr, seed)?
+    };
+    search.remaining_work = limits.map(|limit| limit.max_discovery_work);
+    search.sketch_bytes = limits.map_or(0, |limit| limit.max_discovery_sketch_bytes);
+    search.normalized_own = limits.is_some();
+    search.rank_supports = limits.is_none_or(|limit| {
+        (corr.unmatched.len() as u128 + corr.unused.len() as u128) * s.c.defs.len() as u128
+            <= limit.max_discovery_support_entries as u128
+    });
     let mut hyp: Hyp = HashMap::new();
     // Relations a proof rejected are never proposed again.
     let mut failures: HashMap<(usize, Relation), u32> =
@@ -685,8 +873,15 @@ pub(crate) fn discover(
     // Constants first, from the largest set; then shared and cell relations for the states left,
     // and constants again for states whose constant may hold now.
     let mut first = true;
+    let mut rounds = 0usize;
     loop {
         ctx.checkpoint()?;
+        if limits.is_some_and(|limit| rounds >= limit.max_discovery_rounds) {
+            return Err(Stop::Undecided(
+                "state proposal round budget reached".into(),
+            ));
+        }
+        rounds += 1;
         let before = hyp.clone();
         let mut proposed = 0;
         for i in 0..search.consts.len() {
@@ -705,13 +900,13 @@ pub(crate) fn discover(
                 proposed += 1;
             }
         }
-        search.refine(&mut hyp, &mut failures);
-        let props = search.propose(&hyp, &failures);
+        search.refine(&mut hyp, &mut failures)?;
+        let props = search.propose(&hyp, &failures)?;
         proposed += props.len();
         for (si, rel) in props {
             hyp.insert(si, rel);
         }
-        search.refine(&mut hyp, &mut failures);
+        search.refine(&mut hyp, &mut failures)?;
         if proposed == 0 || (hyp == before && !first) {
             break;
         }

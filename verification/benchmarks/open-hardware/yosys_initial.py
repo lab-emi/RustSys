@@ -18,7 +18,7 @@ import run
 def script(cfg, directory):
     d=Path(directory);q=equiv.quote
     lib=q(cfg['library']);top=equiv.object_name(cfg['design']['top'])
-    latch='latches-sky130.v' if 'sky130' in cfg['library'] else 'latches-gf180.v'
+    latch=run.latch_map(cfg)
     # Constant-next FFs still have arbitrary values before their first clock.
     # opt_dff may fold them even with -keepdc. The v2 profile does not run it.
     ff='' if cfg.get('yosys_preserve_all_ffs',False) else 'opt_dff -keepdc\n'
@@ -44,7 +44,7 @@ def script(cfg, directory):
         +f'\nhierarchy -check -top {top}\nproc\nflatten\n'
         +early+'alumacc\nmemory_collect\nmemory_map\nsetundef -zero\n'+safe
         +'techmap\n'+safe
-        +f'techmap -map {q(run.LEC_FIXTURES/latch)}\ntechmap\n'
+        +f'techmap -map {q(latch)}\ntechmap\n'
         +f'dfflibmap -liberty {lib}\n'+mapping+'clean\n'
         +'setundef -zero -undriven\ncheck -assert\n'
         +f'tee -o {q(d/"report.json")} stat -json -liberty {lib}\n'

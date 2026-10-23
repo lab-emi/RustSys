@@ -47,11 +47,30 @@ pub enum Input {
 
 /// Bounded, combinational AIGER proof inputs for an external CEC executable.
 /// Export is not a proof and always leaves the native check undecided.
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StateProposal {
+    pub rtl_state: String,
+    pub gate_instance: String,
+    pub inverted: bool,
+}
+
+/// Export options, including optional untrusted one-to-one matching hints.
 #[derive(Debug, Clone)]
 pub struct ObligationExport {
     pub directory: PathBuf,
     pub max_and_nodes: usize,
     pub max_outputs: usize,
+    /// Budgets for untrusted one-to-one state proposals when names were removed.
+    pub max_discovery_definitions: usize,
+    pub max_discovery_candidates: usize,
+    pub max_discovery_support_entries: usize,
+    pub max_discovery_sketch_bytes: usize,
+    pub max_discovery_rounds: usize,
+    pub max_discovery_work: u64,
+    /// At most 8192 pairs / 8 MiB of names. These are never assumptions or proofs;
+    /// all original output, event and next-state obligations still require CEC.
+    pub state_proposals: Vec<StateProposal>,
 }
 
 impl ObligationExport {
@@ -60,6 +79,13 @@ impl ObligationExport {
             directory,
             max_and_nodes: 64_000_000,
             max_outputs: 8_000_000,
+            max_discovery_definitions: 64_000_000,
+            max_discovery_candidates: 4_194_304,
+            max_discovery_support_entries: 64_000_000,
+            max_discovery_sketch_bytes: 1024 * 1024 * 1024,
+            max_discovery_rounds: 32,
+            max_discovery_work: 16_000_000_000,
+            state_proposals: Vec::new(),
         }
     }
 }
@@ -728,12 +754,75 @@ fn run(
     };
     // State correspondence: names first (CHECK-REQ-0031), then discovery (CHECK-REQ-0032) when
     // an element has no named counterpart or a cut point refutes an obligation.
-    let named = if opts.obligation_export.is_some() {
+    let mut named = if opts.obligation_export.is_some() {
         corr::by_name_for_export(&setting)?
     } else {
         corr::by_name(&setting)?
     };
-    if opts.obligation_export.is_some() && !named.unused.is_empty() {
+    if let Some(export) = &opts.obligation_export {
+        let hints = corr::explicit_export_proposals(&setting, &named, &export.state_proposals)?;
+        corr::apply(&setting, &mut named, &hints);
+        if !hints.is_empty() {
+            phase(&format!(
+                "proposed {} explicit one-to-one state bindings; external CEC still required",
+                hints.len()
+            ));
+        }
+    }
+    if let Some(export) = &opts.obligation_export
+        && !named.unused.is_empty()
+    {
+        let proposed = discover::for_export(&setting, &named, opts.seed, export, ctx)?;
+        corr::apply(&setting, &mut named, &proposed);
+        phase(&format!(
+            "proposed {} one-to-one state bindings; external CEC still required",
+            named.discovered.len()
+        ));
+    }
+    if let Some(export) = &opts.obligation_export
+        && !named.unused.is_empty()
+    {
+        let directory = &export.directory;
+        std::fs::create_dir_all(directory).map_err(|error| Stop::Error(error.to_string()))?;
+        let name_bytes = named
+            .unused
+            .iter()
+            .take(512)
+            .map(|&ci| nm.seq[ci].inst.len() + nm.seq[ci].cell.len() + 256)
+            .chain(
+                named
+                    .unmatched
+                    .iter()
+                    .take(8192)
+                    .map(|&si| model.states[si].name.len() + 256),
+            )
+            .fold(0usize, usize::saturating_add);
+        if name_bytes > 4 * 1024 * 1024 {
+            return Err(Stop::Undecided(
+                "state-proposal diagnostic name budget reached".into(),
+            ));
+        }
+        let diagnostic = serde_json::json!({
+            "status":"undecided","not_a_proof":true,
+            "unused_gate_states":named.unused.iter().take(512).map(|&ci| serde_json::json!({
+                "gate_index":ci,"instance":nm.seq[ci].inst,"cell":nm.seq[ci].cell,
+                "clock":format!("{:?}",nm.seq[ci].clk),"clear":format!("{:?}",nm.seq[ci].clear),
+                "preset":format!("{:?}",nm.seq[ci].preset)
+            })).collect::<Vec<_>>(),
+            "unmatched_rtl_states":named.unmatched.iter().take(8192).map(|&si| serde_json::json!({
+                "rtl_index":si,"name":model.states[si].name,
+                "clock":format!("{:?}",model.states[si].clk),"reset":format!("{:?}",model.states[si].arst)
+            })).collect::<Vec<_>>()
+        });
+        let data =
+            serde_json::to_vec(&diagnostic).map_err(|error| Stop::Error(error.to_string()))?;
+        if data.len() > 4 * 1024 * 1024 {
+            return Err(Stop::Undecided(
+                "state-proposal diagnostic byte budget reached".into(),
+            ));
+        }
+        std::fs::write(directory.join("unresolved-state-proposals.json"), data)
+            .map_err(|error| Stop::Error(error.to_string()))?;
         let first = &nm.seq[named.unused[0]];
         return Err(Stop::Undecided(format!(
             "obligation export: {} implementation states lack a unique named RTL counterpart; first {} ({})",

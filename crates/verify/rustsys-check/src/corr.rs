@@ -84,6 +84,82 @@ pub fn by_name_for_export(s: &Setting<'_>) -> Result<Corr, String> {
     named(s, true)
 }
 
+/// Match bounded explicit hints by exact public names. A hint can only bind an
+/// unused implementation element to an unpaired RTL variable with optional
+/// inversion. No constants, sharing or initial values can be expressed.
+/// Scratch is O(hints), with two linear model scans; <=8192 pairs /8 MiB names.
+/// External CEC must still prove every output and event/transition obligation.
+pub(crate) fn explicit_export_proposals(
+    s: &Setting<'_>,
+    corr: &Corr,
+    hints: &[crate::StateProposal],
+) -> Result<Vec<(usize, Relation)>, String> {
+    if hints.is_empty() {
+        return Ok(Vec::new());
+    }
+    if hints.len() > 8192
+        || hints
+            .iter()
+            .try_fold(0usize, |n, h| {
+                n.checked_add(h.rtl_state.len())?
+                    .checked_add(h.gate_instance.len())
+            })
+            .is_none_or(|n| n > 8 * 1024 * 1024)
+    {
+        return Err("state proposal count/name byte budget reached".into());
+    }
+    let mut rtl = HashMap::with_capacity(hints.len());
+    let mut gate = HashMap::with_capacity(hints.len());
+    for hint in hints {
+        if hint.rtl_state.is_empty()
+            || hint.gate_instance.is_empty()
+            || rtl.insert(hint.rtl_state.as_str(), None).is_some()
+            || gate.insert(hint.gate_instance.as_str(), None).is_some()
+        {
+            return Err("empty or duplicate state proposal name".into());
+        }
+    }
+    for (si, state) in s.model.states.iter().enumerate() {
+        if let Some(slot) = rtl.get_mut(state.name.as_str()) {
+            if slot.replace(si).is_some() {
+                return Err("ambiguous RTL state proposal name".into());
+            }
+        }
+    }
+    for (ci, cell) in s.nm.seq.iter().enumerate() {
+        if let Some(slot) = gate.get_mut(cell.inst.as_str()) {
+            if slot.replace(ci).is_some() {
+                return Err("ambiguous implementation state proposal name".into());
+            }
+        }
+    }
+    let mut result = Vec::with_capacity(hints.len());
+    for hint in hints {
+        let si = rtl[hint.rtl_state.as_str()]
+            .ok_or_else(|| format!("unknown proposed RTL state: {}", hint.rtl_state))?;
+        let ci = gate[hint.gate_instance.as_str()].ok_or_else(|| {
+            format!(
+                "unknown proposed implementation state: {}",
+                hint.gate_instance
+            )
+        })?;
+        if corr.paired[si] == Some((ci, hint.inverted)) && corr.owners[ci] == Some(si) {
+            continue;
+        }
+        if corr.paired[si].is_some()
+            || corr.owners[ci].is_some()
+            || s.model.states[si].latch != s.nm.seq[ci].latch
+        {
+            return Err(format!(
+                "state proposal conflicts with existing one-to-one correspondence: {} -> {}",
+                hint.rtl_state, hint.gate_instance
+            ));
+        }
+        result.push((si, Relation::Cell(ci, hint.inverted)));
+    }
+    Ok(result)
+}
+
 fn named(s: &Setting<'_>, leave_unpaired_free: bool) -> Result<Corr, String> {
     let (c, model, nm) = (s.c, s.model, s.nm);
     let iq_to_cell: HashMap<u32, usize> =

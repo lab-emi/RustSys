@@ -81,6 +81,13 @@ table. Generate the README, homepage and benchmark guide tables with
 `scaling_report.comparison_table(..., include_quality=True)` to show both tools'
 cell area and setup-Fmax alongside time, speedup and peak RSS. All three use the same
 archived measurements and certificates.
+For the IHP SG13G2 / EZ130 extension, use `additional_report.py --update-docs`
+with the complete new measurement/validation/control directories. It combines
+the pinned baseline and additional campaign into one table across all three
+surfaces. `scaling_report.py` alone must not replace this combined overview.
+Review the nearby design/PDK counts, speedup range, proof totals and campaign
+links when changing the selected campaigns. The EZ130 extension measures
+16-core allocations; it does not supply new single-core scaling results.
 State the benchmark CPU before the table using the campaign's host provenance;
 peak memory is the largest measured GNU time peak RSS across the three timed runs.
 Keep the setup-Fmax scope and OpenC910 characterization-limit caveat beside each table.

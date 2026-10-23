@@ -165,6 +165,8 @@ def packed_json(path,value):
 
 
 def publish(a):
+    if getattr(a,'root_readme',None) and '| EZ130 8T |' in a.root_readme.read_text():
+        raise ValueError('use additional_report.py --update-docs to retain the complete three-PDK overview')
     max_files=getattr(a,'max_files',65536)
     max_model_bytes=getattr(a,'max_model_bytes',32768)
     max_evidence_bytes=getattr(a,'max_evidence_bytes',256*1024**2)

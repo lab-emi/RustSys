@@ -1,0 +1,32 @@
+{
+  "checks": {
+    "clippy": "-p rustsys-check --all-targets -- -D warnings",
+    "documentation": {
+      "broken_links": 0,
+      "comparison_columns": 11,
+      "comparison_rows": 15,
+      "html_local_references": 5941,
+      "new_runtime_js_or_css_dependencies": false,
+      "pages": 60,
+      "static_page_bytes_below": 2097152,
+      "strict_build": "passed"
+    },
+    "external_state_controls": 6,
+    "external_tie_model_checks": 4,
+    "format": "cargo fmt --all --check",
+    "fresh_lec_netlists": 10,
+    "fresh_sta_netlists": 10,
+    "layout": "passed",
+    "python_harness_tests": 112,
+    "rustsys_check_tests": 104,
+    "shared_files": 195
+  },
+  "evidence_sha256": {
+    ".work/ez130-20261022/checker-clippy-final-v2.log": "3b7646d01f94c7fbfc41514d4e7e57403cd8cef2e31974a98c9e17b991c5e1f7",
+    ".work/ez130-20261022/checker-tests-publish.log": "03e741117d620b75d726775eac3e59c00dbf36111c1afc2dfd8440bc17803c50",
+    ".work/ez130-20261022/docs-final.log": "ec9b1b3c666bb2e8b7dc6747403e79514dc4cc739c0045ab506c3630dbcfc101",
+    ".work/ez130-20261022/final-python.log": "41ed78b78dce955532064a279abc6976c54b8259e7aac7049e92d0cb314b2da2"
+  },
+  "scope": "IHP SG13G2 / EZ130 8T, all five designs; no reset/input assumptions",
+  "status": "passed"
+}

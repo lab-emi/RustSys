@@ -1,0 +1,9 @@
+{
+  "original_name": "large-artifacts.json.gz",
+  "parts": [
+    "large-artifacts.json.gz.part-0000",
+    "large-artifacts.json.gz.part-0001"
+  ],
+  "reassemble": "concatenate listed parts in order",
+  "sha256": "963794a7ce2002c8dca058932e3b142a95453521107e99c26ca70ad441e7d272"
+}

@@ -120,6 +120,10 @@ def prove(cfg,d,args,sample):
         raise ValueError('invalid physical memory/swap guard')
     files=[*map(Path,cfg['design']['files']),Path(cfg['library'])]
     netlist=Path(cfg['directory'])/'netlist.v';files.append(netlist)
+    if cfg.get('state_proposals_file'):
+        proposals=Path(cfg['state_proposals_file'])
+        if proposals.stat().st_size>8*1024**2:raise ValueError('state proposal byte budget')
+        files.append(proposals)
     source_hashes={};tools={}
     result={'method':METHOD,'status':'unverified','verdict':'unverified','partitions':0,
         'source_sha256':source_hashes,'tools':tools,'steps':steps,'harness_sha256':HARNESS_PINS,

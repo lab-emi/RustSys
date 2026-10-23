@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "scope": "Nominal vendor Verilog functional models for the two constant tie cells; no reset or RTL input assumptions. Liberty driver_type conflict is explicit, not a general strength/high-impedance model.",
+  "library_sha256": "847cb30b38f15ef0b9c4a735cfaf96c1782c013b1952261b25e5e38cd3ae072c",
+  "archive_sha256": "4c072bae2089f13d258f7c8a9b2bdb4e74002791cc30be89f6d2beac3069d517",
+  "member": "ez130_8t_v1p1/verilog/ez130_8t.v",
+  "member_sha256": "030ab84b191b8d1ad236a773d083c993b045565fa7a42d954100da58a3ab5b12",
+  "member_bytes": 207305,
+  "cells": [
+    {"name": "TIEHI", "pin": "Y", "constant": 1, "conflicting_driver_type": "open_drain"},
+    {"name": "TIELO", "pin": "Y", "constant": 0, "conflicting_driver_type": "open_source"}
+  ]
+}

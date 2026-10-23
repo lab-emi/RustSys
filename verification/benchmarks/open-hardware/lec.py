@@ -496,10 +496,11 @@ def prove(config, directory, yosys, eqy, abc, seconds=10800, memory_gib=8,
             # Prove a pin-equivalent behavioral model before substituting it;
             # this lets the clock recognizer see the same latch polarity as RTL.
             cell = ("gf180mcu_fd_sc_mcu7t5v0__latq_1" if "gf180mcu" in config["library"]
-                    else "sky130_fd_sc_hd__dlxtp_1" if "sky130" in config["library"] else None)
+                    else "sky130_fd_sc_hd__dlxtp_1" if "sky130" in config["library"]
+                    else "LATQX1" if "ez130_8t" in config["library"] else None)
             if cell is None:
                 raise equiv.AdaptationError("no certified clock-latch model for this library")
-            model = run.LEC_FIXTURES / "lec-latches.v"
+            model = run.LEC_FIXTURES / ("lec-latches-ez130.v" if "ez130_8t" in config["library"] else "lec-latches.v")
             component = directory / "latch-model"
             component.mkdir()
             library_script = (

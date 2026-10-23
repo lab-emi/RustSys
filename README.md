@@ -25,7 +25,7 @@ equivalence from your terminal, CI pipeline, or coding agent. Part of the **Rust
 
 <!-- measured-performance-pitch -->
 
-- **High performance:** 1.50×–42.11× faster than pinned Yosys 0.67 on the measured five-design, two-PDK suite, with 16 physical host cores per tool.
+- **High performance:** 1.50×–42.11× faster than pinned Yosys 0.67 on the measured five-design, three-PDK suite, with 16 physical host cores per tool.
 - **Easy to script:** result-only stdout, coded diagnostics on stderr, JSON output, fixed exit statuses.
 - **Easy to resume:** recorded commands, input hashes, artifacts, and event logs; query reports as JSON or TSV.
 - **Safe to coordinate:** daemonless disk workspaces, immutable revisions, and explicit `--base-rev` conflict checks.
@@ -38,7 +38,8 @@ equivalence from your terminal, CI pipeline, or coding agent. Part of the **Rust
 
 **CPU: AMD Ryzen 9 9950X3D 16-Core Processor** · 16 physical host cores per tool, no SMT siblings.
 
-Five complete RISC-V designs × two PDKs. **16 physical host cores per tool**,
+Five complete RISC-V designs × three PDKs: Sky130 HD, GF180 7T, and
+**EZ130 8T v1.1 on IHP SG13G2** (TT, 1.20 V, 25°C). **16 physical host cores per tool**,
 one warm-up and three measured runs; median wall times below.
 Time includes workspace init/import, synthesis, mmap and full Verilog export;
 source preparation, LEC and timing analysis are outside the timer.
@@ -49,14 +50,19 @@ source preparation, LEC and timing analysis are outside the timer.
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Ibex | Sky130 HD | 0.89 | 6.66 | **7.48×** | 91.9 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
 | Ibex | GF180 7T | 0.98 | 6.69 | **6.83×** | 118.6 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
+| Ibex | EZ130 8T | 0.84 | 6.80 | **8.10×** | 95.7 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
 | PicoRV32 | Sky130 HD | 0.47 | 1.12 | **2.38×** | 66.0 | 81.0 | 76,169 | 83,603 | 107.53 | 67.75 |
 | PicoRV32 | GF180 7T | 0.57 | 1.51 | **2.65×** | 117.3 | 100.2 | 233,097 | 255,798 | 26.65 | 15.98 |
+| PicoRV32 | EZ130 8T | 0.46 | 1.46 | **3.17×** | 69.0 | 76.4 | 97,920 | 99,559 | 157.73 | 73.15 |
 | SERV | Sky130 HD | 0.35 | 0.87 | **2.49×** | 65.9 | 71.9 | 51,461 | 54,067 | 60.28 | 57.47 |
 | SERV | GF180 7T | 0.76 | 1.14 | **1.50×** | 117.4 | 90.4 | 163,404 | 167,428 | 43.27 | 19.54 |
+| SERV | EZ130 8T | 0.35 | 1.10 | **3.14×** | 67.1 | 67.0 | 69,321 | 65,052 | 121.65 | 67.02 |
 | VexRiscv | Sky130 HD | 2.46 | 63.53 | **25.83×** | 449.8 | 840.2 | 2,399,458 | 2,909,809 | 10.22 | 1.56 |
 | VexRiscv | GF180 7T | 2.23 | 79.27 | **35.55×** | 481.3 | 864.1 | 7,490,709 | 8,856,262 | 4.47 | 0.689 |
+| VexRiscv | EZ130 8T | 3.09 | 79.06 | **25.59×** | 863.1 | 853.5 | 3,225,087 | 3,429,484 | 4.20 | 2.12 |
 | OpenC910 | Sky130 HD | 69.06 | 1,413.58 | **20.47×** | 7,492.7 | 16,339.8 | 53,453,688 | 59,995,158 | 0.69 | 0.0486 |
 | OpenC910 | GF180 7T | 64.41 | 2,712.45 | **42.11×** | 7,543.2 | 17,511.3 | 165,273,357 | 184,901,294 | 0.0989 | 0.00397 |
+| OpenC910 | EZ130 8T | 83.37 | 2,811.45 | **33.72×** | 8,641.9 | 16,979.2 | 71,069,987 | 72,190,882 | 0.0171 | 0.0159 |
 
 <!-- open-hardware-benchmark:end -->
 
@@ -67,11 +73,17 @@ Aggregate cgroup memory peaks remain in the complete receipts.
 parasitics. OpenC910 loads exceed Liberty characterization limits; its raw Fmax
 does not establish achievable frequency. [Timing scope](https://lab-emi.github.io/RustSys/guide/performance/#interpret-the-timing-estimate).
 
-Speedup = **Yosys time ÷ RustSys time**. All **20 distinct netlists pass
+Speedup = **Yosys time ÷ RustSys time**. All **30 distinct netlists pass
 arbitrary-state RTL LEC**, with no reset or input assumption added.
 
-[Full 1/16-core results, CPU use, area, setup-Fmax and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) ·
+[Sky130/GF180: full 1/16-core results and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) ·
+[IHP/EZ130: 16-core results and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md) ·
 [Benchmark method](https://lab-emi.github.io/RustSys/guide/benchmarks/).
+
+On EZ130, RustSys is **3.14×–33.72× faster**; SERV uses **6.6% more cell area**
+than Yosys. EZ130 functional LEC follows the vendor’s nominal tie-cell Verilog
+models; the Liberty driver-type conflict and checked supplement are
+[documented explicitly](https://lab-emi.github.io/RustSys/verification/pdk/#additional-ihp-sg13g2-benchmark-library).
 
 <!-- large-hardware-benchmark:start -->
 
@@ -113,9 +125,10 @@ constraint-check receipts are retained. OpenC910 exceeds the default cleanup bud
 
 <!-- parallel-hardware-scaling:start -->
 
-Both tools emit byte-identical netlists at 1 and 16 cores; thread count preserves
-measured area and timing. The complete campaign linked above retains the
-single-core comparisons and CPU scaling evidence.
+For Sky130/GF180, both tools emit byte-identical netlists at 1 and 16 cores;
+thread count preserves measured area and timing. The linked baseline retains
+the single-core comparisons and CPU scaling evidence. The IHP/EZ130 extension
+measures 16 cores; it makes no new within-tool scaling claim.
 
 <!-- parallel-hardware-scaling:end -->
 

@@ -51,6 +51,24 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| {
             PathBuf::from(config["directory"].as_str().unwrap_or(".")).join("netlist.v")
         });
+    let mut export = config["export_obligations"]
+        .as_str()
+        .map(|path| rustsys_check::ObligationExport::new(PathBuf::from(path)));
+    if let Some(options) = &mut export {
+        if let Some(path) = config["state_proposals_file"].as_str() {
+            if fs::metadata(path)?.len() > 8 * 1024 * 1024 {
+                return Err("state proposal file byte budget exceeded".into());
+            }
+            options.state_proposals = serde_json::from_reader(File::open(path)?)?;
+        }
+        if let Some(value) = config.get("export_discovery_work") {
+            options.max_discovery_work = value.as_u64().ok_or("invalid export_discovery_work")?;
+        }
+        if let Some(value) = config.get("export_discovery_rounds") {
+            options.max_discovery_rounds =
+                usize::try_from(value.as_u64().ok_or("invalid export_discovery_rounds")?)?;
+        }
+    }
     let options = CheckOptions {
         rtl: Input::Files(files),
         top: config["design"]["top"].as_str().map(String::from),
@@ -59,9 +77,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         budget: 2_000_000,
         model_budget: 2_000_000,
         sweep_max_candidates: 0,
-        obligation_export: config["export_obligations"]
-            .as_str()
-            .map(|p| rustsys_check::ObligationExport::new(PathBuf::from(p))),
+        obligation_export: export,
         observation_probes: config
             .get("observation_probes")
             .map(|p| serde_json::from_value(p.clone()))

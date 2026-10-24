@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 RustEDA contributors
 
-//! Integration tests for `rusteda import --netlist` (RCLI-REQ-0011, RCLI-REQ-0019).
+//! Integration tests for `rusteda import --netlist` (RCLI-REQ-0011, RCLI-REQ-0019,
+//! RCLI-REQ-0024).
 
 use std::env;
 use std::fs;
@@ -314,16 +315,13 @@ endmodule
     let _ = fs::remove_dir_all(&root);
 }
 
-/// RCLI-REQ-0019: Unresolved cell, unresolved pin, and multi-corner pin-direction conflict must
-/// fail with exit 1 (`INPUT_REJECTED`), a `V0302` diagnostic, and `file:line:col` location.
-/// RCLI-REQ-0019: a Yosys-style netlist with concatenations, part-selects in both directions,
-/// sized constants and escaped buses in `assign` statements imports bit for bit as the reader
-/// specifies (most significant bit first, the bits of a part-select from its left to its right
-/// index); a width mismatch is still rejected. Debug builds of `rusteda` also check the fast reader
-/// against the full reader on this input.
+/// RCLI-REQ-0019: a flat netlist with concatenations, part-selects in both directions, sized
+/// constants and escaped buses in `assign` statements imports bit for bit as the reader specifies
+/// (most significant bit first, the bits of a part-select from its left to its right index); a
+/// width mismatch is still rejected.
 #[test]
-fn import_yosys_style_concatenations_part_selects_and_sized_constants() {
-    let root = temp_dir("yosys-assigns");
+fn import_flat_concatenations_part_selects_and_sized_constants() {
+    let root = temp_dir("concat-assigns");
     let ws_path = root.join("ws");
     let ws_s = ws_path.to_str().unwrap();
     let (code, _, _) = run_json(&["init", "-w", ws_s]);
@@ -442,6 +440,108 @@ endmodule
     let _ = fs::remove_dir_all(&root);
 }
 
+/// RCLI-REQ-0024: a netlist that the streaming reader declines (here a part-select against the
+/// declared direction) is read by the full reader only within `--max-netlist-ast-mib`; beyond it
+/// the import is rejected with a `V0300` error that names the budget and the option, and HEAD
+/// does not move. A netlist that the streaming reader takes ignores the budget.
+#[test]
+fn full_reader_budget_bounds_netlists_the_streaming_reader_declines() {
+    let root = temp_dir("ast-budget");
+    let ws_path = root.join("ws");
+    let ws_s = ws_path.to_str().unwrap();
+    assert_eq!(run_json(&["init", "-w", ws_s]).0, 0);
+    let lib_file = root.join("synth_pg.lib");
+    fs::write(&lib_file, SYNTH_PG_LIB).unwrap();
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws_s,
+        "--base-rev",
+        "rev0",
+        "--lib",
+        lib_file.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "library import failed: {env}");
+
+    let netlist = |select: &str| {
+        format!(
+            "module top(a, y, q);\n  input [3:0] a;\n  output y;\n  output [2:0] q;\n  \
+             INVX1 i0 (.A(a[0]), .Y(y));\n  assign q = {select};\nendmodule\n"
+        )
+    };
+    let declined = root.join("declined.v");
+    fs::write(&declined, netlist("a[1:3]")).unwrap();
+    let streamed = root.join("streamed.v");
+    fs::write(&streamed, netlist("a[3:1]")).unwrap();
+    let import = |file: &Path, extra: &[&str]| {
+        let mut args = vec![
+            "import",
+            "-w",
+            ws_s,
+            "--base-rev",
+            "rev1",
+            "--netlist",
+            file.to_str().unwrap(),
+        ];
+        args.extend_from_slice(extra);
+        run_json(&args)
+    };
+
+    let (code, env, _) = import(&declined, &["--max-netlist-ast-mib", "0"]);
+    assert_eq!(code, 1, "over the budget: {env}");
+    assert_eq!(env["error"]["code"], "INPUT_REJECTED");
+    let d0 = &env["diagnostics"][0];
+    assert_eq!(d0["code"], "V0300");
+    let msg = d0["message"].as_str().unwrap();
+    assert!(
+        msg.contains("0 MiB") && msg.contains("--max-netlist-ast-mib"),
+        "{msg}"
+    );
+
+    // The rejection left HEAD at rev1; the streaming reader ignores the budget.
+    assert_eq!(run_json(&["show", "-w", ws_s]).1["rev"], "rev1");
+    let (code, env, _) = import(&streamed, &["--max-netlist-ast-mib", "0"]);
+    assert_eq!(code, 0, "streamed netlist: {env}");
+    assert_eq!(env["metrics"]["assigns"], 3);
+    assert_eq!(run_json(&["show", "-w", ws_s]).1["rev"], "rev2");
+
+    // The default budget (64 MiB) reads the declined netlist with the full reader.
+    let ws2 = root.join("ws2");
+    let ws2_s = ws2.to_str().unwrap();
+    assert_eq!(run_json(&["init", "-w", ws2_s]).0, 0);
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws2_s,
+        "--base-rev",
+        "rev0",
+        "--lib",
+        lib_file.to_str().unwrap(),
+        "--netlist",
+        declined.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "within the default budget: {env}");
+    assert_eq!(env["metrics"]["assigns"], 3);
+
+    // The budget only applies to a netlist import.
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws2_s,
+        "--base-rev",
+        "rev1",
+        "--lib",
+        lib_file.to_str().unwrap(),
+        "--max-netlist-ast-mib",
+        "1",
+    ]);
+    assert_eq!(code, 1, "a budget without --netlist: {env}");
+    assert_eq!(env["error"]["code"], "USAGE");
+    let _ = fs::remove_dir_all(&root);
+}
+
+/// RCLI-REQ-0019: Unresolved cell, unresolved pin, and multi-corner pin-direction conflict must
+/// fail with exit 1 (`INPUT_REJECTED`), a `V0302` diagnostic, and `file:line:col` location.
 #[test]
 fn unresolved_cell_unresolved_pin_and_corner_direction_conflict() {
     let root = temp_dir("netlist-errors");

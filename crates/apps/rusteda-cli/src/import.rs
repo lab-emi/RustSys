@@ -24,6 +24,8 @@ pub(crate) struct ImportCommand {
     pub libs: Vec<(PathBuf, String)>,
     pub rtl: Option<RtlImportArgs>,
     pub netlist: Option<PathBuf>,
+    /// Budget of the full netlist reader in MiB (RCLI-REQ-0024).
+    pub max_netlist_ast_mib: u64,
     pub sdc_files: Vec<PathBuf>,
     pub sdc_env: Vec<String>,
     /// `(--spef, --spef-corner)` pairs in command-line order (RCLI-REQ-0075).
@@ -75,7 +77,14 @@ pub(crate) fn run_import(
             import_rtl(&mut txn, rtl_args, &mut metrics, diags)?;
         }
         if let Some(netlist_path) = &cmd.netlist {
-            import_netlist(ws, &mut txn, netlist_path, &mut metrics, diags)?;
+            import_netlist(
+                ws,
+                &mut txn,
+                netlist_path,
+                cmd.max_netlist_ast_mib,
+                &mut metrics,
+                diags,
+            )?;
         }
         if !cmd.sdc_files.is_empty() {
             import_sdc(

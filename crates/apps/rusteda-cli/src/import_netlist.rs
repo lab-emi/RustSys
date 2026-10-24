@@ -342,11 +342,14 @@ fn read_netlist_ast(
     }
 }
 
-/// Imports a structural Verilog netlist into `txn` (`RCLI-REQ-0011`, `RCLI-REQ-0019`).
+/// Imports a structural Verilog netlist into `txn` (`RCLI-REQ-0011`, `RCLI-REQ-0019`); a file
+/// that the streaming reader declines is read by the full reader only up to `max_ast_mib` MiB
+/// (`RCLI-REQ-0024`).
 pub(crate) fn import_netlist(
     ws: &Workspace,
     txn: &mut Txn,
     file: &Path,
+    max_ast_mib: u64,
     metrics: &mut JsonMap,
     diags: &mut Vec<Diagnostic>,
 ) -> Result<(), Error> {
@@ -397,10 +400,17 @@ pub(crate) fn import_netlist(
         fast
     } else {
         // Whole-file token/AST expansion is unsuitable for multi-million-cell
-        // flat inputs. Keep unsupported large syntax explicit and bounded.
-        if text.len() > 64 * 1024 * 1024 {
-            let msg = "large flat netlist uses syntax unsupported by the bounded streaming importer (64 MiB AST fallback budget)";
-            diags.push(Diagnostic::new(Severity::Error, DiagCode::of(C_UNSUP), msg));
+        // flat inputs. Keep unsupported large syntax explicit and bounded (RCLI-REQ-0024).
+        if text.len() as u64 > max_ast_mib.saturating_mul(1 << 20) {
+            let msg = format!(
+                "large flat netlist uses syntax unsupported by the bounded streaming importer \
+                 ({max_ast_mib} MiB AST fallback budget, --max-netlist-ast-mib)"
+            );
+            diags.push(Diagnostic::new(
+                Severity::Error,
+                DiagCode::of(C_UNSUP),
+                msg.clone(),
+            ));
             return Err(Error::input_rejected(msg));
         }
         let g = read_netlist_ast(&text, &source_str, &catalog, diags)?;

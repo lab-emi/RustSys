@@ -36,6 +36,8 @@
 
 **RCLI-REQ-0019** `rusteda import --netlist <FILE>` reads a structural gate-level Verilog netlist, resolves every instantiated library cell and pin against the revision's libraries across all corners (rejecting unknown cells/pins and cross-corner pin-direction conflicts with `V`-series diagnostics and `file:line:col` locations), drops `pg_pin` connections and supply ports with one aggregated `V`-series warning, encodes the frozen netlist into `netlist.rbin` (`NETLIST` v1) with an empty upstream map, and records the source in `meta.json` `sources`.
 
+**RCLI-REQ-0024** `rusteda import --netlist <FILE>` reads a flat netlist with a bounded streaming reader when it can. A netlist that the streaming reader declines is read with the full Verilog reader only when the file is at most `--max-netlist-ast-mib <MIB>` mebibytes (default 64); a larger one is rejected before the full reader runs (`INPUT_REJECTED`, a `V0300` error that names the budget and the option), and HEAD does not move. The budget does not apply to a netlist that the streaming reader takes, and the option requires `--netlist`. The full reader holds the whole syntax tree in memory: its peak resident memory was measured at about 42 times the file size (1.07 GiB for a 26 MiB flat netlist, against 95 MiB with the streaming reader), so the default bounds it near 2.6 GiB. Estimate the memory before raising the budget.
+
 ## Queries, revert, export, and completions
 
 **RCLI-REQ-0015** `rusteda log -w <WS> [--limit <N>]` lists committed revisions newest-first with `rev`, `parent`, `command`, `message`, `tables`, and `created_unix_ms`.

@@ -886,7 +886,8 @@ mod tests {
             ErrorCode::RevisionConflict,
             "JSON keeps the envelope code"
         );
-        // The application's errors take its code (RustSTA: A0003 command line, A0002 internal).
+        // The application's errors take its code (the timing tool's: A0003 command line, A0002
+        // internal).
         for (error, code) in [
             (Error::usage("unknown flag --x"), "A0003"),
             (Error::internal("bug"), "A0002"),

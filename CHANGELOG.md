@@ -118,6 +118,9 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
   that reads it reports whether it is checked".
 - Debug builds of `rusteda import --netlist` check the fast flat reader against the full reader
   (structural or extended) on small inputs.
+- The 64 MiB budget of the full netlist reader, for a netlist that the streaming reader cannot
+  take, is the option `rusteda import --max-netlist-ast-mib` (default 64, RCLI-REQ-0024); its
+  `V0300` error names the budget and the option.
 - `rusteda-formats` lists SPEF among its formats; the external-simulator oracle tests of
   `rusteda-compute` (ignored by default) read `RUSTEDA_SPICE_SIMULATOR`,
   `RUSTEDA_RC_ORACLE_WORKSPACE` and `RUSTEDA_RC_WIRE_WORKSPACE`.

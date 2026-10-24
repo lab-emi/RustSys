@@ -281,6 +281,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | RCLI-REQ-0021 | docs/specs/rusteda-cli/README.md | crates/apps/rusteda-cli/src/import_logic.rs<br>crates/apps/rusteda-cli/src/import_rtl.rs<br>crates/apps/rusteda-cli/tests/import_logic.rs |
 | RCLI-REQ-0022 | docs/specs/rusteda-cli/README.md | crates/apps/rusteda-cli/src/import_logic.rs<br>crates/apps/rusteda-cli/src/import_rtl.rs<br>crates/apps/rusteda-cli/tests/import_logic.rs<br>crates/apps/rustsys-cli/src/ws/mod.rs<br>crates/apps/rustsys-cli/tests/netlist_sources.rs |
 | RCLI-REQ-0023 | docs/specs/rusteda-cli/README.md | crates/apps/rusteda-cli/src/query.rs<br>crates/apps/rusteda-cli/tests/show_drv.rs |
+| RCLI-REQ-0024 | docs/specs/rusteda-cli/README.md | crates/apps/rusteda-cli/src/import.rs<br>crates/apps/rusteda-cli/src/import_netlist.rs<br>crates/apps/rusteda-cli/src/lib.rs<br>crates/apps/rusteda-cli/tests/import_netlist.rs |
 | RCLI-REQ-0070 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import_spef.rs<br>crates/apps/rusteda-cli/tests/import_spef.rs |
 | RCLI-REQ-0071 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import_spef.rs<br>crates/formats/rusteda-formats/src/spef/tests.rs |
 | RCLI-REQ-0072 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import_spef.rs<br>crates/formats/rusteda-formats/src/spef/tests.rs |
@@ -642,10 +643,10 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | JOB | 7 | 0 |
 | LIBERTY | 49 | 0 |
 | PROTO | 22 | 0 |
-| RCLI | 29 | 0 |
+| RCLI | 30 | 0 |
 | SDC | 56 | 0 |
 | SYNTH | 158 | 0 |
 | VERILOG | 28 | 0 |
 | WS | 100 | 0 |
 
-619 requirements, 0 without a citing test or source.
+620 requirements, 0 without a citing test or source.

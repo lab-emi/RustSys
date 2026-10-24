@@ -170,7 +170,7 @@ mod tests {
         );
     }
 
-    /// The application code of the tests: RustSTA's code of an invalid command line.
+    /// The application code of the tests: the timing tool's code of an invalid command line.
     const APP: DiagCode = DiagCode::of("A0003");
 
     /// The first line of a diagnostic as the shared diagnostic reader takes it (JOB-REQ-0007):

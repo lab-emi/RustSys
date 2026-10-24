@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 RustEDA contributors
 
-//! Tests for the `LIBERTY v1` (`.rlib`) codec and cache loader (`WS-REQ-0110` to `WS-REQ-0116`).
+//! Tests for the `LIBERTY` (`.rlib`) codec and cache loader (`WS-REQ-0110` to `WS-REQ-0117`).
 
 mod common;
 
@@ -98,6 +98,10 @@ fn rich_library() -> Library {
         max_transition: Some(0.75),
         max_fanout: None,
         fanout_load: Some(1.25),
+        // Pin pulse attributes, carried since format version 4 (WS-REQ-0117).
+        min_pulse_width_high: Some(0.125),
+        min_pulse_width_low: Some(0.15),
+        min_period: Some(0.5),
         is_clock: true,
         arcs: Vec::new(),
         internal_power: Vec::new(),
@@ -138,6 +142,9 @@ fn rich_library() -> Library {
         max_transition: Some(0.5),
         max_fanout: Some(16.0),
         fanout_load: None,
+        min_pulse_width_high: None,
+        min_pulse_width_low: None,
+        min_period: None,
         is_clock: false,
         arcs: vec![TimingArc {
             related_pin: "A".to_string(),
@@ -607,5 +614,54 @@ fn cache_put_load_corners_and_transparent_recompile() {
         other => panic!("expected Workspace(SchemaTooNew), got {other:?}"),
     }
 
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// WS-REQ-0117: format version 4 carries the pin pulse attributes (`min_pulse_width_high`,
+/// `min_pulse_width_low`, `min_period`) through encode and decode, and a cached version 3 `.rlib`,
+/// which cannot hold them, is compiled again from its `.lib` instead of being read without them.
+#[test]
+fn version_4_carries_pin_pulse_attributes_and_recompiles_version_3() {
+    assert_eq!(FORMAT_VERSION, 4);
+    assert_eq!(VERSIONS, 4..=4);
+    let lib = rich_library();
+    let decoded = rlib::decode(&rlib::encode(&lib).unwrap()).unwrap();
+    let pin = |l: &Library| l.cells[0].pins[0].clone();
+    assert_eq!(
+        (
+            pin(&decoded).min_pulse_width_high,
+            pin(&decoded).min_pulse_width_low,
+            pin(&decoded).min_period
+        ),
+        (Some(0.125), Some(0.15), Some(0.5))
+    );
+
+    let dir = temp_dir("rlib-v3");
+    let ws = Workspace::init(&dir, &inv("rusteda init"))
+        .unwrap()
+        .workspace;
+    let base = ws.resolve_base("rev0").unwrap();
+    let mut txn = ws.begin(base, &inv("rusteda import")).unwrap();
+    let lib_bytes = b"library (rich_lib) { /* v3 */ }";
+    let cached = rlib::put(&ws, &lib, lib_bytes).unwrap();
+    txn.add_library(cached.entry("tt", "rich.lib")).unwrap();
+    txn.commit(BTreeMap::new()).unwrap();
+    let rev1 = ws.revision(Rev(1)).unwrap();
+    let mut v3 = RbinWriter::new(KIND, 3).unwrap();
+    v3.section_bytes(SEC_STR, 1, Vec::new()).unwrap();
+    fs::write(&cached.rlib_path, v3.to_bytes()).unwrap();
+    let (loaded, recompiled) = rlib::load_or_recompile(
+        &ws,
+        &rev1,
+        "rich_lib",
+        "tt",
+        |raw| -> Result<Library, String> {
+            assert_eq!(raw, lib_bytes);
+            Ok(lib.clone())
+        },
+    )
+    .unwrap();
+    assert!(recompiled, "a version 3 .rlib is compiled again");
+    assert_eq!(pin(&loaded).min_period, Some(0.5));
     let _ = fs::remove_dir_all(&dir);
 }

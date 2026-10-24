@@ -371,6 +371,14 @@ pub(super) fn build_cmd_kind(
                 objects,
             })
         }
+        "set_propagated_clock" | "unset_propagated_clock" => {
+            let objects = parse_obj_val(&p.pos[0], name, "clock_list")?;
+            Ok(if name == "set_propagated_clock" {
+                CmdKind::SetPropagatedClock { objects }
+            } else {
+                CmdKind::UnsetPropagatedClock { objects }
+            })
+        }
         "set_clock_transition" => {
             let raw_tr = parse_f64_val(&p.pos[0], name, "transition")?;
             let clocks = parse_obj_val(&p.pos[1], name, "clock_list")?;

@@ -711,14 +711,14 @@ pub static SCHEMAS: &[CmdSchema] = &[
     },
     CmdSchema {
         name: "set_propagated_clock",
-        status: CmdStatus::Phase2b,
+        status: CmdStatus::Interpreted,
         min_pos: 1,
         max_pos: 1,
         options: OPTS_NONE,
     },
     CmdSchema {
         name: "unset_propagated_clock",
-        status: CmdStatus::Phase2b,
+        status: CmdStatus::Interpreted,
         min_pos: 1,
         max_pos: 1,
         options: OPTS_NONE,

@@ -101,6 +101,13 @@ pub struct Pin {
     pub max_fanout: Option<f64>,
     /// Dimensionless input load for the fanout design rule.
     pub fanout_load: Option<f64>,
+    /// `min_pulse_width_high` and `min_pulse_width_low`: the unconditional minimum widths of the
+    /// high and the low pulse at the pin, in library units (LIBERTY-REQ-0049).
+    pub min_pulse_width_high: Option<f64>,
+    pub min_pulse_width_low: Option<f64>,
+    /// `min_period`: the unconditional minimum period of the signal at the pin, in library units
+    /// (LIBERTY-REQ-0049).
+    pub min_period: Option<f64>,
     pub is_clock: bool,
     pub arcs: Vec<TimingArc>,
     /// `internal_power` entries (LIBERTY-REQ-0016).

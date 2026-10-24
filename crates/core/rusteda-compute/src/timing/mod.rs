@@ -23,9 +23,9 @@ mod tests;
 mod validate;
 
 pub use abi::{
-    ArcClass, CompiledLutBank, FLAG_MASK, InArc, LevelizedTimingCsr, LutDesc, NEGATIVE_UNATE,
-    NON_UNATE, NONE, POSITIVE_UNATE, StartRows, TagMapRec, TimingProblem, WIRE, WireRec,
-    out_adjacency, transition_bit,
+    ArcClass, ArcValues, CompiledLutBank, FLAG_MASK, InArc, LevelizedTimingCsr, LutDesc,
+    NEGATIVE_UNATE, NON_UNATE, NONE, POSITIVE_UNATE, StartRows, TagMapRec, TimingProblem, WIRE,
+    WireRec, out_adjacency, transition_bit,
 };
 pub use state::{
     EARLY, FALL, LATE, NO_PRED, RISE, TimingStateSoA, TimingValues, absent, arr_index, pred_source,
@@ -190,6 +190,7 @@ pub trait TimingPropagationBackend: Send + Sync + std::fmt::Debug {
                 load: &state.load,
                 starts: &state.starts,
                 wires: &[],
+                arc_values: &[],
             };
             let mut s = self.open(&p)?;
             let req = Request {

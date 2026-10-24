@@ -249,3 +249,14 @@ write-combined.
 (COMPUTE-REQ-0010) and compiles its kernels for the precision, so that an engine can overlap the
 preparation with other work on a second thread (COMPUTE-REQ-0003); its result is the result the
 selection would give.
+
+## Prepared nonlinear arcs
+
+**COMPUTE-REQ-0030**: TimingProblem may carry one 128-byte ArcValues per incoming
+arc, with f64 delay/slew indexed (input transition, output transition, bound).
+Prepared values override cell lookup and wire degradation. They are immutable
+snapshots of loads, starts and classes: session patch methods must reject edits
+until the caller re-prepares the model. Validate size, finite values and
+nonnegative transitions. CPU/CUDA use identical data and agree bitwise in f64.
+Include these buffers in host/device budgets; test a three-node case plus
+extracted-engine propagation without enumerating timing paths.

@@ -11,6 +11,7 @@ mod cpu;
 mod gpu;
 mod known;
 pub(crate) mod naive;
+mod prepared;
 pub(crate) mod random;
 
 use crate::timing::{CPU, Request, TimingPropagationBackend, TimingValues};

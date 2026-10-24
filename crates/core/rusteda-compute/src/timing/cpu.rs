@@ -13,8 +13,8 @@ use rayon::prelude::*;
 use rusteda_core::job::Ctx;
 
 use super::abi::{
-    ArcClass, InArc, LevelizedTimingCsr, LutDesc, NONE, StartRows, TagMapRec, TimingProblem,
-    WireRec,
+    ArcClass, ArcValues, InArc, LevelizedTimingCsr, LutDesc, NONE, StartRows, TagMapRec,
+    TimingProblem, WireRec,
 };
 use super::lut::lookup;
 use super::state::{NO_PRED, TimingValues, absent, arr_index, canon, slew_index};
@@ -79,6 +79,7 @@ struct Inputs<'a> {
     data: &'a [f64],
     load: &'a [[f64; 4]],
     wires: &'a [WireRec],
+    arc_values: &'a [ArcValues],
     start_row: &'a [u32],
     starts: &'a StartRows,
     ntags: usize,
@@ -135,7 +136,10 @@ impl Inputs<'_> {
                             continue;
                         }
                         let l = self.load[v][to * 2 + an];
-                        let (d, q) = if c.is_wire() {
+                        let (d, q) = if let Some(rec) = self.arc_values.get(k) {
+                            let j = (ti * 2 + to) * 2 + an;
+                            (rec.delay[j], rec.slew[j])
+                        } else if c.is_wire() {
                             match self.wires.get(k) {
                                 Some(w) => (w.delay[to * 2 + an], degrade(s, w.slew[to * 2 + an])),
                                 None => (0.0, s),
@@ -222,6 +226,7 @@ struct CpuSession<'p> {
     load: Cow<'p, [[f64; 4]]>,
     starts: Cow<'p, StartRows>,
     wires: &'p [WireRec],
+    arc_values: &'p [ArcValues],
     start_row: Vec<u32>,
     /// The level of every node, built for the first cone.
     level_of: Vec<u32>,
@@ -243,6 +248,7 @@ impl<'p> CpuSession<'p> {
             load: Cow::Borrowed(p.load),
             starts: Cow::Borrowed(p.starts),
             wires: p.wires,
+            arc_values: p.arc_values,
             start_row: start_index(p.graph.nodes(), p.starts),
             level_of: Vec::new(),
             values: TimingValues {
@@ -270,6 +276,7 @@ impl<'p> CpuSession<'p> {
             data: &self.luts.data,
             load: &self.load,
             wires: self.wires,
+            arc_values: self.arc_values,
             start_row: &self.start_row,
             starts: &self.starts,
             ntags: self.ntags as usize,
@@ -565,6 +572,11 @@ impl TimingSession for CpuSession<'_> {
     }
 
     fn set_loads(&mut self, edits: &[(u32, [f64; 4])]) -> Result<(), ComputeError> {
+        if !self.arc_values.is_empty() {
+            return Err(ComputeError::Invalid(
+                "re-prepare RC arc values before patching inputs".into(),
+            ));
+        }
         let n = self.nodes();
         for &(v, l) in edits {
             if v as usize >= n {
@@ -581,6 +593,11 @@ impl TimingSession for CpuSession<'_> {
     }
 
     fn set_arc_classes(&mut self, edits: &[(u32, u32)]) -> Result<(), ComputeError> {
+        if !self.arc_values.is_empty() {
+            return Err(ComputeError::Invalid(
+                "re-prepare RC arc values before patching inputs".into(),
+            ));
+        }
         let (na, nc) = (self.in_arcs.len(), self.luts.classes.len());
         for &(k, c) in edits {
             if k as usize >= na || c as usize >= nc {
@@ -608,6 +625,11 @@ impl TimingSession for CpuSession<'_> {
     }
 
     fn set_starts(&mut self, starts: &StartRows) -> Result<(), ComputeError> {
+        if !self.arc_values.is_empty() {
+            return Err(ComputeError::Invalid(
+                "re-prepare RC arc values before patching inputs".into(),
+            ));
+        }
         let n = self.nodes();
         validate_starts(starts, n, self.ntags)?;
         diff_starts(&self.starts, starts, self.ntags, &mut self.patched);

@@ -305,3 +305,9 @@ locations, and exits with code `1` (`INPUT_REJECTED`). A stale `--base-rev` exit
 (both top-level `--sdc` files and files loaded via relative `source`) with `table: "constraints"`
 and its `xxh3` file hash, and every `--sdc-env NAME=VALUE` binding with `table: "constraints"`,
 `path: "env:NAME=VALUE"`, and the `xxh3` hash of `VALUE`.
+
+**SDC-REQ-0070** `set_propagated_clock` and `unset_propagated_clock` are now
+interpreted typed commands with one object collection, preserved by `CONSTR v1`.
+This supersedes their Phase 2a D0010 classification in SDC-REQ-0034. The consumer
+resolves clock collections and reports unsupported object/source/network features
+explicitly; it must not silently use an ideal network for selected physical clocks.

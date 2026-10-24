@@ -657,7 +657,8 @@ fn selections_expand_their_paths() {
 }
 
 // CLI-REQ-0209: the target derived from constraints, with units, overrides and warnings for
-// what the estimate does not model; without constraints the target is not derived.
+// what the estimate does not model (also `set_propagated_clock`, a typed constraint since
+// SDC-REQ-0070); without constraints the target is not derived.
 #[test]
 fn constraints_give_the_timing_target() {
     let sdc = "set_units -time ps -capacitance fF
@@ -673,6 +674,7 @@ set_clock_uncertainty -setup 40 [get_clocks clk]
 set_clock_uncertainty -hold 90 [get_clocks clk]
 set_false_path -from [get_ports rst_n]
 set_clock_latency 100 [get_clocks clk]
+set_propagated_clock [get_clocks clk]
 ";
     let env = WsEnv::new("constraints");
     let ws = env.seed("pipeline", Some(sdc));
@@ -698,7 +700,12 @@ set_clock_latency 100 [get_clocks clk]
         .filter(|d| d["code"] == "S0535")
         .map(|d| d["message"].as_str().unwrap().to_string())
         .collect();
-    for want in ["2 clocks", "set_false_path", "set_clock_latency"] {
+    for want in [
+        "2 clocks",
+        "set_false_path",
+        "set_clock_latency",
+        "set_propagated_clock",
+    ] {
         assert!(
             warnings.iter().any(|w| w.contains(want)),
             "{want}: {warnings:?}"

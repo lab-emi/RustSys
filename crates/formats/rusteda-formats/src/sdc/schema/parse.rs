@@ -721,7 +721,7 @@ pub fn parse_top_cmd(
                             Severity::Warning,
                             "D0021",
                             format!(
-                                "design-rule command '{}' is recorded in CONSTR v1 but not analyzed by the timing engine",
+                                "design-rule command '{}' is recorded in CONSTR v1; the analysis that reads it reports whether it is checked",
                                 schema.name
                             ),
                         )

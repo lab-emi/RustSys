@@ -124,11 +124,16 @@ fn builder_tables_open_in_both_modes() {
         let raw = bytes_of(&sample(mode));
         let rbin = Rbin::from_bytes(raw.clone(), KIND, VERSIONS).unwrap();
         assert_eq!(rbin.kind(), "STA");
-        assert_eq!(rbin.format_version(), 1);
+        assert_eq!(rbin.format_version(), FORMAT_VERSION);
         let ids: Vec<u32> = rbin.sections().iter().map(|s| s.id).collect();
         assert_eq!(ids, (1..=24).collect::<Vec<_>>());
         for s in rbin.sections() {
-            assert_eq!(Some(s.elem_size), section::elem_size(s.id), "{}", s.id);
+            assert_eq!(
+                Some(s.elem_size),
+                section::elem_size(s.id, FORMAT_VERSION),
+                "{}",
+                s.id
+            );
         }
         rbin.verify_hash().unwrap();
         let t = StaTable::from_bytes(raw).unwrap();
@@ -324,16 +329,30 @@ fn malformed_structure_is_corrupt() {
     // The container: kind, version, section directory, element sizes, file length.
     let secs = sections_of(&bytes_of(&s));
     assert_eq!(open_code(assemble("NETLIST", 1, &secs)), CorruptTable);
-    assert_eq!(open_code(assemble(KIND, 2, &secs)), SchemaTooNew);
+    assert_eq!(
+        open_code(assemble(KIND, FORMAT_VERSION + 1, &secs)),
+        SchemaTooNew
+    );
     let mut fewer = secs.clone();
     fewer.remove(&section::NOTES);
-    assert_eq!(open_code(assemble(KIND, 1, &fewer)), CorruptTable);
+    assert_eq!(
+        open_code(assemble(KIND, FORMAT_VERSION, &fewer)),
+        CorruptTable
+    );
     let mut more = secs.clone();
     more.insert(25, (1, vec![0]));
-    assert_eq!(open_code(assemble(KIND, 1, &more)), CorruptTable);
+    assert_eq!(
+        open_code(assemble(KIND, FORMAT_VERSION, &more)),
+        CorruptTable
+    );
     let mut resized = secs.clone();
-    resized.get_mut(&section::ENDPOINTS).unwrap().0 = 16;
-    assert_eq!(open_code(assemble(KIND, 1, &resized)), CorruptTable);
+    resized.get_mut(&section::ENDPOINTS).unwrap().0 = 12;
+    assert_eq!(
+        open_code(assemble(KIND, FORMAT_VERSION, &resized)),
+        CorruptTable
+    );
+    // Version-2 sections in a version-1 container have the wrong element sizes.
+    assert_eq!(open_code(assemble(KIND, 1, &secs)), CorruptTable);
     let mut tail = bytes_of(&s);
     tail.extend_from_slice(&[0; 8]);
     assert_eq!(open_code(tail), CorruptTable);
@@ -371,8 +390,9 @@ fn malformed_structure_is_corrupt() {
     assert_eq!(open_code(raw), CorruptTable, "TAG_EXTRA_PTR past TAG_EXTRA");
     // Row pointers, hash tables, strings and scope.
     let raw = mutated(&s, |x| {
+        // The last 64-bit pointer: its low word.
         let b = bytes(x, section::PATH_CHAIN_PTR);
-        let last = b.len() - 4;
+        let last = b.len() - 8;
         let v = get_u32(b, last);
         set_u32(b, last, v - 2);
     });
@@ -403,8 +423,8 @@ fn malformed_indices_are_corrupt() {
     let t = StaTable::from_bytes(raw).unwrap();
     assert_eq!(t.path(0).unwrap_err().code(), CorruptTable);
     assert_eq!(t.path_ranks().unwrap_err().code(), CorruptTable);
-    // A rank record whose early-check bit disagrees with its check.
-    let raw = mutated(&s, |x| bytes(x, section::PATH_RANK)[7] ^= 1);
+    // A rank record whose early-check bit disagrees with its check (flags at byte 10).
+    let raw = mutated(&s, |x| bytes(x, section::PATH_RANK)[10] ^= 1);
     assert_eq!(
         StaTable::from_bytes(raw)
             .unwrap()
@@ -413,8 +433,9 @@ fn malformed_indices_are_corrupt() {
             .code(),
         CorruptTable
     );
-    // A chain step naming a bucket out of range, and one naming another node.
-    let step = (CHAIN_HEADER_WORDS + 1) * 4;
+    // A chain step naming a bucket out of range, and one naming another node. A version-2 step
+    // is `[node, step_word, name_bucket]`: the first bucket is word `CHAIN_HEADER_WORDS + 2`.
+    let step = (CHAIN_HEADER_WORDS + 2) * 4;
     let raw = mutated(&chained, |x| {
         set_u32(bytes(x, section::PATH_CHAIN), step, 999)
     });
@@ -428,7 +449,7 @@ fn malformed_indices_are_corrupt() {
     );
     let raw = mutated(&chained, |x| {
         let b = bytes(x, section::PATH_CHAIN);
-        let other = get_u32(b, step + 8);
+        let other = get_u32(b, step + 12);
         set_u32(b, step, other);
     });
     assert_eq!(
@@ -440,7 +461,7 @@ fn malformed_indices_are_corrupt() {
         CorruptTable
     );
     // A chain row pointer past its neighbour.
-    let raw = mutated(&s, |x| set_u32(bytes(x, section::PATH_CHAIN_PTR), 4, 9999));
+    let raw = mutated(&s, |x| set_u32(bytes(x, section::PATH_CHAIN_PTR), 8, 9999));
     assert_eq!(
         StaTable::from_bytes(raw)
             .unwrap()
@@ -652,4 +673,81 @@ fn builder_rejects_misuse() {
         ErrorCode::Internal,
         "a path that does not end at an endpoint"
     );
+}
+
+/// The version-1 bytes of a version-2 table: name buckets back in bits 10..32 of `kind_flags`,
+/// 20-bit endpoints in `PATH_RANK`, `[step_word, name_bucket]` chain steps with 24-bit nodes.
+fn downgraded_to_v1(raw: &[u8]) -> Vec<u8> {
+    let mut secs = sections_of(raw);
+    let eps = std::mem::take(bytes(&mut secs, section::ENDPOINTS));
+    let mut v1 = Vec::new();
+    for r in eps.chunks_exact(36) {
+        let mut rec = r[..32].to_vec();
+        let flags = get_u32(&rec, 20) | (get_u32(r, 32) << 10);
+        set_u32(&mut rec, 20, flags);
+        v1.extend(rec);
+    }
+    *secs.get_mut(&section::ENDPOINTS).unwrap() = (32, v1);
+    let ranks = std::mem::take(bytes(&mut secs, section::PATH_RANK));
+    let mut v1 = Vec::new();
+    for r in ranks.chunks_exact(12) {
+        let ep = get_u32(r, 4);
+        v1.extend_from_slice(&r[..4]);
+        v1.extend_from_slice(&((ep & 0xFFFF) as u16).to_le_bytes());
+        v1.push(r[8] | (((ep >> 16) as u8) << 4));
+        v1.push(r[10]);
+    }
+    *secs.get_mut(&section::PATH_RANK).unwrap() = (8, v1);
+    let ptr = std::mem::take(bytes(&mut secs, section::PATH_CHAIN_PTR));
+    let chain = std::mem::take(bytes(&mut secs, section::PATH_CHAIN));
+    let words = |b: &[u8]| -> Vec<u32> { b.chunks_exact(4).map(|w| get_u32(w, 0)).collect() };
+    let ptr: Vec<u32> = ptr
+        .chunks_exact(8)
+        .map(|w| u32::try_from(u64::from_le_bytes(w.try_into().unwrap())).unwrap())
+        .collect();
+    let chain = words(&chain);
+    let (mut new_ptr, mut new_chain) = (vec![0u32], Vec::new());
+    for row in ptr.windows(2) {
+        let w = &chain[row[0] as usize..row[1] as usize];
+        new_chain.extend_from_slice(&w[..CHAIN_HEADER_WORDS]);
+        for st in w[CHAIN_HEADER_WORDS..].chunks_exact(3) {
+            new_chain
+                .push((st[0] & 0x00FF_FFFF) | ((st[1] & 1) << 24) | (((st[1] >> 1) & 3) << 25));
+            new_chain.push(st[2]);
+        }
+        new_ptr.push(new_chain.len() as u32);
+    }
+    let bytes_of_words =
+        |w: &[u32]| -> Vec<u8> { w.iter().flat_map(|x| x.to_le_bytes()).collect() };
+    *secs.get_mut(&section::PATH_CHAIN_PTR).unwrap() = (4, bytes_of_words(&new_ptr));
+    *secs.get_mut(&section::PATH_CHAIN).unwrap() = (4, bytes_of_words(&new_chain));
+    assemble(KIND, 1, &secs)
+}
+
+// WS-REQ-0126, WS-REQ-0127: a version-1 table stays readable and answers every query as the
+// version-2 table it was converted from.
+#[test]
+fn version_one_tables_read_like_version_two() {
+    for mode in [StoreMode::Full, StoreMode::Summary] {
+        for top_k in [None, Some(0)] {
+            let mut b = sample(mode);
+            if let Some(k) = top_k {
+                b.top_k(k);
+            }
+            let raw = bytes_of(&b);
+            let (t2, t1) = (
+                StaTable::from_bytes(raw.clone()).unwrap(),
+                StaTable::from_bytes(downgraded_to_v1(&raw)).unwrap(),
+            );
+            assert_eq!(t1.endpoints(0).unwrap(), t2.endpoints(0).unwrap());
+            assert_eq!(t1.path_ranks().unwrap(), t2.path_ranks().unwrap());
+            for row in 0..t2.path_ranks().unwrap().len() {
+                assert_eq!(t1.path(row).unwrap(), t2.path(row).unwrap(), "path {row}");
+                assert_eq!(
+                    t1.path_required(row).unwrap(),
+                    t2.path_required(row).unwrap()
+                );
+            }
+        }
+    }
 }

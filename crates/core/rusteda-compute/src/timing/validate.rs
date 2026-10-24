@@ -73,6 +73,19 @@ impl TimingProblem<'_> {
             check_load(v, l)?;
         }
         validate_starts(self.starts, n, self.ntags)?;
+        if !self.arc_values.is_empty() {
+            if self.arc_values.len() != g.arcs() {
+                return bad("RC arc value count".into());
+            }
+            for rec in self.arc_values {
+                if rec.delay.iter().chain(&rec.slew).any(|x| !x.is_finite())
+                    || rec.slew.iter().any(|x| *x < 0.0)
+                {
+                    return bad("invalid RC arc values".into());
+                }
+            }
+        }
+
         if !self.wires.is_empty() {
             if self.wires.len() != g.arcs() {
                 return bad(format!(

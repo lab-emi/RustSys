@@ -395,6 +395,9 @@ impl<'a> Decoder<'a> {
         let clock_gate_test_pin = self.read_bool()?;
         let clock_gate_obs_pin = self.read_bool()?;
         let line = self.read_u32()?;
+        let min_pulse_width_high = self.read_opt_f64()?;
+        let min_pulse_width_low = self.read_opt_f64()?;
+        let min_period = self.read_opt_f64()?;
         Ok(Pin {
             name,
             direction,
@@ -413,6 +416,9 @@ impl<'a> Decoder<'a> {
             max_transition,
             max_fanout,
             fanout_load,
+            min_pulse_width_high,
+            min_pulse_width_low,
+            min_period,
             is_clock,
             arcs,
             internal_power,

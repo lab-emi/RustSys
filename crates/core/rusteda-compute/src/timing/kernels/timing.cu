@@ -123,6 +123,8 @@ __device__ unsigned long long eval_node(
     const real* load,
     const real* wires,
     unsigned has_wires,
+    const real* arc_values,
+    unsigned has_arc_values,
     const unsigned* start_row,
     const real* start_arr,
     const real* start_slew,
@@ -175,7 +177,11 @@ __device__ unsigned long long eval_node(
                     }
                     real l = load[v * 4u + to * 2u + an];
                     real d, q;
-                    if ((flags & WIRE) != 0u) {
+                    if (has_arc_values != 0u) {
+                        const real* av=arc_values+(unsigned long long)k*16ULL;
+                        unsigned j=(ti*2u+to)*2u+an;
+                        d=av[j]; q=av[8u+j];
+                    } else if ((flags & WIRE) != 0u) {
                         if (has_wires != 0u) {
                             const real* wr = wires + (unsigned long long)k * 8ULL;
                             d = wr[to * 2u + an];
@@ -287,6 +293,8 @@ extern "C" __global__ void propagate_level(
     const real* load,
     const real* wires,
     unsigned has_wires,
+    const real* arc_values,
+    unsigned has_arc_values,
     const unsigned* start_row,
     const real* start_arr,
     const real* start_slew,
@@ -303,7 +311,7 @@ extern "C" __global__ void propagate_level(
     unsigned long long w = (unsigned long long)ntags * 4ULL;
     unsigned long long mx = eval_node(
         v, ntags, arr, slew, in_ptr, in_arcs, map_ptr, map_tags, map_vals,
-        classes, luts, data, load, wires, has_wires, start_row, start_arr, start_slew,
+        classes, luts, data, load, wires, has_wires, arc_values, has_arc_values, start_row, start_arr, start_slew,
         arr + (unsigned long long)v * w,
         slew + (unsigned long long)v * 4ULL,
         pred + (unsigned long long)v * w
@@ -332,6 +340,8 @@ extern "C" __global__ void propagate_cone(
     const real* load,
     const real* wires,
     unsigned has_wires,
+    const real* arc_values,
+    unsigned has_arc_values,
     const unsigned* start_row,
     const real* start_arr,
     const real* start_slew,
@@ -359,7 +369,7 @@ extern "C" __global__ void propagate_cone(
     real ds[4];
     unsigned long long mx = eval_node(
         v, ntags, arr, slew, in_ptr, in_arcs, map_ptr, map_tags, map_vals,
-        classes, luts, data, load, wires, has_wires, start_row, start_arr, start_slew,
+        classes, luts, data, load, wires, has_wires, arc_values, has_arc_values, start_row, start_arr, start_slew,
         da, ds, dp
     );
     atomicAdd(&stats[0], 1ULL);

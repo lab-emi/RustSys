@@ -1,6 +1,6 @@
 [package]
 name = "rusteda-formats"
-description = "Readers and writers of the RustEDA tools: SystemVerilog, Liberty, SDC, BLIF and AIGER"
+description = "Readers and writers of the RustEDA tools: SystemVerilog, Liberty, SDC, SPEF, BLIF and AIGER"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -10,8 +10,10 @@ authors = ["RustEDA contributors"]
 repository.workspace = true
 
 [dependencies]
+serde.workspace = true
 rusteda-core.workspace = true
 thiserror.workspace = true
+flate2.workspace = true
 rayon.workspace = true
 rustc-hash.workspace = true
 smallvec.workspace = true

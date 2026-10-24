@@ -182,6 +182,15 @@ impl WireRec {
     }
 }
 
+/// Evaluated RC arc values, per (input transition, output transition, bound).
+/// CPU waveform preparation is tag-independent; all backends consume identical data.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Pod, Zeroable)]
+pub struct ArcValues {
+    pub delay: [f64; 8],
+    pub slew: [f64; 8],
+}
+
 /// The levelized timing graph (COMPUTE-REQ-0011) with its tag maps (COMPUTE-REQ-0012).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LevelizedTimingCsr<'a> {
@@ -341,6 +350,8 @@ pub struct TimingProblem<'a> {
     pub starts: &'a StartRows,
     /// Empty (ideal wires) or one record per incoming arc in CSR order.
     pub wires: &'a [WireRec],
+    /// Empty, or one prepared RC delay/transition record per incoming arc.
+    pub arc_values: &'a [ArcValues],
 }
 
 impl TimingProblem<'_> {

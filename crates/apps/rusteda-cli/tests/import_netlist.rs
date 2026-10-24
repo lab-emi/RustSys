@@ -316,6 +316,132 @@ endmodule
 
 /// RCLI-REQ-0019: Unresolved cell, unresolved pin, and multi-corner pin-direction conflict must
 /// fail with exit 1 (`INPUT_REJECTED`), a `V0302` diagnostic, and `file:line:col` location.
+/// RCLI-REQ-0019: a Yosys-style netlist with concatenations, part-selects in both directions,
+/// sized constants and escaped buses in `assign` statements imports bit for bit as the reader
+/// specifies (most significant bit first, the bits of a part-select from its left to its right
+/// index); a width mismatch is still rejected. Debug builds of `rusteda` also check the fast reader
+/// against the full reader on this input.
+#[test]
+fn import_yosys_style_concatenations_part_selects_and_sized_constants() {
+    let root = temp_dir("yosys-assigns");
+    let ws_path = root.join("ws");
+    let ws_s = ws_path.to_str().unwrap();
+    let (code, _, _) = run_json(&["init", "-w", ws_s]);
+    assert_eq!(code, 0);
+    let lib_file = root.join("synth_pg.lib");
+    fs::write(&lib_file, SYNTH_PG_LIB).unwrap();
+
+    let v_file = root.join("top.v");
+    let verilog = r#"
+module top(a, b, y, z, q);
+  input [3:0] a;
+  input b;
+  output [3:0] y;
+  output [1:0] z;
+  output [0:2] q;
+  wire [3:0] \u.bus ;
+  wire [1:0] w;
+  INVX1 i0 (
+    .A(a[0]),
+    .Y(\u.bus [0])
+  );
+  INVX1 i1 (
+    .A(a[1]),
+    .Y(\u.bus [1])
+  );
+  NAND2X1 n0 (
+    .A(a[2]),
+    .B(b),
+    .Y(w[1])
+  );
+  assign \u.bus [3:2] = 2'h1;
+  assign w[0] = 1'b0;
+  assign y = { \u.bus [1:0], w };
+  assign z[1:0] = { a[3], 1'h1 };
+  assign q = a[1:3];
+endmodule
+"#;
+    fs::write(&v_file, verilog).unwrap();
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws_s,
+        "--base-rev",
+        "rev0",
+        "--lib",
+        lib_file.to_str().unwrap(),
+        "--netlist",
+        v_file.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "import failed: {env}");
+    assert_eq!(env["metrics"]["cells"], 3);
+    assert_eq!(env["metrics"]["assigns"], 12);
+
+    let ws = Workspace::open(&ws_path).unwrap();
+    let rev1 = ws.revision(ws.resolve_query("rev1").unwrap()).unwrap();
+    let rbin = rusteda_workspace::netlist::open_rev(&rev1).unwrap();
+    let n = rusteda_workspace::netlist::decode(&rbin).unwrap();
+    let name = |row: u32| -> String {
+        match row {
+            rusteda_core::netlist::CONST0 => "0".to_string(),
+            rusteda_core::netlist::CONST1 => "1".to_string(),
+            r => {
+                let rec = &n.nets[r as usize];
+                let base = n.string(rec.name).unwrap().to_string();
+                if rec.index == rusteda_core::netlist::SCALAR {
+                    base
+                } else {
+                    format!("{base}[{}]", rec.index)
+                }
+            }
+        }
+    };
+    let got: Vec<(String, String)> = n
+        .assigns
+        .iter()
+        .map(|a| (name(a.lhs), name(a.rhs)))
+        .collect();
+    let want: Vec<(String, String)> = [
+        ("u.bus[3]", "0"),
+        ("u.bus[2]", "1"),
+        ("w[0]", "0"),
+        ("y[3]", "u.bus[1]"),
+        ("y[2]", "u.bus[0]"),
+        ("y[1]", "w[1]"),
+        ("y[0]", "w[0]"),
+        ("z[1]", "a[3]"),
+        ("z[0]", "1"),
+        ("q[0]", "a[1]"),
+        ("q[1]", "a[2]"),
+        ("q[2]", "a[3]"),
+    ]
+    .iter()
+    .map(|&(l, r)| (l.to_string(), r.to_string()))
+    .collect();
+    assert_eq!(got, want);
+
+    // 3 bits to 4: rejected with a width diagnostic, as by the full reader.
+    let bad = verilog.replace("assign q = a[1:3];", "assign y = a[2:0];");
+    let v_bad = root.join("bad.v");
+    fs::write(&v_bad, bad).unwrap();
+    let ws2 = root.join("ws2");
+    let ws2_s = ws2.to_str().unwrap();
+    assert_eq!(run_json(&["init", "-w", ws2_s]).0, 0);
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws2_s,
+        "--base-rev",
+        "rev0",
+        "--lib",
+        lib_file.to_str().unwrap(),
+        "--netlist",
+        v_bad.to_str().unwrap(),
+    ]);
+    assert_ne!(code, 0, "a width mismatch must be rejected: {env}");
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn unresolved_cell_unresolved_pin_and_corner_direction_conflict() {
     let root = temp_dir("netlist-errors");

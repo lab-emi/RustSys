@@ -11,6 +11,7 @@ mod import_logic;
 mod import_netlist;
 mod import_rtl;
 mod import_sdc;
+mod import_spef;
 mod init;
 mod query;
 mod revert;
@@ -136,6 +137,23 @@ pub struct InitArgs {}
 
 #[derive(Args, Debug)]
 pub struct ImportArgs {
+    /// Detailed RC SPEF (repeatable); each needs an extraction corner, paired in order with
+    /// `--spef-corner`.
+    #[arg(long, requires = "spef_corner", value_name = "FILE")]
+    pub spef: Vec<PathBuf>,
+    /// The library corner of each `--spef`, in the same order (repeatable).
+    #[arg(long, requires = "spef", value_name = "NAME")]
+    pub spef_corner: Vec<String>,
+    #[arg(long, default_value_t = 32, requires = "spef")]
+    pub max_spef_mib: usize,
+    #[arg(long, default_value_t = 100_000, requires = "spef")]
+    pub max_rc_nets: usize,
+    #[arg(long, default_value_t = 500_000, requires = "spef")]
+    pub max_rc_nodes: usize,
+    #[arg(long, default_value_t = 1_000_000, requires = "spef")]
+    pub max_rc_elements: usize,
+    #[arg(long, default_value_t = 16, requires = "spef")]
+    pub max_rc_name_mib: usize,
     /// Base revision expected to be HEAD (e.g. `rev0`).
     #[arg(long = "base-rev", value_name = "REV")]
     pub base_rev: String,
@@ -719,6 +737,22 @@ pub fn run(args: Vec<OsString>) -> ExitCode {
                 None
             };
 
+            if imp.spef.len() != imp.spef_corner.len() {
+                let e = Error::usage(
+                    "every --spef FILE needs its own --spef-corner NAME, paired in order",
+                );
+                let _ = ws.log_rejected(&inv, base_rev_parsed, &e);
+                return finish_error(
+                    sub_name,
+                    Some(&ws_arg),
+                    base_rev_parsed,
+                    e,
+                    Vec::new(),
+                    format,
+                    quiet,
+                );
+            }
+
             if imp.sdc.is_empty() && !imp.sdc_env.is_empty() {
                 let e = Error::usage("--sdc-env requires --sdc <FILE>...");
                 let _ = ws.log_rejected(&inv, base_rev_parsed, &e);
@@ -741,6 +775,19 @@ pub fn run(args: Vec<OsString>) -> ExitCode {
                 netlist: imp.netlist.clone(),
                 sdc_files: imp.sdc.clone(),
                 sdc_env: imp.sdc_env.clone(),
+                spefs: imp
+                    .spef
+                    .iter()
+                    .cloned()
+                    .zip(imp.spef_corner.iter().cloned())
+                    .collect(),
+                spef_limits: rusteda_formats::spef::Limits {
+                    max_bytes: imp.max_spef_mib.saturating_mul(1 << 20),
+                    max_nets: imp.max_rc_nets,
+                    max_nodes: imp.max_rc_nodes,
+                    max_elements: imp.max_rc_elements,
+                    max_name_bytes: imp.max_rc_name_mib.saturating_mul(1 << 20),
+                },
             };
             let mut diags = Vec::new();
             match run_import(&ws, &ws_arg, &cmd, &inv, &mut diags) {

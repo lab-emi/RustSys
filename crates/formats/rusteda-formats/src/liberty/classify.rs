@@ -244,7 +244,10 @@ fn attr_class(ctx: Ctx, name: &str) -> AttrClass {
             | "clock_gate_out_pin"
             | "clock_gate_obs_pin"
             | "internal_node"
-            | "state_function" => C(S),
+            | "state_function"
+            | "min_pulse_width_high"
+            | "min_pulse_width_low"
+            | "min_period" => C(S),
             "rise_capacitance_range" | "fall_capacitance_range" => C(X),
             "driver_waveform"
             | "driver_waveform_rise"
@@ -252,9 +255,6 @@ fn attr_class(ctx: Ctx, name: &str) -> AttrClass {
             | "input_voltage"
             | "output_voltage"
             | "nextstate_type"
-            | "min_period"
-            | "min_pulse_width_high"
-            | "min_pulse_width_low"
             | "driver_type"
             | "inverted_output"
             | "input_signal_level"

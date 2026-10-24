@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 RustEDA contributors
 
-//! Section ids, element sizes and the fixed-size records of the `STA` v1 table
-//! (WS-REQ-0126, WS-REQ-0127).
+//! Section ids, element sizes and the fixed-size records of the `STA` table, format versions 1
+//! and 2 (WS-REQ-0126, WS-REQ-0127). Version 2 widens the endpoint index of `PATH_RANK`, the name
+//! bucket of `ENDPOINTS` and the node of a `PATH_CHAIN` step to 32 bits and the word offsets of
+//! `PATH_CHAIN_PTR` to 64 bits; version 1 stays readable.
 //!
 //! Every record is `#[repr(C)]` plain old data without padding, so a section is viewed in place
 //! as `&[Record]` from a map or an aligned buffer. The field order is the byte order of the
@@ -40,15 +42,18 @@ pub(crate) mod section {
     /// The number of sections.
     pub(crate) const COUNT: u32 = 24;
 
-    /// The element size of section `id`, `None` outside `1..=24`.
-    pub(crate) const fn elem_size(id: u32) -> Option<u32> {
+    /// The element size of section `id` in format `version`, `None` outside `1..=24`.
+    pub(crate) const fn elem_size(id: u32, version: u32) -> Option<u32> {
         Some(match id {
             STR_BYTES | SCOPE => 1,
+            PATH_CHAIN_PTR if version >= 2 => 8,
             STR_OFFS | TAG_EXTRA_PTR | EP_ORDER | PATH_CHAIN_PTR | PATH_CHAIN | NAME_HASH
             | INST_HASH => 4,
+            PATH_RANK if version >= 2 => 12,
             PATH_RANK => 8,
             UNCONSTRAINED => 12,
             CORNERS | TAGS | DISABLED_ARCS | EP_SLACK | NOTES => 16,
+            ENDPOINTS if version >= 2 => 36,
             ENDPOINTS | PATH_POINTS => 32,
             CLOCKS => 48,
             TAG_EXTRA | PATHS => 56,
@@ -166,10 +171,27 @@ pub(crate) struct NodeRec {
     pub pred: [[u32; 2]; 2],
 }
 
-/// `ENDPOINTS`: one record per checked endpoint.
+/// `ENDPOINTS` of format version 2: one record per checked endpoint.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Pod, Zeroable)]
 pub(crate) struct EndpointRec {
+    pub data_node: u32,
+    pub clock_node: u32,
+    pub capture_clock: u32,
+    pub path_group_str: u32,
+    pub check_arc: u32,
+    /// Bits 0..8 kind, 8..10 capture edge, 10..32 zero.
+    pub kind_flags: u32,
+    pub worst_setup_rank: u32,
+    pub worst_hold_rank: u32,
+    /// `NAME_HASH` bucket + 1 of `data_node` (0: none).
+    pub name_bucket_plus1: u32,
+}
+
+/// `ENDPOINTS` of format version 1, which kept the name bucket in bits 10..32 of `kind_flags`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Pod, Zeroable)]
+pub(crate) struct EndpointRecV1 {
     pub data_node: u32,
     pub clock_node: u32,
     pub capture_clock: u32,
@@ -181,6 +203,23 @@ pub(crate) struct EndpointRec {
     pub worst_hold_rank: u32,
 }
 
+impl EndpointRecV1 {
+    /// The record in the layout of format version 2.
+    pub(crate) const fn upgrade(&self) -> EndpointRec {
+        EndpointRec {
+            data_node: self.data_node,
+            clock_node: self.clock_node,
+            capture_clock: self.capture_clock,
+            path_group_str: self.path_group_str,
+            check_arc: self.check_arc,
+            kind_flags: self.kind_flags & 0x3FF,
+            worst_setup_rank: self.worst_setup_rank,
+            worst_hold_rank: self.worst_hold_rank,
+            name_bucket_plus1: self.kind_flags >> 10,
+        }
+    }
+}
+
 /// `EP_SLACK`: setup and hold slack of one (corner, endpoint); NaN when absent.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -189,10 +228,22 @@ pub(crate) struct EpSlackRec {
     pub hold_slack: f64,
 }
 
-/// `PATH_RANK`: one record per ranked path, in rank order.
+/// `PATH_RANK` of format version 2: one record per ranked path, in rank order.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub(crate) struct PathRankRec {
+    pub slack_ns: f32,
+    pub endpoint: u32,
+    pub corner: u16,
+    /// Bit 0 hold family, bit 1 end transition, bits 2..4 check kind, bit 7 materialized.
+    pub flags: u8,
+    pub pad: u8,
+}
+
+/// `PATH_RANK` of format version 1, which addressed `2^20` endpoints and 16 corners.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+pub(crate) struct PathRankRecV1 {
     pub slack_ns: f32,
     /// Bits 0..16 of the endpoint index.
     pub endpoint_lo: u16,
@@ -200,6 +251,19 @@ pub(crate) struct PathRankRec {
     pub corner_ep_hi: u8,
     /// Bit 0 hold family, bit 1 end transition, bits 2..4 check kind, bit 7 materialized.
     pub flags: u8,
+}
+
+impl PathRankRecV1 {
+    /// The record in the layout of format version 2.
+    pub(crate) fn upgrade(&self) -> PathRankRec {
+        PathRankRec {
+            slack_ns: self.slack_ns,
+            endpoint: u32::from(self.endpoint_lo) | (u32::from(self.corner_ep_hi >> 4) << 16),
+            corner: u16::from(self.corner_ep_hi & 0x0F),
+            flags: self.flags,
+            pad: 0,
+        }
+    }
 }
 
 /// `PATHS`: the header of one materialized (top-K) path.
@@ -259,9 +323,11 @@ const _: () = {
     assert!(size_of::<ClockRec>() == 48);
     assert!(size_of::<TagRec>() == 16);
     assert!(size_of::<NodeRec>() == 152);
-    assert!(size_of::<EndpointRec>() == 32);
+    assert!(size_of::<EndpointRec>() == 36);
+    assert!(size_of::<EndpointRecV1>() == 32);
     assert!(size_of::<EpSlackRec>() == 16);
-    assert!(size_of::<PathRankRec>() == 8);
+    assert!(size_of::<PathRankRec>() == 12);
+    assert!(size_of::<PathRankRecV1>() == 8);
     assert!(size_of::<PathHeaderRec>() == 56);
     assert!(size_of::<PathPointRec>() == 32);
     assert!(size_of::<SummaryRec>() == 80);
@@ -270,6 +336,32 @@ const _: () = {
 /// Words of the header of every path chain: required time and check value, two `f64` as
 /// little-endian word pairs.
 pub(crate) const CHAIN_HEADER_WORDS: usize = 4;
+
+/// Words of one path-chain step in format `version`: `[node, step_word, name_bucket]` in
+/// version 2, `[step_word, name_bucket]` with a 24-bit node in version 1.
+pub(crate) const fn chain_step_words(version: u32) -> usize {
+    if version >= 2 { 3 } else { 2 }
+}
+
+/// One decoded path-chain step: `(node, transition bit, point code, name bucket)`; a version-1
+/// step yields only the low 24 bits of its node.
+pub(crate) fn decode_chain_step(version: u32, w: &[u32]) -> (u32, u32, u32, u32) {
+    if version >= 2 {
+        (w[0], w[1] & 1, (w[1] >> 1) & 0b11, w[2])
+    } else {
+        (
+            w[0] & 0x00FF_FFFF,
+            (w[0] >> 24) & 1,
+            (w[0] >> 25) & 0b11,
+            w[1],
+        )
+    }
+}
+
+/// The bits of a node id that a path-chain step of format `version` keeps.
+pub(crate) const fn chain_node_mask(version: u32) -> u32 {
+    if version >= 2 { u32::MAX } else { 0x00FF_FFFF }
+}
 
 /// Words per bucket of `NAME_HASH` and `INST_HASH`.
 pub(crate) const BUCKET_WORDS: usize = 4;

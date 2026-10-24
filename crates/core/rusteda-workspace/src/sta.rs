@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 RustEDA contributors
 
-//! A validated, read-only, zero-copy view of the timing table `sta.rbin` (`STA` v1) that the
+//! A validated, read-only, zero-copy view of the timing table `sta.rbin` (`STA` v2, v1 still read) that the
 //! static timing analysis tool of the suite commits, and a small builder of such tables
 //! (WS-REQ-0126 to WS-REQ-0136, `docs/specs/workspace/sta.md`).
 //!
@@ -35,10 +35,10 @@ pub const TABLE_NAME: &str = "sta";
 pub const TABLE_PATH: &str = "sta.rbin";
 /// The rbin kind of the timing table (WS-REQ-0126).
 pub const KIND: &str = "STA";
-/// The format version this build reads and writes (WS-REQ-0126).
-pub const FORMAT_VERSION: u32 = 1;
+/// The format version this build writes (WS-REQ-0126).
+pub const FORMAT_VERSION: u32 = 2;
 /// The format versions this build reads (WS-REQ-0126).
-pub const VERSIONS: RangeInclusive<u32> = FORMAT_VERSION..=FORMAT_VERSION;
+pub const VERSIONS: RangeInclusive<u32> = 1..=FORMAT_VERSION;
 /// An absent index in a record (WS-REQ-0127).
 pub const NO_INDEX: u32 = u32::MAX;
 /// The name of the path group that aggregates every endpoint of a corner (WS-REQ-0131).

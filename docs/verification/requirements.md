@@ -148,6 +148,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | COMPUTE-REQ-0027 | docs/specs/compute/timing.md | crates/core/rusteda-compute/src/lib.rs<br>crates/core/rusteda-compute/src/timing/cpu.rs<br>crates/core/rusteda-compute/src/timing/mod.rs<br>crates/core/rusteda-compute/src/timing/tests/cpu.rs |
 | COMPUTE-REQ-0028 | docs/specs/compute/timing.md | crates/core/rusteda-compute/src/lib.rs<br>crates/core/rusteda-compute/src/timing/cuda.rs<br>crates/core/rusteda-compute/src/timing/tests/gpu.rs |
 | COMPUTE-REQ-0029 | docs/specs/compute/timing.md | crates/core/rusteda-compute/src/lib.rs<br>crates/core/rusteda-compute/src/timing/cuda.rs<br>crates/core/rusteda-compute/src/timing/mod.rs<br>crates/core/rusteda-compute/src/timing/tests/gpu.rs |
+| COMPUTE-REQ-0030 | docs/specs/compute/timing.md | crates/core/rusteda-compute/src/timing/tests/prepared.rs |
 | COMPUTE-REQ-0101 | docs/specs/compute/README.md | crates/core/rusteda-compute/src/cut/mod.rs<br>crates/core/rusteda-compute/src/cut/tests.rs<br>crates/core/rusteda-compute/src/lib.rs |
 | COMPUTE-REQ-0102 | docs/specs/compute/README.md | crates/core/rusteda-compute/src/cut/cuda.rs<br>crates/core/rusteda-compute/src/cut/mod.rs |
 | COMPUTE-REQ-0103 | docs/specs/compute/README.md | crates/core/rusteda-compute/src/cut/mod.rs<br>crates/core/rusteda-compute/src/cut/pack.rs |
@@ -165,7 +166,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | CORE-REQ-0120 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist.rs<br>crates/core/rusteda-core/src/netlist/tests.rs |
 | CORE-REQ-0121 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist.rs<br>crates/core/rusteda-core/src/netlist/tests.rs<br>crates/core/rusteda-core/src/netlist/tests_random.rs |
 | CORE-REQ-0122 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist.rs<br>crates/core/rusteda-core/src/netlist/tests.rs<br>crates/core/rusteda-core/src/netlist/tests_random.rs |
-| CORE-REQ-0123 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist.rs<br>crates/core/rusteda-core/src/netlist/error.rs<br>crates/core/rusteda-core/src/netlist/tests.rs<br>crates/core/rusteda-core/src/netlist/tests_random.rs |
+| CORE-REQ-0123 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist.rs<br>crates/core/rusteda-core/src/netlist/error.rs<br>crates/core/rusteda-core/src/netlist/tests.rs<br>crates/core/rusteda-core/src/netlist/tests_random.rs<br>crates/core/rusteda-workspace/src/edits.rs |
 | CORE-REQ-0124 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/tests.rs |
 | CORE-REQ-0125 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/tests.rs |
 | CORE-REQ-0126 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/tests.rs |
@@ -178,7 +179,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | CORE-REQ-0134 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/frozen.rs<br>crates/core/rusteda-core/src/netlist/tests_frozen.rs |
 | CORE-REQ-0135 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/frozen.rs<br>crates/core/rusteda-core/src/netlist/tests.rs<br>crates/core/rusteda-core/src/netlist/tests_frozen.rs<br>crates/core/rusteda-core/src/netlist/validate.rs |
 | CORE-REQ-0136 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/frozen.rs<br>crates/core/rusteda-core/src/netlist/tests.rs<br>crates/core/rusteda-core/src/netlist/tests_frozen.rs |
-| CORE-REQ-0137 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/frozen.rs<br>crates/core/rusteda-core/src/netlist/tests_frozen.rs<br>crates/core/rusteda-core/src/netlist/validate.rs |
+| CORE-REQ-0137 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/frozen.rs<br>crates/core/rusteda-core/src/netlist/tests_frozen.rs<br>crates/core/rusteda-core/src/netlist/validate.rs<br>crates/formats/rusteda-formats/src/verilog/netlist/freeze_writer.rs |
 | CORE-REQ-0138 | docs/specs/core/netlist.md | crates/core/rusteda-core/src/netlist/frozen.rs<br>crates/core/rusteda-core/src/netlist/tests_frozen.rs |
 | JOB-REQ-0001 | docs/specs/core/README.md | crates/core/rusteda-core/src/job.rs |
 | JOB-REQ-0002 | docs/specs/core/README.md | crates/core/rusteda-core/src/job.rs |
@@ -225,6 +226,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | LIBERTY-REQ-0046 | docs/specs/core/README.md | crates/core/rusteda-core/src/liberty/model.rs<br>crates/formats/rusteda-formats/src/liberty/build.rs<br>crates/formats/rusteda-formats/tests/liberty_extensions_and_diags.rs |
 | LIBERTY-REQ-0047 | docs/specs/core/README.md | crates/core/rusteda-core/src/liberty/kinds.rs<br>crates/core/rusteda-core/src/liberty/model.rs<br>crates/formats/rusteda-formats/src/liberty/build.rs<br>crates/formats/rusteda-formats/src/liberty/wire_load.rs<br>crates/formats/rusteda-formats/tests/liberty_extensions_and_diags.rs |
 | LIBERTY-REQ-0048 | docs/specs/core/README.md | crates/core/rusteda-core/src/liberty/kinds.rs<br>crates/core/rusteda-core/src/liberty/model.rs<br>crates/formats/rusteda-formats/src/liberty/build.rs<br>crates/formats/rusteda-formats/src/liberty/wire_load.rs<br>crates/formats/rusteda-formats/tests/liberty_extensions_and_diags.rs |
+| LIBERTY-REQ-0049 | docs/specs/core/README.md | crates/core/rusteda-core/src/liberty/model.rs<br>crates/formats/rusteda-formats/src/liberty/build.rs<br>crates/formats/rusteda-formats/tests/liberty_cells_and_pins.rs |
 | LIBERTY-REQ-0050 | docs/specs/liberty/liberty.md | crates/formats/rusteda-formats/src/liberty/build.rs<br>crates/formats/rusteda-formats/tests/liberty_extensions_and_diags.rs |
 | LIBERTY-REQ-0051 | docs/specs/liberty/liberty.md | crates/formats/rusteda-formats/src/liberty/build.rs<br>crates/formats/rusteda-formats/src/liberty/classify.rs<br>crates/formats/rusteda-formats/tests/liberty_extensions_and_diags.rs |
 | LIBERTY-REQ-0052 | docs/specs/liberty/liberty.md | crates/formats/rusteda-formats/src/liberty/diags.rs<br>crates/formats/rusteda-formats/tests/liberty_extensions_and_diags.rs |
@@ -278,6 +280,14 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | RCLI-REQ-0020 | docs/specs/rusteda-cli/README.md | crates/apps/rusteda-cli/src/export.rs<br>crates/apps/rusteda-cli/tests/export_netlist.rs |
 | RCLI-REQ-0021 | docs/specs/rusteda-cli/README.md | crates/apps/rusteda-cli/src/import_logic.rs<br>crates/apps/rusteda-cli/src/import_rtl.rs<br>crates/apps/rusteda-cli/tests/import_logic.rs |
 | RCLI-REQ-0022 | docs/specs/rusteda-cli/README.md | crates/apps/rusteda-cli/src/import_logic.rs<br>crates/apps/rusteda-cli/src/import_rtl.rs<br>crates/apps/rusteda-cli/tests/import_logic.rs<br>crates/apps/rustsys-cli/src/ws/mod.rs<br>crates/apps/rustsys-cli/tests/netlist_sources.rs |
+| RCLI-REQ-0023 | docs/specs/rusteda-cli/README.md | crates/apps/rusteda-cli/src/query.rs<br>crates/apps/rusteda-cli/tests/show_drv.rs |
+| RCLI-REQ-0070 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import_spef.rs<br>crates/apps/rusteda-cli/tests/import_spef.rs |
+| RCLI-REQ-0071 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import_spef.rs<br>crates/formats/rusteda-formats/src/spef/tests.rs |
+| RCLI-REQ-0072 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import_spef.rs<br>crates/formats/rusteda-formats/src/spef/tests.rs |
+| RCLI-REQ-0073 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import_spef.rs<br>crates/apps/rusteda-cli/tests/import_spef.rs<br>crates/formats/rusteda-formats/src/spef/source.rs |
+| RCLI-REQ-0074 | docs/specs/rusteda-cli/spef.md | crates/formats/rusteda-formats/src/spef/tests.rs |
+| RCLI-REQ-0075 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import.rs<br>crates/apps/rusteda-cli/src/import_spef.rs<br>crates/apps/rusteda-cli/tests/import_spef.rs<br>crates/formats/rusteda-formats/src/spef/mod.rs |
+| RCLI-REQ-0076 | docs/specs/rusteda-cli/spef.md | crates/apps/rusteda-cli/src/import.rs<br>crates/apps/rusteda-cli/tests/import_spef.rs |
 | SDC-REQ-0001 | docs/specs/sdc/sdc.md | crates/formats/rusteda-formats/src/sdc.rs<br>crates/formats/rusteda-formats/src/sdc/eval.rs<br>crates/formats/rusteda-formats/tests/sdc_fuzz.rs<br>crates/formats/rusteda-formats/tests/sdc_roundtrip.rs<br>crates/formats/rusteda-formats/tests/sdc_subset.rs |
 | SDC-REQ-0002 | docs/specs/sdc/sdc.md | crates/formats/rusteda-formats/src/sdc.rs<br>crates/formats/rusteda-formats/src/sdc/cmd.rs<br>crates/formats/rusteda-formats/src/sdc/schema.rs<br>crates/formats/rusteda-formats/src/sdc/schema/parse.rs<br>crates/formats/rusteda-formats/tests/sdc_commands.rs<br>crates/formats/rusteda-formats/tests/sdc_subset.rs |
 | SDC-REQ-0003 | docs/specs/sdc/sdc.md | crates/formats/rusteda-formats/src/sdc.rs<br>crates/formats/rusteda-formats/src/sdc/write.rs<br>crates/formats/rusteda-formats/tests/sdc_roundtrip.rs |
@@ -333,6 +343,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SDC-REQ-0053 | docs/specs/sdc/sdc.md | crates/apps/rusteda-cli/src/import_sdc.rs<br>crates/apps/rusteda-cli/tests/import_sdc.rs<br>crates/formats/rusteda-formats/tests/sdc_roundtrip.rs |
 | SDC-REQ-0054 | docs/specs/sdc/sdc.md | crates/apps/rusteda-cli/src/import_sdc.rs<br>crates/apps/rusteda-cli/tests/import_sdc.rs |
 | SDC-REQ-0055 | docs/specs/sdc/sdc.md | crates/apps/rusteda-cli/src/import_sdc.rs<br>crates/apps/rusteda-cli/tests/import_sdc.rs<br>crates/formats/rusteda-formats/src/sdc.rs |
+| SDC-REQ-0070 | docs/specs/sdc/sdc.md | crates/apps/rustsys-cli/tests/workspace_opt.rs<br>crates/formats/rusteda-formats/tests/sdc_commands.rs |
 | SYNTH-REQ-0101 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/lib.rs |
 | SYNTH-REQ-0102 | docs/specs/synth/frontend.md | crates/apps/rustsys-cli/tests/synth_frontend.rs |
 | SYNTH-REQ-0103 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/module.rs |
@@ -397,14 +408,14 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0407 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/bits.rs<br>crates/engines/rustsys/src/elab/expr.rs<br>crates/engines/rustsys/src/elab/mod.rs |
 | SYNTH-REQ-0408 | docs/specs/synth/optimization.md | crates/engines/rustsys/tests/passes.rs |
 | SYNTH-REQ-0410 | docs/specs/synth/optimization.md | crates/engines/rustsys/tests/passes.rs |
-| SYNTH-REQ-0411 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/balance.rs<br>crates/engines/rustsys/src/opt/factor.rs<br>crates/engines/rustsys/src/opt/lib4.rs<br>crates/engines/rustsys/src/opt/merge.rs<br>crates/engines/rustsys/src/opt/refactor.rs<br>crates/engines/rustsys/src/opt/resub.rs<br>crates/engines/rustsys/src/opt/rewrite.rs<br>crates/engines/rustsys/tests/passes.rs |
+| SYNTH-REQ-0411 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/balance.rs<br>crates/engines/rustsys/src/opt/factor.rs<br>crates/engines/rustsys/src/opt/lib4.rs<br>crates/engines/rustsys/src/opt/merge.rs<br>crates/engines/rustsys/src/opt/refactor.rs<br>crates/engines/rustsys/src/opt/resub.rs<br>crates/engines/rustsys/src/opt/rewrite.rs<br>crates/engines/rustsys/tests/balance.rs<br>crates/engines/rustsys/tests/passes.rs |
 | SYNTH-REQ-0412 | docs/specs/synth/optimization.md | crates/apps/rustsys-cli/src/proto/job.rs<br>crates/engines/rustsys/src/lib.rs |
 | SYNTH-REQ-0413 | docs/specs/synth/optimization.md | crates/apps/rustsys-cli/tests/synth_frontend.rs |
 | SYNTH-REQ-0414 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/muxdecode.rs<br>crates/engines/rustsys/tests/passes.rs |
 | SYNTH-REQ-0415 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/refactor.rs |
 | SYNTH-REQ-0416 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/refactor.rs |
 | SYNTH-REQ-0417 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/refactor.rs |
-| SYNTH-REQ-0418 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/refactor.rs |
+| SYNTH-REQ-0418 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/refactor.rs<br>crates/engines/rustsys/tests/passes.rs |
 | SYNTH-REQ-0501 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/library.rs<br>crates/engines/rustsys/tests/map_consistency.rs<br>xtask/src/pdk/scan.rs |
 | SYNTH-REQ-0502 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/library.rs |
 | SYNTH-REQ-0510 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/covers.rs<br>crates/engines/rustsys/src/map/cuts.rs<br>crates/engines/rustsys/src/map/mapper.rs |
@@ -416,13 +427,13 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0516 | docs/specs/synth/mapping.md | crates/apps/rustsys-cli/benches/backends.rs<br>crates/apps/rustsys-cli/src/proto/job.rs<br>crates/apps/rustsys-cli/tests/synth_backends.rs<br>crates/engines/rustsys/src/lib.rs<br>crates/engines/rustsys/src/map/compute.rs<br>crates/engines/rustsys/src/map/mapper.rs<br>crates/engines/rustsys/src/map/tests.rs |
 | SYNTH-REQ-0517 | docs/specs/synth/mapping.md | crates/apps/rustsys-cli/tests/synth_backends.rs<br>crates/engines/rustsys/src/map/area.rs<br>crates/engines/rustsys/src/map/tests.rs |
 | SYNTH-REQ-0518 | docs/specs/synth/mapping.md | crates/apps/rustsys-cli/tests/synth_backends.rs<br>crates/engines/rustsys/src/lib.rs<br>crates/engines/rustsys/src/map/mod.rs |
-| SYNTH-REQ-0520 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/mod.rs |
+| SYNTH-REQ-0520 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/mod.rs<br>crates/engines/rustsys/src/map/seq_select.rs<br>crates/engines/rustsys/tests/enabled_seq.rs |
 | SYNTH-REQ-0521 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/mod.rs |
 | SYNTH-REQ-0522 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/emit.rs<br>crates/engines/rustsys/src/map/library.rs<br>xtask/src/pdk/scan.rs |
-| SYNTH-REQ-0523 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/library.rs |
+| SYNTH-REQ-0523 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/electrical/tests.rs<br>crates/engines/rustsys/src/map/library.rs<br>crates/engines/rustsys/src/map/seq_modes.rs<br>crates/engines/rustsys/tests/enabled_seq.rs |
 | SYNTH-REQ-0524 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/tests.rs |
 | SYNTH-REQ-0525 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/tests.rs |
-| SYNTH-REQ-0530 | docs/specs/synth/electrical.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/electrical/mod.rs |
+| SYNTH-REQ-0530 | docs/specs/synth/electrical.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/electrical/mod.rs<br>crates/engines/rustsys/src/electrical/tests.rs |
 | SYNTH-REQ-0531 | docs/specs/synth/electrical.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/electrical/mod.rs<br>crates/engines/rustsys/src/electrical/tests.rs |
 | SYNTH-REQ-0532 | docs/specs/synth/electrical.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/electrical/mod.rs<br>crates/engines/rustsys/src/electrical/tests.rs |
 | SYNTH-REQ-0533 | docs/specs/synth/electrical.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/electrical/mod.rs<br>crates/engines/rustsys/src/electrical/tests.rs |
@@ -441,7 +452,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0546 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/electrical/tests.rs |
 | SYNTH-REQ-0547 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/electrical/state_phase.rs<br>crates/engines/rustsys/src/electrical/tests_rules.rs |
 | SYNTH-REQ-0548 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/electrical/tests.rs |
-| SYNTH-REQ-0549 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/electrical/tests.rs |
+| SYNTH-REQ-0549 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/electrical/tests/pin_groups.rs |
 | SYNTH-REQ-0550 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/covers.rs |
 | SYNTH-REQ-0551 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/electrical/repair.rs |
 | SYNTH-REQ-0552 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/covers.rs<br>crates/engines/rustsys/src/electrical/mod.rs<br>crates/engines/rustsys/src/electrical/network.rs<br>crates/engines/rustsys/src/electrical/repair.rs<br>crates/engines/rustsys/src/electrical/tests.rs<br>crates/engines/rustsys/src/electrical/tests_rules.rs |
@@ -457,7 +468,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0563 | docs/specs/synth/electrical.md | crates/engines/rustsys/src/electrical/incremental.rs<br>crates/engines/rustsys/src/electrical/mod.rs<br>crates/engines/rustsys/tests/incremental.rs |
 | SYNTH-REQ-0564 | docs/specs/synth/electrical.md | crates/apps/rustsys-cli/tests/workspace_opt.rs<br>crates/engines/rustsys/src/electrical/incremental.rs<br>crates/engines/rustsys/src/electrical/mod.rs<br>crates/engines/rustsys/tests/incremental.rs |
 | SYNTH-REQ-0565 | docs/specs/synth/electrical.md | crates/apps/rustsys-cli/src/ws/opt.rs<br>crates/engines/rustsys/src/estimate.rs<br>crates/engines/rustsys/tests/netlist_estimate.rs |
-| SYNTH-REQ-0601 | docs/specs/synth/netlist.md | crates/engines/rustsys/src/emit.rs<br>crates/engines/rustsys/tests/map_consistency.rs<br>xtask/src/pdk/scan.rs |
+| SYNTH-REQ-0601 | docs/specs/synth/netlist.md | crates/engines/rustsys/src/emit.rs<br>crates/engines/rustsys/tests/enabled_seq.rs<br>crates/engines/rustsys/tests/map_consistency.rs<br>xtask/src/pdk/scan.rs |
 | SYNTH-REQ-0602 | docs/specs/synth/netlist.md | crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/resolve.rs<br>crates/engines/rustsys/src/emit.rs |
 | SYNTH-REQ-0603 | docs/specs/synth/netlist.md | crates/engines/rustsys/src/elab/mod.rs<br>crates/engines/rustsys/src/elab/resolve.rs<br>crates/engines/rustsys/src/elab/types.rs<br>crates/engines/rustsys/src/emit.rs<br>crates/engines/rustsys/tests/elab_semantics.rs<br>crates/verify/rustsys-check/src/netlist.rs<br>crates/verify/rustsys-check/src/rtl/mod.rs |
 | SYNTH-REQ-0604 | docs/specs/synth/netlist.md | crates/engines/rustsys/src/emit.rs |
@@ -465,7 +476,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0606 | docs/specs/synth/netlist.md | crates/engines/rustsys/src/emit.rs |
 | SYNTH-REQ-0701 | docs/specs/synth/cli.md | crates/apps/rustsys-cli/src/args.rs<br>crates/apps/rustsys-cli/src/lib.rs<br>crates/apps/rustsys-cli/src/proto/job.rs<br>crates/engines/rustsys/src/lib.rs |
 | SYNTH-REQ-0702 | docs/specs/synth/cli.md | crates/apps/rustsys-cli/tests/synth_frontend.rs |
-| SYNTH-REQ-0703 | docs/specs/synth/cli.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/lib.rs<br>crates/engines/rustsys/src/map/mapper.rs |
+| SYNTH-REQ-0703 | docs/specs/synth/cli.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/lib.rs<br>crates/engines/rustsys/src/map/mapper/config.rs |
 | SYNTH-REQ-0704 | docs/specs/synth/cli.md | crates/apps/rustsys-cli/src/proto/text.rs |
 | SYNTH-REQ-0705 | docs/specs/synth/cli.md | crates/apps/rustsys-cli/tests/cli_contract.rs |
 | SYNTH-REQ-0706 | docs/specs/synth/cli.md | crates/apps/rustsys-cli/tests/cli_contract.rs |
@@ -507,18 +518,18 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | VERILOG-REQ-0205 | docs/specs/verilog/verilog.md | crates/formats/rusteda-formats/src/verilog/pp.rs |
 | VERILOG-REQ-0206 | docs/specs/verilog/verilog.md | crates/formats/rusteda-formats/src/verilog/mod.rs<br>crates/formats/rusteda-formats/src/verilog/pp.rs |
 | VERILOG-REQ-0300 | docs/specs/verilog/verilog.md | crates/engines/rustsys/tests/netlist_round_trip.rs<br>crates/formats/rusteda-formats/src/verilog/netlist.rs<br>crates/formats/rusteda-formats/src/verilog/netlist/tests.rs<br>crates/formats/rusteda-formats/src/verilog/write.rs |
-| VERILOG-REQ-0301 | docs/specs/verilog/verilog.md | crates/engines/rustsys/tests/netlist_round_trip.rs<br>crates/formats/rusteda-formats/src/verilog/netlist.rs<br>crates/formats/rusteda-formats/src/verilog/netlist/tests.rs<br>crates/formats/rusteda-formats/src/verilog/write.rs |
+| VERILOG-REQ-0301 | docs/specs/verilog/verilog.md | crates/engines/rustsys/tests/netlist_round_trip.rs<br>crates/formats/rusteda-formats/src/verilog/netlist.rs<br>crates/formats/rusteda-formats/src/verilog/netlist/freeze_writer.rs<br>crates/formats/rusteda-formats/src/verilog/netlist/tests.rs<br>crates/formats/rusteda-formats/src/verilog/write.rs |
 | VERILOG-REQ-0302 | docs/specs/verilog/verilog.md | crates/formats/rusteda-formats/src/verilog/write.rs |
 | VERILOG-REQ-0310 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
 | VERILOG-REQ-0311 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
 | VERILOG-REQ-0312 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
 | VERILOG-REQ-0313 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
 | VERILOG-REQ-0314 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
-| VERILOG-REQ-0315 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
+| VERILOG-REQ-0315 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs<br>crates/formats/rusteda-formats/src/verilog/netlist/freeze_writer.rs |
 | VERILOG-REQ-0316 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
-| VERILOG-REQ-0317 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
+| VERILOG-REQ-0317 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs<br>crates/formats/rusteda-formats/src/verilog/netlist/freeze_writer.rs |
 | VERILOG-REQ-0318 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
-| VERILOG-REQ-0319 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs |
+| VERILOG-REQ-0319 | docs/specs/verilog/netlist.md | crates/formats/rusteda-formats/src/verilog/netlist.rs<br>crates/formats/rusteda-formats/src/verilog/netlist/freeze_writer.rs |
 | WS-REQ-0001 | docs/specs/workspace/README.md | crates/apps/rusteda-cli/src/init.rs<br>crates/core/rusteda-workspace/src/workspace.rs<br>crates/core/rusteda-workspace/tests/workspace.rs |
 | WS-REQ-0002 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/workspace.rs<br>crates/core/rusteda-workspace/tests/workspace.rs |
 | WS-REQ-0003 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/workspace.rs<br>crates/core/rusteda-workspace/tests/workspace.rs |
@@ -531,7 +542,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | WS-REQ-0014 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/schema.rs<br>crates/core/rusteda-workspace/src/txn.rs<br>crates/core/rusteda-workspace/src/workspace_io.rs<br>crates/core/rusteda-workspace/tests/workspace_ops.rs |
 | WS-REQ-0020 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/rev.rs |
 | WS-REQ-0021 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/rev.rs<br>crates/core/rusteda-workspace/src/workspace.rs<br>crates/core/rusteda-workspace/tests/workspace.rs |
-| WS-REQ-0022 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/rev.rs |
+| WS-REQ-0022 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/edits.rs<br>crates/core/rusteda-workspace/src/rev.rs |
 | WS-REQ-0023 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/mmap.rs<br>crates/core/rusteda-workspace/src/workspace.rs<br>crates/core/rusteda-workspace/tests/workspace.rs |
 | WS-REQ-0024 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/mmap.rs<br>crates/core/rusteda-workspace/src/txn.rs<br>crates/core/rusteda-workspace/src/workspace.rs<br>crates/core/rusteda-workspace/tests/failures.rs |
 | WS-REQ-0025 | docs/specs/workspace/README.md | crates/core/rusteda-workspace/src/cache.rs<br>crates/core/rusteda-workspace/src/error.rs<br>crates/core/rusteda-workspace/src/fsutil.rs<br>crates/core/rusteda-workspace/src/mmap.rs<br>crates/core/rusteda-workspace/src/rbin.rs<br>crates/core/rusteda-workspace/src/workspace.rs<br>crates/core/rusteda-workspace/tests/cache.rs<br>crates/core/rusteda-workspace/tests/failures.rs<br>crates/core/rusteda-workspace/tests/rbin.rs |
@@ -599,6 +610,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | WS-REQ-0114 | docs/specs/workspace/rlib.md | crates/core/rusteda-workspace/src/rlib.rs<br>crates/core/rusteda-workspace/src/rlib/decode.rs<br>crates/core/rusteda-workspace/tests/rlib.rs |
 | WS-REQ-0115 | docs/specs/workspace/rlib.md | crates/apps/rusteda-cli/tests/cli_contract.rs<br>crates/core/rusteda-workspace/src/rlib.rs<br>crates/core/rusteda-workspace/tests/rlib.rs |
 | WS-REQ-0116 | docs/specs/workspace/rlib.md | crates/apps/rusteda-cli/tests/cli_contract.rs<br>crates/core/rusteda-workspace/src/rlib.rs<br>crates/core/rusteda-workspace/tests/rlib.rs |
+| WS-REQ-0117 | docs/specs/workspace/rlib.md | crates/core/rusteda-workspace/src/rlib.rs<br>crates/core/rusteda-workspace/tests/rlib.rs |
 | WS-REQ-0120 | docs/specs/workspace/netlist.md | crates/core/rusteda-workspace/src/netlist.rs<br>crates/core/rusteda-workspace/tests/netlist.rs |
 | WS-REQ-0121 | docs/specs/workspace/netlist.md | crates/core/rusteda-workspace/src/netlist.rs<br>crates/core/rusteda-workspace/tests/netlist.rs |
 | WS-REQ-0122 | docs/specs/workspace/netlist.md | crates/core/rusteda-workspace/src/netlist.rs<br>crates/core/rusteda-workspace/tests/netlist.rs |
@@ -616,6 +628,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | WS-REQ-0134 | docs/specs/workspace/sta.md | crates/core/rusteda-workspace/src/sta.rs<br>crates/core/rusteda-workspace/src/sta/build.rs<br>crates/core/rusteda-workspace/src/sta/read.rs<br>crates/core/rusteda-workspace/src/sta/tests.rs |
 | WS-REQ-0135 | docs/specs/workspace/sta.md | crates/core/rusteda-workspace/src/sta.rs<br>crates/core/rusteda-workspace/src/sta/build.rs<br>crates/core/rusteda-workspace/src/sta/layout.rs<br>crates/core/rusteda-workspace/src/sta/tests.rs<br>crates/core/rusteda-workspace/tests/sta.rs |
 | WS-REQ-0136 | docs/specs/workspace/sta.md | crates/core/rusteda-workspace/src/sta.rs<br>crates/core/rusteda-workspace/src/sta/tests.rs |
+| WS-REQ-0137 | docs/specs/workspace/sta.md | crates/core/rusteda-workspace/src/sta/build.rs |
 | WS-REQ-0190 | docs/specs/workspace/README.md | crates/apps/rusteda-cli/tests/import_logic.rs<br>crates/core/rusteda-workspace/src/envelope.rs<br>crates/core/rusteda-workspace/src/envelope_tests.rs |
 
 | Prefix | Requirements | Without a citing test or source |
@@ -624,15 +637,15 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | BLIF | 23 | 0 |
 | CHECK | 40 | 0 |
 | CLI | 35 | 0 |
-| COMPUTE | 31 | 0 |
+| COMPUTE | 32 | 0 |
 | CORE | 26 | 0 |
 | JOB | 7 | 0 |
-| LIBERTY | 48 | 0 |
+| LIBERTY | 49 | 0 |
 | PROTO | 22 | 0 |
-| RCLI | 21 | 0 |
-| SDC | 55 | 0 |
+| RCLI | 29 | 0 |
+| SDC | 56 | 0 |
 | SYNTH | 158 | 0 |
 | VERILOG | 28 | 0 |
-| WS | 98 | 0 |
+| WS | 100 | 0 |
 
-606 requirements, 0 without a citing test or source.
+619 requirements, 0 without a citing test or source.

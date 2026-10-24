@@ -256,8 +256,6 @@ fn schema_and_phase_2b_diagnostics() {
         "create_generated_clock -name gclk -source [get_ports clk] -divide_by 2 [get_pins reg/Q]",
         "set_clock_sense -stop_propagation [get_pins mux/Z]",
         "set_timing_derate -early 0.95",
-        "set_propagated_clock [all_clocks]",
-        "unset_propagated_clock [all_clocks]",
         "set_sense -type clock -stop_propagation [get_pins mux/Z]",
         "set_data_check -from [get_pins a] -to [get_pins b] -setup 0.1",
         "set_ideal_network [get_ports rst_n]",
@@ -290,4 +288,21 @@ fn schema_and_phase_2b_diagnostics() {
             "expected D0011 for `{opt_line}`, got {diags:?}"
         );
     }
+}
+
+// SDC-REQ-0070: propagated-clock selection is typed and no longer a Phase 2b drop.
+#[test]
+fn propagated_clock_commands_are_typed() {
+    let (s, diags) = sdc::read_str(
+        "set_propagated_clock [all_clocks]\nunset_propagated_clock [get_clocks aux]\n",
+    );
+    assert!(
+        !diags.iter().any(|d| d.severity == Severity::Error),
+        "{diags:?}"
+    );
+    assert!(matches!(s.cmds[0].kind, CmdKind::SetPropagatedClock { .. }));
+    assert!(matches!(
+        s.cmds[1].kind,
+        CmdKind::UnsetPropagatedClock { .. }
+    ));
 }

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 RustEDA contributors
 
-//! Cell and pin attributes of the library model (LIBERTY-REQ-0011, LIBERTY-REQ-0012).
+//! Cell and pin attributes of the library model (LIBERTY-REQ-0011, LIBERTY-REQ-0012,
+//! LIBERTY-REQ-0049).
 
-use rusteda_formats::liberty::{Direction, Library, read_text};
+use rusteda_formats::liberty::{Direction, Library, TimingType, read_text, read_text_diags};
 
 const LIB: &str = r#"
 library (attrs) {
@@ -74,6 +75,67 @@ fn electrical_limits_and_fanout_weights() {
     assert_eq!(y.max_capacitance, Some(80.0));
     assert_eq!(y.max_transition, None);
     assert_eq!(y.max_fanout, Some(12.0));
+}
+
+// LIBERTY-REQ-0049: the pin pulse attributes are kept on their pin, in library units, and add no
+// timing arc: the pin keeps exactly the arcs of its timing groups. A bad value is a pin limit
+// problem and is not kept. The attributes are consumed: they produce no warning.
+#[test]
+fn pin_pulse_attributes_are_kept_on_the_pin() {
+    let text = r#"library(l) {
+        time_unit : "1ns"; capacitive_load_unit(1,pf);
+        cell(f) {area:1;
+          ff(IQ, IQN) { clocked_on : "CK"; next_state : "D"; }
+          pin(CK) {direction:input; clock:true; min_pulse_width_high:0.3;
+            min_pulse_width_low:0.25; min_period:0.9;
+            timing() { related_pin : "CK"; timing_type : min_pulse_width; when : "D";
+              rise_constraint(scalar) { values("0.2"); } }
+          }
+          pin(D) {direction:input;}
+          pin(Q) {direction:output; function:"IQ";}
+        }
+        cell(g) {area:1;
+          ff(IQ, IQN) { clocked_on : "CK"; next_state : "D"; }
+          pin(CK) {direction:input; clock:true; min_pulse_width_low:0.4;}
+          pin(D) {direction:input;}
+          pin(Q) {direction:output; function:"IQ";}
+        }
+        cell(h) {area:1;
+          pin(CK) {direction:input; clock:true; min_period:-1;}
+        }
+    }"#;
+    let (l, diags) = read_text_diags(text, "pulse.lib").expect("parses");
+    let ck = l.cells[0].pin("CK").unwrap();
+    assert_eq!(
+        (
+            ck.min_pulse_width_high,
+            ck.min_pulse_width_low,
+            ck.min_period
+        ),
+        (Some(0.3), Some(0.25), Some(0.9))
+    );
+    // Only the timing group is an arc, with its condition.
+    let kinds: Vec<TimingType> = ck.arcs.iter().map(|a| a.kind()).collect();
+    assert_eq!(kinds, vec![TimingType::MinPulseWidth]);
+    assert_eq!(ck.arcs[0].when_text.as_deref(), Some("D"));
+    // Only the low width: the other attributes stay absent, and no arc.
+    let g = l.cells[1].pin("CK").unwrap();
+    assert!(g.arcs.is_empty());
+    assert_eq!(
+        (g.min_pulse_width_high, g.min_pulse_width_low, g.min_period),
+        (None, Some(0.4), None)
+    );
+    // A negative value is a pin limit problem (L0204) and is not kept.
+    let h = &l.cells[2];
+    let hck = h.pin("CK").unwrap();
+    assert!(hck.arcs.is_empty() && hck.min_period.is_none());
+    assert!(h.problems.iter().any(|p| p.contains("min_period")));
+    assert!(diags.iter().any(|d| d.code == "L0204"));
+    // The attributes are consumed: no unsupported or unknown construct warning.
+    assert!(
+        diags.iter().all(|d| d.code != "L0100" && d.code != "L0101"),
+        "{diags:?}"
+    );
 }
 
 // LIBERTY-REQ-0011: area and dont_use defaults.

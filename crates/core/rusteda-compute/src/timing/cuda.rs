@@ -240,6 +240,8 @@ struct CudaSession<'p, R: Real> {
     d_load: CudaSlice<R>,
     d_wires: CudaSlice<R>,
     has_wires: u32,
+    d_arc_values: CudaSlice<R>,
+    has_arc_values: u32,
     d_start_row: CudaSlice<u32>,
     d_start_arr: CudaSlice<R>,
     d_start_slew: CudaSlice<R>,
@@ -276,6 +278,7 @@ fn session_bytes<R: Real>(p: &TimingProblem<'_>) -> usize {
         + p.luts.luts.len() * 40
         + p.luts.data.len() * r
         + p.wires.len() * 8 * r
+        + p.arc_values.len() * 16 * r
         + p.starts.arr.len() * r
         + p.starts.slew.len() * r;
     let per_node = n * (4 + 4 * r + w * r + 4 * r + w * 4 + 2);
@@ -325,6 +328,9 @@ impl<'p, R: Real> CudaSession<'p, R> {
         let d_load = upload_slice(&stream, &conv::<R>(load_flat))?;
         let d_wires = upload_slice(&stream, &conv::<R>(wires_flat))?;
         let has_wires = u32::from(!p.wires.is_empty());
+        let arc_values_flat: &[f64] = bytemuck::cast_slice(p.arc_values);
+        let d_arc_values = upload_slice(&stream, &conv::<R>(arc_values_flat))?;
+        let has_arc_values = u32::from(!p.arc_values.is_empty());
         let d_start_row = upload_slice(&stream, &start_row_h)?;
         let d_start_arr = upload_slice(&stream, &conv::<R>(&starts_h.arr))?;
         let d_start_slew = upload_slice(&stream, &conv::<R>(&starts_h.slew))?;
@@ -358,6 +364,8 @@ impl<'p, R: Real> CudaSession<'p, R> {
             d_load,
             d_wires,
             has_wires,
+            d_arc_values,
+            has_arc_values,
             d_start_row,
             d_start_arr,
             d_start_slew,
@@ -482,6 +490,8 @@ impl<'p, R: Real> CudaSession<'p, R> {
                     .arg(&self.d_load)
                     .arg(&self.d_wires)
                     .arg(&self.has_wires)
+                    .arg(&self.d_arc_values)
+                    .arg(&self.has_arc_values)
                     .arg(&self.d_start_row)
                     .arg(&self.d_start_arr)
                     .arg(&self.d_start_slew)
@@ -562,6 +572,8 @@ impl<'p, R: Real> CudaSession<'p, R> {
                     .arg(&self.d_load)
                     .arg(&self.d_wires)
                     .arg(&self.has_wires)
+                    .arg(&self.d_arc_values)
+                    .arg(&self.has_arc_values)
                     .arg(&self.d_start_row)
                     .arg(&self.d_start_arr)
                     .arg(&self.d_start_slew)
@@ -796,6 +808,11 @@ impl<R: Real> TimingSession for CudaSession<'_, R> {
     }
 
     fn set_loads(&mut self, edits: &[(u32, [f64; 4])]) -> Result<(), ComputeError> {
+        if !self.problem.arc_values.is_empty() {
+            return Err(ComputeError::Invalid(
+                "re-prepare RC arc values before patching inputs".into(),
+            ));
+        }
         let n = self.nodes();
         for &(v, l) in edits {
             if v as usize >= n {
@@ -815,6 +832,11 @@ impl<R: Real> TimingSession for CudaSession<'_, R> {
     }
 
     fn set_arc_classes(&mut self, edits: &[(u32, u32)]) -> Result<(), ComputeError> {
+        if !self.problem.arc_values.is_empty() {
+            return Err(ComputeError::Invalid(
+                "re-prepare RC arc values before patching inputs".into(),
+            ));
+        }
         let (na, nc) = (self.in_arcs_h.len(), self.problem.luts.classes.len());
         for &(k, c) in edits {
             if k as usize >= na || c as usize >= nc {
@@ -844,6 +866,11 @@ impl<R: Real> TimingSession for CudaSession<'_, R> {
     }
 
     fn set_starts(&mut self, starts: &StartRows) -> Result<(), ComputeError> {
+        if !self.problem.arc_values.is_empty() {
+            return Err(ComputeError::Invalid(
+                "re-prepare RC arc values before patching inputs".into(),
+            ));
+        }
         let n = self.nodes();
         validate_starts(starts, n, self.ntags())?;
         let t0 = Instant::now();

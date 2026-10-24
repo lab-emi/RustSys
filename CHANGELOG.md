@@ -65,6 +65,28 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
   where the user's service manager accepts transient scopes, a memory limit; `verify pdk` runs
   every synthesis and check step in such a scope (`RUSTEDA_VERIFY_MEMORY_MAX`,
   `RUSTEDA_VERIFY_TIMEOUT_S`, `RUSTEDA_VERIFY_NO_SCOPE`).
+- Shared crates converged with those of the suite's timing tool: both repositories vendor the
+  same 209 shared files with the same `verification/shared.sha256`, and `cargo xtask shared diff`
+  finds no difference. From the timing tool's side this adds:
+  - `rusteda import --spef FILE --spef-corner NAME` (repeatable, paired in order) with the budgets
+    `--max-spef-mib`, `--max-rc-nets`, `--max-rc-nodes`, `--max-rc-elements` and
+    `--max-rc-name-mib`: bounded detailed RC import into the `parasitics` table through the new
+    reader `rusteda_formats::spef` (plain or gzip sources, `T0071` to `T0074`), and a warning
+    `T0140` when a later import drops that table (RCLI-REQ-0070 to RCLI-REQ-0076,
+    `docs/specs/rusteda-cli/spef.md`);
+  - `rusteda_workspace::edits`: netlist edit files `rusteda.edits.v1` and their application;
+  - `rusteda_compute::rc` (effective-capacitance driver and wire waveform models) and prepared
+    per-arc values (`ArcValues`) in the timing kernel interface, unchanged for callers that pass
+    none (COMPUTE-REQ-0030);
+  - the Liberty pin attributes `min_pulse_width_high`, `min_pulse_width_low` and `min_period`
+    on `Pin` instead of ignored (LIBERTY-REQ-0049), and the compiled library format `LIBERTY` v4
+    that carries them (WS-REQ-0117): a cached v3 `.rlib` is compiled again from its `.lib`;
+  - `set_propagated_clock` and `unset_propagated_clock` are typed constraints kept in
+    `CONSTR v1` (SDC-REQ-0070) instead of error `D0010`; `rustsys -w <WS> opt-timing` reports
+    `set_propagated_clock` with warning `S0535` as clock propagation that its ideal-clock
+    estimate does not model;
+  - `rusteda show` reports `drv_status: "unchecked"` and `null` design-rule counts for a timing
+    summary without `drv_status` (RCLI-REQ-0023).
 
 ### Changed
 - The README now leads with CLI and agent workflows, recorded runs, structured output, and
@@ -87,6 +109,18 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
 - The checker rejects `wand`, `wor`, `triand`, `trior`, `tri0`, `tri1`, `trireg` and
   `interconnect` nets, logic ports declared `supply0` or `supply1`, and driven supply nets
   (`C0105`); an undriven supply net is a constant.
+- `rusteda_workspace::sta` reads timing tables of format versions 1 and 2 (`STA` v2 stores
+  endpoint rows, corners and path-chain nodes at full width; WS-REQ-0126, WS-REQ-0127,
+  WS-REQ-0134), so `opt-timing` and `resize` read the tables that the suite's timing tool
+  commits; `StaTableBuilder` writes version 2 with `null` design-rule counts and
+  `drv_status: "unchecked"` (WS-REQ-0135, WS-REQ-0137).
+- The warning `D0021` of a design-rule constraint now reads "recorded in CONSTR v1; the analysis
+  that reads it reports whether it is checked".
+- Debug builds of `rusteda import --netlist` check the fast flat reader against the full reader
+  (structural or extended) on small inputs.
+- `rusteda-formats` lists SPEF among its formats; the external-simulator oracle tests of
+  `rusteda-compute` (ignored by default) read `RUSTEDA_SPICE_SIMULATOR`,
+  `RUSTEDA_RC_ORACLE_WORKSPACE` and `RUSTEDA_RC_WIRE_WORKSPACE`.
 
 ### Fixed
 - The README, the user guide, the synthesis specification (SYNTH-REQ-0516), the roadmap and ADRs

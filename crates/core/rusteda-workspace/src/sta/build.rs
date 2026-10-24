@@ -214,7 +214,7 @@ struct Built {
     ep_slack: Vec<EpSlackRec>,
     ep_order: Vec<u32>,
     path_rank: Vec<PathRankRec>,
-    chain_ptr: Vec<u32>,
+    chain_ptr: Vec<u64>,
     chain: Vec<u32>,
     paths: Vec<PathHeaderRec>,
     points: Vec<PathPointRec>,
@@ -402,8 +402,11 @@ impl StaTableBuilder {
             ("hold_wns_ns", json!(canon(hold_wns.unwrap_or(0.0)))),
             ("hold_tns_ns", json!(canon(hold_tns))),
             ("hold_violating_endpoints", json!(hold_viol)),
-            ("max_trans_violating", json!(0)),
-            ("max_cap_violating", json!(0)),
+            // The builder checks no design rule: its counts are unknown, not zero
+            // (WS-REQ-0137).
+            ("max_trans_violating", serde_json::Value::Null),
+            ("max_cap_violating", serde_json::Value::Null),
+            ("drv_status", json!("unchecked")),
             ("total_endpoints", json!(built.meta.num_endpoints)),
             ("unconstrained_endpoints", json!(0)),
             ("corners", json!(built.meta.num_corners)),
@@ -456,11 +459,13 @@ impl StaTableBuilder {
             return Err(internal("a timing table has at least one corner"));
         }
         if self.corners.len() > 16 {
-            return Err(internal("PATH_RANK addresses at most 16 corners"));
+            return Err(internal("a timing table addresses at most 16 corners"));
         }
         let n_nodes = self.nodes.len();
-        if n_nodes > 0x00FF_FFFF {
-            return Err(internal("path chains address at most 2^24 nodes"));
+        if n_nodes >= NO_INDEX as usize {
+            return Err(internal(
+                "a timing table addresses fewer than 2^32 - 1 nodes",
+            ));
         }
         let (node_id, ranges) = self.number();
         let mut by_id = vec![0usize; n_nodes];
@@ -526,8 +531,10 @@ impl StaTableBuilder {
         // Endpoints in node order (WS-REQ-0132).
         let mut eps: Vec<&EndpointSpec> = self.endpoints.iter().collect();
         eps.sort_by_key(|e| node_id[e.node.0]);
-        if eps.len() > 0x000F_FFFF {
-            return Err(internal("PATH_RANK addresses at most 2^20 endpoints"));
+        if eps.len() >= NO_INDEX as usize {
+            return Err(internal(
+                "a timing table addresses fewer than 2^32 - 1 endpoints",
+            ));
         }
         let ep_of: HashMap<NodeRef, usize> =
             eps.iter().enumerate().map(|(i, e)| (e.node, i)).collect();
@@ -594,21 +601,21 @@ impl StaTableBuilder {
             .map(|e| {
                 let id = node_id[e.node.0];
                 let bucket = bucket_of[id as usize];
-                let named = if bucket < 0x003F_FFFF { bucket + 1 } else { 0 };
                 EndpointRec {
                     data_node: id,
                     clock_node: NO_INDEX,
                     capture_clock: if self.clocks.is_empty() { NO_INDEX } else { 0 },
                     path_group_str: group_str,
                     check_arc: NO_INDEX,
-                    kind_flags: endpoint_code(e.kind) | (2 << 8) | (named << 10),
+                    kind_flags: endpoint_code(e.kind) | (2 << 8),
                     worst_setup_rank: NO_INDEX,
                     worst_hold_rank: NO_INDEX,
+                    name_bucket_plus1: if bucket == NO_INDEX { 0 } else { bucket + 1 },
                 }
             })
             .collect();
         let mut path_rank = Vec::with_capacity(ranked.len());
-        let mut chain_ptr = vec![0u32];
+        let mut chain_ptr = vec![0u64];
         let mut chain = Vec::new();
         let mut paths = Vec::with_capacity(top_k);
         let mut points = Vec::new();
@@ -622,12 +629,13 @@ impl StaTableBuilder {
             let end = p.points[p.points.len() - 1];
             path_rank.push(PathRankRec {
                 slack_ns: canon32(p.slack_ns),
-                endpoint_lo: (*ep & 0xFFFF) as u16,
-                corner_ep_hi: (p.corner as u8) | (((*ep >> 16) as u8) << 4),
+                endpoint: *ep as u32,
+                corner: p.corner as u16,
                 flags: u8::from(p.kind.is_hold_family())
                     | (tr_bit(end.1) << 1)
                     | (kind_bits << 2)
                     | (u8::from(row < top_k) << 7),
+                pad: 0,
             });
             let worst = if p.kind.is_hold_family() {
                 &mut endpoints[*ep].worst_hold_rank
@@ -641,10 +649,11 @@ impl StaTableBuilder {
             chain.extend(f64_to_words(0.0));
             for &(n, tr, kind, _) in &p.points {
                 let id = node_id[n.0];
-                chain.push(id | (u32::from(tr_bit(tr)) << 24) | (point_code(kind) << 25));
+                chain.push(id);
+                chain.push(u32::from(tr_bit(tr)) | (point_code(kind) << 1));
                 chain.push(bucket_of[id as usize]);
             }
-            chain_ptr.push(chain.len() as u32);
+            chain_ptr.push(chain.len() as u64);
             if row < top_k {
                 let begin = points.len() as u32;
                 let mut prev = 0.0;

@@ -25,6 +25,7 @@
 //! | [`sta`] | the read-only view of the timing table `sta.rbin` (`STA` v1) and a builder of such tables |
 //! | [`workspace`] | init, open, resolve, transactions and the commit protocol, revert, history, and the locks on `workspace.lock` they take |
 //! | [`cache`] | the library cache `cache/<name>-<h16>.lib` / `.rlib` |
+//! | [`edits`] | netlist edit files `rusteda.edits.v1` and their application to a netlist |
 //! | [`envelope`] | the `rusteda.v1` JSON envelope, diagnostics and ordered JSON objects |
 //! | [`error`] | the error type, envelope error codes, exit codes and `W` diagnostic codes |
 //! | [`json`] | the order-preserving JSON reformatter behind the envelope |
@@ -41,6 +42,7 @@ compile_error!(
 );
 
 pub mod cache;
+pub mod edits;
 pub mod envelope;
 pub mod error;
 mod fsutil;

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 RustEDA contributors
 
-//! The `LIBERTY` v3 (`.rlib`) compiled library codec and workspace cache loader
-//! (contract §5, `WS-REQ-0110` to `WS-REQ-0116`).
+//! The `LIBERTY` v4 (`.rlib`) compiled library codec and workspace cache loader
+//! (contract §5, `WS-REQ-0110` to `WS-REQ-0116`, `WS-REQ-0117`).
 //!
 //! ## Container layout (`WS-REQ-0110`)
 //!
 //! A compiled Liberty library (`cache/<name>-<h16>.rlib`) is an [`Rbin`] container of kind
-//! [`KIND`] (`"LIBERTY"`) and format version [`FORMAT_VERSION`] (`3`, range [`VERSIONS`]).
+//! [`KIND`] (`"LIBERTY"`) and format version [`FORMAT_VERSION`] (`4`, range [`VERSIONS`]; an
+//! older `.rlib` is compiled again from its cached `.lib`, `WS-REQ-0084`).
 //! When compiled from a source `.lib` file ([`encode_with_source`], [`put`]), the container
 //! header records upstream `"lib"` mapped to the `xxh3-64` hash of the `.lib` bytes.
 //!
@@ -98,7 +99,9 @@
 //!   `state_function_text: opt<str_ref>`, `state_function: opt<Func>`,
 //!   `internal_node: opt<str_ref>`, `clock_gate_clock_pin: bool`,
 //!   `clock_gate_enable_pin: bool`, `clock_gate_out_pin: bool`, `clock_gate_test_pin: bool`,
-//!   `clock_gate_obs_pin: bool`, `line: u32`.
+//!   `clock_gate_obs_pin: bool`, `line: u32`, `min_pulse_width_high: opt<f64>`,
+//!   `min_pulse_width_low: opt<f64>`, `min_period: opt<f64>` (the last three since version 4,
+//!   `WS-REQ-0117`).
 //! - `Sequential`: `kind: SeqKind`, `state: str_ref`, `state_n: str_ref`,
 //!   `data_text: str_ref`, `data: Func`, `clock_text: str_ref`, `clock: Func`,
 //!   `clocked_on_also: opt<str_ref>`, `clear_text: opt<str_ref>`, `clear: opt<Func>`,
@@ -140,8 +143,8 @@ use crate::workspace::{Revision, Workspace};
 /// The `rbin` container kind for compiled Liberty libraries (`WS-REQ-0110`).
 pub const KIND: &str = "LIBERTY";
 
-/// The current `LIBERTY` format version (`WS-REQ-0110`).
-pub const FORMAT_VERSION: u32 = 3;
+/// The current `LIBERTY` format version (`WS-REQ-0110`, `WS-REQ-0117`).
+pub const FORMAT_VERSION: u32 = 4;
 
 /// The range of `LIBERTY` format versions supported by this build (`WS-REQ-0110`).
 pub const VERSIONS: RangeInclusive<u32> = FORMAT_VERSION..=FORMAT_VERSION;
@@ -580,6 +583,9 @@ impl Encoder {
         self.write_bool(p.clock_gate_test_pin);
         self.write_bool(p.clock_gate_obs_pin);
         self.write_u32(p.line);
+        self.write_opt_f64(p.min_pulse_width_high);
+        self.write_opt_f64(p.min_pulse_width_low);
+        self.write_opt_f64(p.min_period);
         Ok(())
     }
 

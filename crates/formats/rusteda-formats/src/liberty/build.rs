@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 RustEDA contributors
 
 //! Library model built from the syntax tree (LIBERTY-REQ-0010 to LIBERTY-REQ-0019,
-//! LIBERTY-REQ-0021, LIBERTY-REQ-0023 to LIBERTY-REQ-0026, LIBERTY-REQ-0040 to LIBERTY-REQ-0048),
+//! LIBERTY-REQ-0021, LIBERTY-REQ-0023 to LIBERTY-REQ-0026, LIBERTY-REQ-0040 to LIBERTY-REQ-0049),
 //! with the messages of the reader (LIBERTY-REQ-0050, LIBERTY-REQ-0057 to LIBERTY-REQ-0059).
 
 use std::collections::{BTreeMap, HashSet};
@@ -923,6 +923,11 @@ impl Builder<'_> {
         let max_transition = limit(self, "max_transition");
         let max_fanout = limit(self, "max_fanout");
         let fanout_load = limit(self, "fanout_load");
+        // The pin-level pulse attributes: unconditional pulse constraints of the pin
+        // (LIBERTY-REQ-0049).
+        let min_pulse_width_high = limit(self, "min_pulse_width_high");
+        let min_pulse_width_low = limit(self, "min_pulse_width_low");
+        let min_period = limit(self, "min_period");
         let (three_state, three_state_function) =
             self.function(p, "three_state", cell, name, problems);
         let capacitance = self.number(p, PIN, "capacitance");
@@ -946,6 +951,9 @@ impl Builder<'_> {
             max_transition,
             max_fanout,
             fanout_load,
+            min_pulse_width_high,
+            min_pulse_width_low,
+            min_period,
             is_clock: self.flag(p, PIN, "clock"),
             arcs,
             internal_power,

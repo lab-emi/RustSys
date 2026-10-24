@@ -12,7 +12,7 @@ The reader that builds the library model from Liberty text is specified in
 |---|---|
 | [Engine runs](#engine-runs) | JOB-REQ-0001 to 0006 |
 | [Messages](#messages) | JOB-REQ-0007 |
-| [Liberty library model](#liberty-library-model) | LIBERTY-REQ-0010 to 0019, 0022 to 0026, 0030 to 0034 and 0040 to 0048 |
+| [Liberty library model](#liberty-library-model) | LIBERTY-REQ-0010 to 0019, 0022 to 0026, 0030 to 0034 and 0040 to 0049 |
 | [Symbols, arenas, names and netlist](netlist.md) | CORE-REQ-0100 to 0103, 0110 to 0113, 0120 to 0128, 0130 to 0138 |
 
 ## Engine runs
@@ -261,3 +261,12 @@ stores `operating_conditions` (`OperatingConditions` with `name`, `process`, `te
 `voltage` and `tree_type` as `TreeType`: `best_case_tree`, `balanced_tree`, `worst_case_tree` or
 `Other`), `default_operating_conditions`, and the library nominal attributes `nom_process`,
 `nom_temperature` and `nom_voltage` [@liberty2017].
+
+**LIBERTY-REQ-0049** Pin pulse attributes: the pin attributes `min_pulse_width_high`,
+`min_pulse_width_low` and `min_period` are consumed (in addition to the constructs of
+LIBERTY-REQ-0054) and kept on their `Pin` as `min_pulse_width_high`, `min_pulse_width_low` and
+`min_period`, in library time units: the unconditional minimum widths of the high and the low pulse
+and the minimum period at the pin. They add no timing arc, so the arcs of a pin are exactly its
+`timing` groups (LIBERTY-REQ-0019). A negative or non-finite value is a pin limit problem (`L0204`,
+LIBERTY-REQ-0057) and is not kept. The compiled library carries them from format version 4
+(WS-REQ-0117) [@liberty2017].

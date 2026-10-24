@@ -25,6 +25,12 @@ Readers and writers of the RustEDA tools, shared by every tool of the suite.
   trees with structured `D0001`..`D0040` diagnostics. `write` emits canonical, variable-free SDC
   text (`read(write(s)) == s`); `Sdc::to_sections` and `Sdc::from_sections` encode and decode the
   13 `CONSTR v1` binary sections; `glob_match` and `glob_match_nocase` implement `*`/`?` matching.
+- `spef` (`docs/specs/rusteda-cli/spef.md`): bounded IEEE 1481 detailed RC reader. `read` reads
+  a SPEF text under explicit `Limits` (source bytes, nets, nodes, elements, name bytes) into a
+  `Spef` of nets with their capacitive nodes, connections and resistors (inter-net coupling
+  grounded at factor one); `decode_source` decodes plain and gzip sources under the same
+  byte budget; syntax, budget and unsupported semantic constructs are `T0071`, `T0072` and
+  `T0073` errors.
 - `blif` (`docs/specs/blif/`): BLIF reader. `read_files` and `read_texts` read models with
   `.names` covers, `.latch` latches, `.subckt` hierarchy (flattened with an explicit stack and
   bounded by `Limits`) and `.gate`/`.mlatch` library cells (recorded for the consumer to resolve

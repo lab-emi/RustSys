@@ -107,6 +107,7 @@ impl Owned {
             load: &self.load,
             starts: &self.starts,
             wires: &self.wires,
+            arc_values: &[],
         }
     }
 

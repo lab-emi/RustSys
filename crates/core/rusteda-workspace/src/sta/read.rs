@@ -14,9 +14,9 @@ use std::collections::HashMap;
 use serde_json::{Map, Value};
 
 use super::layout::{
-    BUCKET_WORDS, CHAIN_HEADER_WORDS, ClockRec, CornerRec, EndpointRec, EpSlackRec, MetaRec,
-    NodeRec, PathHeaderRec, PathPointRec, PathRankRec, SummaryRec, f64_from_words, hash_slot,
-    section,
+    BUCKET_WORDS, CHAIN_HEADER_WORDS, ClockRec, CornerRec, EndpointRec, EndpointRecV1, EpSlackRec,
+    MetaRec, NodeRec, PathHeaderRec, PathPointRec, PathRankRec, PathRankRecV1, SummaryRec,
+    chain_node_mask, chain_step_words, decode_chain_step, f64_from_words, hash_slot, section,
 };
 use super::{
     CheckKind, Clock, Counts, Endpoint, EndpointKind, KIND, NO_INDEX, PathPoint, PathRank,
@@ -42,17 +42,83 @@ struct View<'a> {
     corners: &'a [CornerRec],
     clocks: &'a [ClockRec],
     node_rec: &'a [NodeRec],
-    endpoints: &'a [EndpointRec],
+    endpoints: Endpoints<'a>,
     ep_slack: &'a [EpSlackRec],
     ep_order: &'a [u32],
-    path_rank: &'a [PathRankRec],
-    chain_ptr: &'a [u32],
+    path_rank: Ranks<'a>,
+    /// The format version, which fixes the layouts above and of `chain`.
+    version: u32,
+    chain_ptr: ChainPtr<'a>,
     chain: &'a [u32],
     paths: &'a [PathHeaderRec],
     points: &'a [PathPointRec],
     name_hash: &'a [u32],
     summary: &'a [SummaryRec],
     scope: &'a [u8],
+}
+
+/// `ENDPOINTS` in the layout of its format version.
+#[derive(Clone, Copy)]
+enum Endpoints<'a> {
+    V1(&'a [EndpointRecV1]),
+    V2(&'a [EndpointRec]),
+}
+
+impl Endpoints<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::V1(r) => r.len(),
+            Self::V2(r) => r.len(),
+        }
+    }
+
+    /// Endpoint `i` in the version-2 layout.
+    fn get(&self, i: usize) -> Option<EndpointRec> {
+        match self {
+            Self::V1(r) => r.get(i).map(EndpointRecV1::upgrade),
+            Self::V2(r) => r.get(i).copied(),
+        }
+    }
+}
+
+/// `PATH_CHAIN_PTR` in the layout of its format version.
+#[derive(Clone, Copy)]
+enum ChainPtr<'a> {
+    V1(&'a [u32]),
+    V2(&'a [u64]),
+}
+
+impl ChainPtr<'_> {
+    fn get(&self, i: usize) -> Option<u64> {
+        match self {
+            Self::V1(p) => p.get(i).map(|&x| u64::from(x)),
+            Self::V2(p) => p.get(i).copied(),
+        }
+    }
+}
+
+/// `PATH_RANK` in the layout of its format version.
+#[derive(Clone, Copy)]
+enum Ranks<'a> {
+    V1(&'a [PathRankRecV1]),
+    V2(&'a [PathRankRec]),
+}
+
+impl Ranks<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::V1(r) => r.len(),
+            Self::V2(r) => r.len(),
+        }
+    }
+
+    /// Ranked path `i` in the version-2 layout.
+    fn get(&self, i: usize) -> Option<PathRankRec> {
+        match self {
+            Self::V1(r) => r.get(i).map(PathRankRecV1::upgrade),
+            Self::V2(r) => r.get(i).copied(),
+        }
+    }
 }
 
 /// The name of a node as one `NAME_HASH` bucket holds it.
@@ -106,7 +172,13 @@ fn mul(rbin: &Rbin, a: usize, b: usize, what: &str) -> Result<usize> {
 
 /// Validates a CSR row pointer of `rows + 1` entries into `target` elements: first 0, last
 /// `target` (WS-REQ-0128). Inner entries are checked where a row is read (WS-REQ-0129).
-fn check_csr(rbin: &Rbin, ptr: &[u32], rows: usize, target: usize, what: &str) -> Result<()> {
+fn check_csr<T: Copy + Into<u64>>(
+    rbin: &Rbin,
+    ptr: &[T],
+    rows: usize,
+    target: usize,
+    what: &str,
+) -> Result<()> {
     let Some(want) = rows.checked_add(1) else {
         return Err(corrupt_at(rbin, format!("{what} row count overflows")));
     };
@@ -116,7 +188,9 @@ fn check_csr(rbin: &Rbin, ptr: &[u32], rows: usize, target: usize, what: &str) -
             format!("{what} has {} entries, META gives {want}", ptr.len()),
         ));
     }
-    if ptr.first() != Some(&0) || ptr.last().map(|&l| l as usize) != Some(target) {
+    if ptr.first().map(|&f| f.into()) != Some(0)
+        || ptr.last().map(|&l| l.into()) != u64::try_from(target).ok()
+    {
         return Err(corrupt_at(
             rbin,
             format!("{what} must start at 0 and end at {target}"),
@@ -187,14 +261,14 @@ fn validate(rbin: &Rbin) -> Result<(MetaRec, StoreMode)> {
                 format!("section {} where section {id} belongs", s.id),
             ));
         }
-        if Some(s.elem_size) != section::elem_size(id) {
+        if Some(s.elem_size) != section::elem_size(id, version) {
             return Err(corrupt_at(
                 rbin,
                 format!(
                     "section {id} ({}) has {}-byte elements, expected {}",
                     section::name(id),
                     s.elem_size,
-                    section::elem_size(id).unwrap_or(0)
+                    section::elem_size(id, version).unwrap_or(0)
                 ),
             ));
         }
@@ -291,13 +365,14 @@ fn validate(rbin: &Rbin) -> Result<(MetaRec, StoreMode)> {
             ));
         }
     }
-    check_csr(
-        rbin,
-        rbin.section::<u32>(section::PATH_CHAIN_PTR)?,
-        n(m.num_ranked_paths),
-        count(rbin, section::PATH_CHAIN)?,
-        "PATH_CHAIN_PTR",
-    )?;
+    let (ranked, chain_words) = (n(m.num_ranked_paths), count(rbin, section::PATH_CHAIN)?);
+    if rbin.format_version() >= 2 {
+        let ptr = rbin.section::<u64>(section::PATH_CHAIN_PTR)?;
+        check_csr(rbin, ptr, ranked, chain_words, "PATH_CHAIN_PTR")?;
+    } else {
+        let ptr = rbin.section::<u32>(section::PATH_CHAIN_PTR)?;
+        check_csr(rbin, ptr, ranked, chain_words, "PATH_CHAIN_PTR")?;
+    }
     let node_values = [
         section::NODE_REC,
         section::TAG_EXTRA_PTR,
@@ -396,17 +471,34 @@ impl StaTable {
 
     fn view(&self) -> Result<View<'_>> {
         let r = &self.rbin;
+        let version = r.format_version();
+        let (endpoints, path_rank) = if version >= 2 {
+            (
+                Endpoints::V2(r.section::<EndpointRec>(section::ENDPOINTS)?),
+                Ranks::V2(r.section::<PathRankRec>(section::PATH_RANK)?),
+            )
+        } else {
+            (
+                Endpoints::V1(r.section::<EndpointRecV1>(section::ENDPOINTS)?),
+                Ranks::V1(r.section::<PathRankRecV1>(section::PATH_RANK)?),
+            )
+        };
         Ok(View {
             str_bytes: r.section::<u8>(section::STR_BYTES)?,
             str_offs: r.section::<u32>(section::STR_OFFS)?,
             corners: r.section::<CornerRec>(section::CORNERS)?,
             clocks: r.section::<ClockRec>(section::CLOCKS)?,
             node_rec: r.section::<NodeRec>(section::NODE_REC)?,
-            endpoints: r.section::<EndpointRec>(section::ENDPOINTS)?,
+            endpoints,
             ep_slack: r.section::<EpSlackRec>(section::EP_SLACK)?,
             ep_order: r.section::<u32>(section::EP_ORDER)?,
-            path_rank: r.section::<PathRankRec>(section::PATH_RANK)?,
-            chain_ptr: r.section::<u32>(section::PATH_CHAIN_PTR)?,
+            path_rank,
+            version,
+            chain_ptr: if version >= 2 {
+                ChainPtr::V2(r.section::<u64>(section::PATH_CHAIN_PTR)?)
+            } else {
+                ChainPtr::V1(r.section::<u32>(section::PATH_CHAIN_PTR)?)
+            },
             chain: r.section::<u32>(section::PATH_CHAIN)?,
             paths: r.section::<PathHeaderRec>(section::PATHS)?,
             points: r.section::<PathPointRec>(section::PATH_POINTS)?,
@@ -652,7 +744,7 @@ impl StaTable {
         if (rec.kind_flags >> 8) & 0b11 == 0b11 {
             return Err(self.corrupt(format!("endpoint {index} has capture edge 3")));
         }
-        let hint = (rec.kind_flags >> 10).checked_sub(1);
+        let hint = rec.name_bucket_plus1.checked_sub(1);
         let name = self.node_name(v, rec.data_node, hint, scan)?;
         let slack = corner
             .checked_mul(v.endpoints.len())
@@ -739,8 +831,8 @@ impl StaTable {
                 reason: format!("the timing table has {} ranked paths", v.path_rank.len()),
             });
         };
-        let endpoint = usize::from(r.endpoint_lo) | (usize::from(r.corner_ep_hi >> 4) << 16);
-        let corner = usize::from(r.corner_ep_hi & 0x0F);
+        let endpoint = r.endpoint as usize;
+        let corner = usize::from(r.corner);
         if endpoint >= v.endpoints.len() || corner >= v.corners.len() {
             return Err(self.corrupt(format!(
                 "ranked path {row} names endpoint {endpoint} of corner {corner}"
@@ -788,10 +880,16 @@ impl StaTable {
     fn chain_of<'a>(&self, v: &View<'a>, row: usize) -> Result<&'a [u32]> {
         let bounds = row
             .checked_add(1)
-            .and_then(|next| Some((*v.chain_ptr.get(row)?, *v.chain_ptr.get(next)?)));
+            .and_then(|next| Some((v.chain_ptr.get(row)?, v.chain_ptr.get(next)?)));
         let words = bounds.and_then(|(a, b)| v.chain.get(a as usize..b as usize));
         match words {
-            Some(w) if w.len() >= CHAIN_HEADER_WORDS && w.len() % 2 == 0 => Ok(w),
+            Some(w)
+                if w.len() >= CHAIN_HEADER_WORDS
+                    && (w.len() - CHAIN_HEADER_WORDS)
+                        .is_multiple_of(chain_step_words(v.version)) =>
+            {
+                Ok(w)
+            }
             _ => Err(self.corrupt(format!(
                 "the chain of ranked path {row} has a bad word range"
             ))),
@@ -806,16 +904,17 @@ impl StaTable {
         let mut scan = None;
         let endpoint = self.endpoint_in(&v, rank.endpoint, rank.corner, &mut scan)?;
         let chain = self.chain_of(&v, row)?;
+        let node_mask = chain_node_mask(v.version);
         let steps: Vec<(u32, Transition, PointKind, u32)> = chain[CHAIN_HEADER_WORDS..]
-            .chunks_exact(2)
+            .chunks_exact(chain_step_words(v.version))
             .map(|w| {
-                let node = w[0] & 0x00FF_FFFF;
-                let tr = if (w[0] >> 24) & 1 == 0 {
+                let (node, tr, kind, bucket) = decode_chain_step(v.version, w);
+                let tr = if tr == 0 {
                     Transition::Rise
                 } else {
                     Transition::Fall
                 };
-                (node, tr, point_kind(w[0] >> 25), w[1])
+                (node, tr, point_kind(kind), bucket)
             })
             .collect();
         let point = |name: NodeName<'_>,
@@ -858,9 +957,10 @@ impl StaTable {
                         p.transition, p.kind
                     )));
                 }
-                // A chain step keeps the low 24 bits of its node (WS-REQ-0127).
+                // A chain step keeps its whole node; in version 1 only the low 24 bits
+                // (WS-REQ-0127).
                 let hint = match steps.get(k) {
-                    Some(&(node, _, _, bucket)) if node == p.node & 0x00FF_FFFF => Some(bucket),
+                    Some(&(node, _, _, bucket)) if node == p.node & node_mask => Some(bucket),
                     Some(&(node, ..)) => {
                         return Err(self.corrupt(format!(
                             "point {k} of materialized path {row} is node {} but its chain \
@@ -892,9 +992,9 @@ impl StaTable {
             (h.slack, true, true)
         } else {
             for &(node, tr, kind, bucket) in &steps {
-                // The bucket holds the whole node; the step keeps its low 24 bits.
+                // The bucket holds the whole node; a version-1 step keeps its low 24 bits.
                 let name = self.bucket(&v, bucket)?;
-                if name.node & 0x00FF_FFFF != node {
+                if name.node & node_mask != node {
                     return Err(self.corrupt(format!(
                         "a chain step of ranked path {row} is node {node}, its name bucket {bucket} \
                          names node {}",

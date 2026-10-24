@@ -155,6 +155,18 @@ pub(crate) fn run_show(
             metrics.insert(k, v)?;
         }
     }
+    // A timing table that does not state its design-rule status did not check design rules:
+    // its counts are unknown, never zero (RCLI-REQ-0023, AGENTS rule 4.2).
+    if let Some(sta) = meta.summary.get("sta")
+        && !sta.contains_key("drv_status")
+    {
+        metrics.insert("drv_status", &"unchecked")?;
+        for key in ["max_trans_violating", "max_cap_violating"] {
+            if sta.contains_key(key) {
+                metrics.insert(key, &Value::Null)?;
+            }
+        }
+    }
     env.set_metrics(metrics)?;
 
     let mut status_obj = JsonObject::new();

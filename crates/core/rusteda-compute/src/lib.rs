@@ -18,6 +18,7 @@
 #[cfg(feature = "cuda")]
 pub mod cuda;
 pub mod cut;
+pub mod rc;
 pub mod timing;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};

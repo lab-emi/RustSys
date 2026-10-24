@@ -380,13 +380,18 @@ pub(crate) fn import_netlist(
 
     let catalog = CellCatalog::from_txn(ws, txn)?;
     let frozen = if let Some(fast) = fast::try_fast_flat(&text, &catalog) {
+        // Debug builds check small inputs against the reader that the fast path replaces: the
+        // structural reader, or the extended elaborator for concatenations, part-selects and
+        // sized constants.
         #[cfg(debug_assertions)]
         if text.len() <= 65_536
-            && let Ok(g) = read_structural(&text, &source_str, &|c| {
-                catalog.cells.get(c).map(|info| info.pins.clone())
-            })
+            && let Ok(g) = read_netlist_ast(&text, &source_str, &catalog, &mut Vec::new())
         {
-            debug_assert_eq!(fast, g.freeze(), "fast path diverged from read_structural");
+            debug_assert_eq!(
+                fast,
+                g.freeze(),
+                "fast path diverged from the netlist reader"
+            );
         }
         drop(text);
         fast

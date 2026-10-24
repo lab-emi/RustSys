@@ -205,7 +205,52 @@ pub fn gate_detail(
     let lower = (total - delta).max(0.0);
     let derivative = (eval(total + delta).0 - eval(lower).0) / (total + delta - lower);
     let res = derivative.max(0.0) * (-(1.0 - t.output).ln());
-    if !res.is_finite() || res == 0.0 {
+    solve_driver(pi, t, res, eval)
+}
+
+/// [`gate_detail`] with the caller's Thevenin resistance `res` (kOhm) instead of the central
+/// delay sensitivity over 1 % of the total load: the same validation, degenerate lumped loads,
+/// charge solve and waveform. The caller states how `res` derives from the NLDM tables.
+pub fn gate_detail_with_resistance(
+    pi: Pi,
+    t: Thresholds,
+    res: f64,
+    mut eval: impl FnMut(f64) -> (f64, f64),
+) -> Result<GateResponse, ComputeError> {
+    pi.validate()?;
+    t.validate()?;
+    if t.output <= t.lower || t.output >= t.upper {
+        return Err(ComputeError::Invalid(
+            "RC driver delay threshold must lie within slew trip points".into(),
+        ));
+    }
+    let total = pi.total();
+    let (d0, s0) = eval(total);
+    if !d0.is_finite() || !s0.is_finite() {
+        return Err(ComputeError::Invalid("RC NLDM nonfinite".into()));
+    }
+    if pi.resistance == 0.0 || pi.far == 0.0 || s0 <= 0.0 {
+        return Ok(GateResponse {
+            delay: d0,
+            slew: s0.max(0.0),
+            capacitance: total,
+            resistance: 0.0,
+            duration: s0.max(0.0) * t.derate / (t.upper - t.lower),
+            root_crossing: s0.max(0.0) * t.derate / (t.upper - t.lower) * t.output,
+        });
+    }
+    solve_driver(pi, t, res, eval)
+}
+
+/// The bounded charge solve and waveform of [`gate_detail`] for a non-degenerate pi.
+fn solve_driver(
+    pi: Pi,
+    t: Thresholds,
+    res: f64,
+    mut eval: impl FnMut(f64) -> (f64, f64),
+) -> Result<GateResponse, ComputeError> {
+    let total = pi.total();
+    if !res.is_finite() || res <= 0.0 {
         return Err(ComputeError::Invalid(
             "NLDM has no positive delay sensitivity for RC driver".into(),
         ));
@@ -430,6 +475,31 @@ mod tests {
             assert!(d.is_finite() && s.is_finite());
         }
         assert!(wire(1.0, 0.1, Thresholds { derate: 0.0, ..t }, false).is_err());
+    }
+    // STA-REQ-0726: the caller's resistance reproduces the default estimate bit for bit and
+    // keeps its validation; a nonpositive resistance is rejected.
+    #[test]
+    fn caller_resistance_matches_default_estimate() {
+        let t = trips();
+        let eval = |c: f64| (0.05 + 2.0 * c, 0.3 + 3.0 * c);
+        let pi = Pi {
+            near: 0.01,
+            far: 0.02,
+            resistance: 1.0,
+        };
+        let a = gate_detail(pi, t, eval).unwrap();
+        let b = gate_detail_with_resistance(pi, t, a.resistance, eval).unwrap();
+        assert_eq!(a.delay.to_bits(), b.delay.to_bits());
+        assert_eq!(a.slew.to_bits(), b.slew.to_bits());
+        assert_eq!(a.capacitance.to_bits(), b.capacitance.to_bits());
+        assert!(gate_detail_with_resistance(pi, t, 0.0, eval).is_err());
+        assert!(gate_detail_with_resistance(pi, t, f64::NAN, eval).is_err());
+        let lumped = Pi {
+            resistance: 0.0,
+            ..pi
+        };
+        let r = gate_detail_with_resistance(lumped, t, 0.0, eval).unwrap();
+        assert_eq!(r.capacitance, 0.03);
     }
     // STA-REQ-0722: normalized polarity/derate, unchanged zero RC, stable small arguments.
     #[test]

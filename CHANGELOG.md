@@ -77,7 +77,9 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
   - `rusteda_workspace::edits`: netlist edit files `rusteda.edits.v1` and their application;
   - `rusteda_compute::rc` (effective-capacitance driver and wire waveform models) and prepared
     per-arc values (`ArcValues`) in the timing kernel interface, unchanged for callers that pass
-    none (COMPUTE-REQ-0030);
+    none (COMPUTE-REQ-0030), and `rc::gate_detail_with_resistance`: the bounded charge solve
+    and waveform of `rc::gate_detail` for a caller-supplied driver resistance, with
+    `rc::gate_detail` unchanged bit for bit;
   - the Liberty pin attributes `min_pulse_width_high`, `min_pulse_width_low` and `min_period`
     on `Pin` instead of ignored (LIBERTY-REQ-0049), and the compiled library format `LIBERTY` v4
     that carries them (WS-REQ-0117): a cached v3 `.rlib` is compiled again from its `.lib`;

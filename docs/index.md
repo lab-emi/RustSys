@@ -1,41 +1,13 @@
----
-title: RustSys — Ultrafast Verilog/SystemVerilog synthesis
-description: High-performance Verilog/SystemVerilog synthesis in Rust, built for terminals, CI and coding agents.
-hide:
-  - navigation
-  - toc
----
+# RustSys
 
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- SPDX-FileCopyrightText: 2026 RustSys contributors -->
+RustSys turns RTL into mapped netlists with bounded synthesis, technology mapping and independently checked equivalence.
 
-<div class="rustsys-hero" markdown>
+[All RustEDA modules](https://lab-emi.github.io/RustEDA/)
 
-<p class="rustsys-eyebrow">RUSTEDA / LOGIC SYNTHESIS</p>
-
-# Ultrafast RTL synthesis.<br>Ready for CLI and agents.
-
-RustSys is a high-performance Verilog/SystemVerilog synthesizer written in Rust.
-Turn RTL into standard cells with a CLI built for engineers, CI pipelines and coding
-agents: explicit inputs, JSON reports, recorded runs and equivalence checks.
-
-**1.50×–42.46× faster than Yosys** on the measured five-design, three-PDK suite at
-16 physical host cores. [See the results and method](guide/benchmarks.md).
-
-[Run your first synthesis](guide/quickstart.md){ .md-button .md-button--primary }
-[Build an agent workflow](guide/agents.md){ .md-button }
-
-<p class="rustsys-release">Source preview · 0.1.0 · Apache-2.0 · CPU reference backend</p>
-
-</div>
-
-<figure class="rustsys-banner">
-  <picture>
-    <source media="(prefers-reduced-motion: no-preference)" srcset="assets/rustsys-banner.gif" type="image/gif">
-    <img src="assets/rustsys-banner.svg" alt="Verilog source passes through RustSys synthesis and emerges as connected logic gates and flip-flops in a gate-level netlist." width="1200" height="400" data-animation="assets/rustsys-banner.gif" data-poster="assets/rustsys-banner.svg">
-  </picture>
-  <figcaption>An illustration of RTL → synthesis → standard cells. <button type="button" class="rustsys-motion-control" aria-pressed="false" hidden>Pause animation</button></figcaption>
-</figure>
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/rustsys-banner.svg">
+  <img src="assets/rustsys-banner.gif" alt="Synthesis for the next design iteration." width="1200" height="360">
+</picture>
 
 ## 16-core synthesis speed
 

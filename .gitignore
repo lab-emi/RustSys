@@ -21,3 +21,5 @@ __pycache__/
 *.swo
 /.cex
 /cecmiter.aig
+
+HANDOFF.md

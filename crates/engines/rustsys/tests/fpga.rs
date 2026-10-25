@@ -38,7 +38,10 @@ fn primitive_contract_and_scope() {
         assert_eq!(out.report.cells[c], 1, "{c}");
     }
     assert!(out.text.contains("IS_C_INVERTED(1'b1)"));
-    assert!(out.text.contains("IS_PRE_INVERTED(1'b1)"));
+    assert!(!out.text.contains("IS_PRE_INVERTED"));
+    assert!(!out.text.contains("IS_CLR_INVERTED"));
+    assert!(out.text.contains(".CLR(rs__i"));
+    assert!(out.text.contains(".PRE(rs__i"));
     assert!(out.text.contains("LUT6 #"));
     assert!(out.text.contains("rs__n")); // source port rs_n1 cannot collide
     assert_eq!(out.lut_table.len() % 40, 0);
@@ -46,6 +49,35 @@ fn primitive_contract_and_scope() {
     assert_eq!(out.report.drc_status, "unchecked");
     assert_eq!(out.report.corner, None);
     assert_eq!(out.report.unconstrained_endpoints, None);
+}
+
+// <500 objects, one corner/mapper worker, <1 MiB working storage. The reset
+// inverter must be shared across bits, so this also bounds added LUT resources.
+#[test]
+fn asynchronous_control_inversion_is_explicit_and_shared() {
+    let src = Sources::Texts(vec![(
+        "controls.sv".into(),
+        r#"
+module controls(input clk, rst_n, set_n, input [7:0] d,
+                output reg [7:0] clear_q, set_q);
+  always @(posedge clk or negedge rst_n)
+    if (!rst_n) clear_q <= 0; else clear_q <= d;
+  always @(posedge clk or negedge set_n)
+    if (!set_n) set_q <= 8'hff; else set_q <= d;
+endmodule
+"#
+        .into(),
+    )]);
+    let out = fpga::synthesize(&src, &Default::default(), &Default::default()).unwrap();
+    assert_eq!(out.report.flip_flops, 16);
+    assert_eq!(out.report.cells["FDCE"], 8);
+    assert_eq!(out.report.cells["FDPE"], 8);
+    assert_eq!(out.report.cells["LUT1"], 2);
+    assert_eq!(out.report.lut_depth, 1);
+    assert_eq!(out.text.matches(".CLR(rs_i").count(), 8);
+    assert_eq!(out.text.matches(".PRE(rs_i").count(), 8);
+    assert!(!out.text.contains("IS_CLR_INVERTED"));
+    assert!(!out.text.contains("IS_PRE_INVERTED"));
 }
 
 #[test]

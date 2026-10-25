@@ -58,13 +58,13 @@ pub(super) fn emit(
         }
     }
     for s in &d.states {
-        // Clock/reset polarity of flops uses the dedicated programmable inversion.
+        // Zynq-7000 has programmable clock polarity, but its asynchronous
+        // reset/preset pins are active high (AMD UG1026). Use an explicit,
+        // shared LUT inverter for complemented controls on every state kind.
         for l in [
             Some(s.d),
             (s.kind == StateKind::Latch).then_some(s.clk),
-            s.arst
-                .filter(|_| s.kind == StateKind::Latch)
-                .map(|(l, _)| l),
+            s.arst.map(|(l, _)| l),
         ]
         .into_iter()
         .flatten()
@@ -211,14 +211,6 @@ pub(super) fn emit(
                 u8::from(s.clk.is_compl() && !s.clk.is_const())
             )
             .map_err(|_| "FPGA_OUTPUT_BUDGET: netlist byte limit reached")?;
-            if let Some((a, _)) = s.arst {
-                write!(
-                    out,
-                    ", .IS_{control}_INVERTED(1'b{})",
-                    u8::from(a.is_compl() && !a.is_const())
-                )
-                .map_err(|_| "FPGA_OUTPUT_BUDGET: netlist byte limit reached")?;
-            }
             write!(
                 out,
                 ") {prefix}reg{i} (.C({}), .CE({prefix}vcc)",
@@ -237,16 +229,7 @@ pub(super) fn emit(
             )
             .map_err(|_| "FPGA_OUTPUT_BUDGET: netlist byte limit reached")?;
         }
-        let a = s
-            .arst
-            .map(|(a, _)| {
-                if s.kind == StateKind::Flop && !a.is_const() {
-                    a.regular()
-                } else {
-                    a
-                }
-            })
-            .unwrap_or(Lit::FALSE);
+        let a = s.arst.map(|(a, _)| a).unwrap_or(Lit::FALSE);
         writeln!(
             out,
             ", .{control}({}), .D({}), .Q({}));",

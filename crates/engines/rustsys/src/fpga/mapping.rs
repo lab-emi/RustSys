@@ -153,7 +153,8 @@ pub(super) fn map(d: &Design, opts: &Options) -> Result<Mapping, String> {
         }
     }
     // Explicit root inversions are LUT1 cells; internal edge inversions are
-    // absorbed into INIT. Flop clock/reset inversions use primitive attributes.
+    // absorbed into INIT. Only flop clock inversions use primitive attributes;
+    // asynchronous control inversions require LUT1s on Zynq-7000.
     let mut endpoint = |lit: crate::aig::Lit, inverter: bool| {
         max_depth = max_depth.max(
             depth[lit.node() as usize] + u32::from(inverter && lit.is_compl() && !lit.is_const()),
@@ -168,7 +169,7 @@ pub(super) fn map(d: &Design, opts: &Options) -> Result<Mapping, String> {
         endpoint(state.d, true);
         endpoint(state.clk, state.kind == crate::elab::StateKind::Latch);
         if let Some((lit, _)) = state.arst {
-            endpoint(lit, state.kind == crate::elab::StateKind::Latch);
+            endpoint(lit, true);
         }
     }
     let mut luts = Vec::with_capacity(

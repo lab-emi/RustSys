@@ -56,6 +56,44 @@ def vivado_path(value: str | None) -> Path | None:
     return next((p for c in candidates if (p := tool(c))), None)
 
 
+def sdf_arcs(path: Path, *, routed: bool) -> dict[str, int]:
+    """Check cell and routed delay content without assuming one SDF net encoding.
+
+    UG900 xelab's -nosdfinterconnectdelays refers to both PORT and INTERCONNECT;
+    AMD AR9872 documents PORT delay encoding of routed net delays.
+    """
+    if not path.is_file() or path.stat().st_size == 0:
+        raise ValueError(f"missing SDF for timing simulation: {path}")
+    arcs = {"iopath": 0, "interconnect": 0, "port": 0}
+    with path.open(errors="replace") as lines:
+        for line in lines:
+            for kind in re.findall(r"\(\s*(IOPATH|INTERCONNECT|PORT)\b", line, re.IGNORECASE):
+                arcs[kind.lower()] += 1
+    if not arcs["iopath"] or (routed and not (arcs["interconnect"] + arcs["port"])):
+        raise ValueError(f"SDF lacks required cell/interconnect timing arcs: {path}")
+    return arcs
+
+
+def timing_diagnostic(line: str) -> bool:
+    lower = line.lower()
+    violation = r"\btiming (?:constraint )?violations?\b"
+    check = r"\$(?:setuphold|setup|hold|recrem|recovery|removal|width|period|skew|timeskew|fullskew|nochange)\b"
+    relevant = "sdf" in lower or re.search(violation, lower) or re.search(check, lower)
+    if not relevant:
+        return False
+    # A real warning/error severity or annotation failure must not be hidden by
+    # an incidental zero count elsewhere in the same diagnostic.
+    if re.match(r"\s*(?:#\s*)?(?:\*\*\s*)?(?:warning|error|fatal)\s*[:\[]", lower) or \
+            re.search(r"\b(?:failed|failure|cannot|unable|fatal)\b", lower):
+        return True
+    issue = r"(?:(?:sdf|timing(?:\s+constraint)?)\s+)?(?:warnings?|errors?|violations?)"
+    # Retain nonzero/unspecified counts. Only explicit zero/no-diagnostic
+    # summaries (including 'no warnings or errors') are neutral.
+    neutral = re.sub(rf"\b(?:0|zero|no|without)\s+{issue}(?:\s*(?:,|and|or)\s*(?:(?:0|zero|no)\s+)?{issue})*\b", "", lower)
+    neutral = re.sub(rf"\b{issue}\s*[:=]\s*0\b", "", neutral)
+    return bool(re.search(violation, neutral) or re.search(r"\b(?:warnings?|errors?)\b", neutral))
+
+
 class Campaign:
     def __init__(self, args: argparse.Namespace):
         self.args = args
@@ -98,24 +136,32 @@ class Campaign:
         save(self.out / "result.json", self.result)
 
     def run(self, name: str, argv: list[object], *, cwd: Path | None = None,
-            marker: str | None = None, negative: bool = False, large: bool = False) -> Path:
+            marker: str | None = None, negative: bool = False, large: bool = False,
+            timing_checks: bool = False) -> Path:
         cwd = cwd or self.out
         cwd.mkdir(parents=True, exist_ok=True)
         log = self.out / f"{name}.log"
         timing = self.out / f"{name}.time"
         cmd = [str(x) for x in argv]
         # Timeout starts after the lock is acquired; the process tree is killed together.
-        command = ["flock", "-w", str(self.args.lock_timeout), str(self.lock), "timeout", "--kill-after=10s", str(self.args.timeout),
-                   "/usr/bin/time", "-v", "-o", str(timing), *cmd]
+        # Keep time outside timeout's process group so a wall-limit failure still
+        # produces its RSS receipt, but keep both after lock acquisition.
+        command = ["flock", "-w", str(self.args.lock_timeout), str(self.lock),
+                   "/usr/bin/time", "-v", "-o", str(timing),
+                   "timeout", "--kill-after=10s", str(self.args.timeout), *cmd]
         if self.scope:
             command = ["systemd-run", "--user", "--scope", "--quiet", "-p",
                        f"MemoryMax={'8G' if large else '2G'}", "-p", "MemorySwapMax=1G", *command]
 
         def limits() -> None:
-            resource.setrlimit(resource.RLIMIT_FSIZE, (256 << 20, 256 << 20))
+            def bounded_limit(kind: int, requested: int) -> None:
+                _, inherited_hard = resource.getrlimit(kind)
+                cap = requested if inherited_hard == resource.RLIM_INFINITY else min(requested, inherited_hard)
+                resource.setrlimit(kind, (cap, cap))
+
+            bounded_limit(resource.RLIMIT_FSIZE, 256 << 20)
             if not self.scope:
-                cap = (16 if large else 4) << 30
-                resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
+                bounded_limit(resource.RLIMIT_AS, (16 if large else 4) << 30)
 
         start = time.monotonic()
         with log.open("w") as output:
@@ -125,24 +171,30 @@ class Campaign:
         # Files are capped; stream instead of reading potentially huge logs into memory.
         matched = marker is None
         mismatch = False
+        diagnostic = None
         with log.open(errors="replace") as lines:
             for line in lines:
                 matched |= marker is not None and marker in line
                 mismatch |= "RUSTSYS_MISMATCH" in line
+                if timing_checks and timing_diagnostic(line) and diagnostic is None:
+                    diagnostic = line.strip()[:1024]
         rss = None
         if timing.exists():
             found = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)", timing.read_text())
             if found:
                 rss = int(found[1])
         if negative:
-            accepted = proc.returncode != 0 and mismatch and not matched
+            # The pinned vvp returns 1 for $fatal. A prior mismatch followed by
+            # timeout, signal, OOM, or an execution failure is not a counterexample.
+            accepted = proc.returncode == 1 and mismatch and not matched
         else:
             accepted = proc.returncode == 0 and matched and not mismatch
-        if rss is not None and rss > (8 if large else 2) * 1024 * 1024:
+        if rss is None or rss > (8 if large else 2) * 1024 * 1024 or diagnostic is not None:
             accepted = False
         self.record(name, "passed" if accepted else "failed", argv=cmd,
                     returncode=proc.returncode, wall_s=time.monotonic()-start,
-                    maximum_rss_kib=rss, log=str(log), expected_counterexample=negative)
+                    maximum_rss_kib=rss, log=str(log), expected_counterexample=negative,
+                    timing_diagnostic=diagnostic)
         if not accepted:
             raise RuntimeError(f"{name} failed; see {log}")
         return log
@@ -178,35 +230,22 @@ class Campaign:
         command += ["-d", "REFERENCE=ibex_top", netlist] if behavioral else [reference, netlist]
         command += [self.inputs / "ibex_tb.sv", self.glbl]
         self.run(f"{label}-compile", command, cwd=directory, large=True)
-        command = [self.xelab, "ibex_tb", "glbl", "-s", "checked", "-mt", "2",
-                   "-L", "unisims_ver", "-L", "unimacro_ver", "-L", "secureip"]
+        command = [self.xelab, "ibex_tb", "glbl", "-s", "checked", "-mt", "2"]
+        # Timing primitives must bind to SIMPRIM, functional primitives to UNISIM.
+        # Do not put functional models first in the timing search order.
+        libraries = ["simprims_ver", "secureip"] if timing else ["unisims_ver", "unimacro_ver", "secureip"]
+        for library in libraries:
+            command += ["-L", library]
         if timing:
             sdf = netlist.with_name(netlist.name.replace("_timing.v", ".sdf"))
-            if not sdf.is_file() or sdf.stat().st_size == 0:
-                raise ValueError(f"missing SDF for timing simulation: {sdf}")
-            arcs = {"iopath":0,"interconnect":0}
-            with sdf.open(errors="replace") as lines:
-                for line in lines:
-                    arcs["iopath"] += line.upper().count("(IOPATH")
-                    arcs["interconnect"] += line.upper().count("(INTERCONNECT")
-            if not arcs["iopath"] or ("post-implementation" in label and not arcs["interconnect"]):
-                raise ValueError(f"SDF lacks required cell/interconnect timing arcs: {sdf}")
-            command += ["-L", "simprims_ver", "-maxdelay", "-transport_int_delays",
+            arcs = sdf_arcs(sdf, routed="post-implementation" in label)
+            command += ["-maxdelay", "-transport_int_delays",
                         "-pulse_r", "0", "-pulse_int_r", "0", "-sdfmax", f"/ibex_tb/dut={sdf}"]
             self.result.setdefault("sdf",{})[label] = {"path":str(sdf),"sha256":digest(sdf),"instance":"/ibex_tb/dut","corner":"slow/max","arcs":arcs}
-        elaboration = self.run(f"{label}-elaborate", command, cwd=directory, large=True)
-        def check_sdf(log: Path) -> None:
-            if timing:
-                with log.open(errors="replace") as lines:
-                    for line in lines:
-                        lower = line.lower()
-                        if "sdf" in lower and any(w in lower for w in ["warning","error","failed","cannot","unable"]):
-                            raise ValueError(f"SDF annotation diagnostic requires review: {log}")
-        check_sdf(elaboration)
+        self.run(f"{label}-elaborate", command, cwd=directory, large=True, timing_checks=timing)
         for seed in [1, 7]:
-            log = self.run(f"{label}-seed{seed}", [self.xsim_bin, "checked", "-runall", "-testplusarg", f"SEED={seed}"],
-                     cwd=directory, marker="RUSTSYS_PASS ibex", large=True)
-            check_sdf(log)
+            self.run(f"{label}-seed{seed}", [self.xsim_bin, "checked", "-runall", "-testplusarg", f"SEED={seed}"],
+                     cwd=directory, marker="RUSTSYS_PASS ibex", large=True, timing_checks=timing)
 
     def execute(self) -> int:
         rtl = self.args.rtl if self.args.design == "ibex" else self.inputs / "probe.sv"
@@ -246,8 +285,9 @@ class Campaign:
         self.simulate_icarus("mapped-functional", mapped, reference)
         if self.args.design == "probe":
             mutations = {
-                "bad-lut": lambda s: re.sub(r"\.INIT\(2'h1\)", ".INIT(2'h2)", s, count=1),
-                "bad-reset": lambda s: s.replace("IS_CLR_INVERTED(1'b1)", "IS_CLR_INVERTED(1'b0)", 1),
+                "bad-lut": lambda s: re.sub(r"(LUT6\s+#\(\.INIT\(64'h)([0-9a-fA-F]+)",
+                    lambda m: m[1] + f"{int(m[2],16) ^ ((1 << 64) - 1):016x}", s, count=1),
+                "bad-reset": lambda s: re.sub(r"\.CLR\((rs_+)i(\d+)\)", r".CLR(\1n\2)", s, count=1),
                 "bad-clock": lambda s: s.replace("IS_C_INVERTED(1'b1)", "IS_C_INVERTED(1'b0)", 1),
             }
             text = mapped.read_text()

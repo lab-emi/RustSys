@@ -40,8 +40,8 @@ module ibex_tb;
   integer seed=1, diagnostic_index, diagnostic_defined_checks=0, diagnostic_unknown_checks=0;
   `OUTPUTS(gold)
   `OUTPUTS(dut)
-  wire instr_gnt=gold_instr_req && random_state[0];
-  wire data_gnt=gold_data_req && random_state[1];
+  wire #2 instr_gnt=gold_instr_req && random_state[0];
+  wire #2 data_gnt=gold_data_req && random_state[1];
   `REFERENCE reference_dut (`PORTS(gold));
   ibex_top dut (`PORTS(dut));
   always #50 clk=~clk;
@@ -79,13 +79,13 @@ module ibex_tb;
 
   always @(posedge clk) begin
     cycle <= cycle+1;
-    instr_valid <= rst_n && instr_gnt;
-    data_valid <= rst_n && data_gnt;
-    if (instr_gnt) begin instr_data <= rom(gold_instr_addr); fetches=fetches+1; end
+    instr_valid <= #2 rst_n && gold_instr_req && instr_gnt;
+    data_valid <= #2 rst_n && gold_data_req && data_gnt;
+    if (rst_n && gold_instr_req && instr_gnt) begin instr_data <= #2 rom(gold_instr_addr); fetches=fetches+1; end
     if (rst_n && gold_instr_req && !instr_gnt) stalls=stalls+1;
-    if (rst_n && data_gnt) begin
+    if (rst_n && gold_data_req && data_gnt) begin
       if (gold_data_addr < 'h100 || gold_data_addr >= 'h200) $fatal(1,"unexpected data address");
-      data_read <= memory[gold_data_addr[7:2]];
+      data_read <= #2 memory[gold_data_addr[7:2]];
       if (gold_data_we) begin
         for (byte_index=0;byte_index<4;byte_index=byte_index+1)
           if (gold_data_be[byte_index]) memory[gold_data_addr[7:2]][8*byte_index+:8] <= gold_data_wdata[8*byte_index+:8];
@@ -119,10 +119,11 @@ module ibex_tb;
       checks=checks+1;
     end
   end
-  // Match the declared 2 ns input delay; give the implementation a full cycle.
+  // Launch the ready decision at the source edge. Delayed continuous grants
+  // and intra-assignment response delays place every dynamic DUT input at +2 ns.
+  // Response RHS values are sampled at the edge before requests/state change.
   always @(posedge clk) begin
-    #2;
-    random_state={random_state[30:0],random_state[31]^random_state[21]^random_state[1]^random_state[0]};
+    random_state <= {random_state[30:0],random_state[31]^random_state[21]^random_state[1]^random_state[0]};
   end
   initial begin
     if ($value$plusargs("SEED=%d",seed)) random_state=32'h1729abcd ^ seed;

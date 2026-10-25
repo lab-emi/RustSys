@@ -92,8 +92,9 @@ simulation runs. Failed checks exit 1. With Vivado installed, source its
 `settings64.sh` and add `--vivado /path/to/Vivado/VERSION/bin/vivado
 --vivado-version VERSION`; the expected version must match actual output.
 
-`implement.tcl` directly reads the structural RustSys netlist with `read_verilog`
-and `link_design`, then runs `opt_design`, `place_design`, `route_design`.
+`implement.tcl` sets the source fileset to `DESIGN_MODE GateLvl`, directly reads
+the structural RustSys netlist with `read_verilog` and `link_design`, then runs
+`opt_design`, `place_design`, `route_design`.
 It never calls `synth_design`. It checks unresolved black boxes, full routing,
 routing errors, blocking DRC violations, setup slack at 100 ns and hold slack
 with both Fast/Slow min/max analysis enabled. It exports
@@ -101,9 +102,16 @@ checkpoints, utilization/timing/DRC/route reports, functional/timing Verilog and
 slow-corner SDF. Unknown unconstrained endpoint counts are not reported as zero.
 
 XSim stages compare RTL with behavioral, post-synthesis functional/timing and
-post-implementation functional/timing DUTs. Timing uses explicit
+post-implementation functional/timing DUTs. Functional models bind to UNISIM;
+timing models bind to SIMPRIM. Routed SDF may encode net delays with `PORT` or
+`INTERCONNECT`; both are accepted alongside required cell IOPATH delays. Timing uses explicit
 `xelab -sdfmax /ibex_tb/dut=...`, transport delays and enabled timing checks.
-SDF errors are not suppressed. These scripts require validation in real Vivado.
+SDF errors are not suppressed. Actual SDF/timing warnings or failures reject the
+stage before its receipt can pass; explicit zero-diagnostic summaries are allowed.
+Dynamic timing coverage is Slow/max, while static timing enables Fast/Slow
+min/max. Inputs launch 2 ns after the edge, including bus responses and grants,
+and comparison occurs near the end of the cycle. These scripts require validation
+in real Vivado.
 
 ## Scope and controls
 
@@ -115,7 +123,11 @@ integrity and defined crash-dump bits. Inactive bus payloads and unknown referen
 diagnostic bits are not observations. This is **reset-qualified differential
 simulation, not formal/arbitrary-state equivalence or full ISA coverage**.
 Every source state is retained without reset assumptions, constant-state pruning
-or merging. Physical FPGA INIT/GSR behavior comes from vendor primitive defaults.
+or merging. Low-active asynchronous controls use shared explicit LUT1 inversions,
+avoiding optional reset-inversion attributes whose physical support differs
+between 7 Series and UltraScale. Programmable clock polarity still uses the
+documented IS_C_INVERTED parameter; acceptance by the selected real tool version
+remains to be verified. Physical FPGA INIT/GSR behavior comes from vendor defaults.
 
 Independent primitive models start state unknown and omit physical GSR/timing.
 LUTs use Shannon mux expansion: `INIT[unknown_address]` alone introduces avoidable
@@ -133,6 +145,28 @@ python3 verification/fpga/run.py \
   --rustsys .work/fpga/target/debug/rustsys \
   --rusteda .work/fpga/target/debug/rusteda \
   --iverilog /path/to/iverilog --vvp /path/to/vvp
+```
+
+## Tool access and continuation
+
+A real Vivado installation with XSim and Zynq-7000 device data is required. Lab
+Edition alone supplies programming/debug tools and cannot satisfy this flow.
+The [official 2025.2 Linux web installer](https://www.amd.com/en/support/downloads/adaptive-socs-and-fpgas/development-tools/2025-2.html)
+was checked and redirects to AMD account sign-in. The login page is open for the
+user; no passwords or authentication tokens are collected by this repository.
+Official installation also requires the user's license-agreement acceptance.
+An already-authorized installation/executor can be supplied instead.
+
+Once tools are available, run the same campaign with their path and exact
+version; all prior receipts remain intact. An existing campaign workspace can
+use its current `revN` as `--base-rev` to import a new source revision and run
+fresh verification without replacing history.
+
+Harness regression checks (small Python worker/child, estimated <128 MiB):
+
+```sh
+systemd-run --user --scope -p MemoryMax=1G -p MemorySwapMax=0 \
+  /usr/bin/time -v timeout 30s python3 verification/fpga/test_run.py
 ```
 
 Public specifications: [AMD UG953 LUT6](https://docs.amd.com/r/en-US/ug953-vivado-7series-libraries/LUT6),

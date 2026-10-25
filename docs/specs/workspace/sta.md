@@ -19,9 +19,9 @@ reads and writes them.
 ## Container and sections
 
 **WS-REQ-0126** The timing table is the table `sta` of a revision, the file `sta.rbin`: an rbin
-container (WS-REQ-0030) of kind `STA` and format version 1 (the reader accepts `1..=1`; a newer
+container (WS-REQ-0030) of kind `STA` and format version 2 (the reader accepts `1..=2`; a newer
 version is `SCHEMA_TOO_NEW`, WS-REQ-0039) with exactly the 24 sections below, in id order, with
-these element sizes:
+these element sizes (a version 1 table has the sizes in parentheses):
 
 | Id | Section | Element bytes | Content |
 |---:|---|---:|---|
@@ -35,11 +35,11 @@ these element sizes:
 | 8 | `NODE_REC` | 152 | timing values per (corner, node), full mode only |
 | 9 | `TAG_EXTRA_PTR` | 4 | row pointer per (corner, node) into `TAG_EXTRA`, full mode only |
 | 10 | `TAG_EXTRA` | 56 | arrivals of further launch tags, full mode only |
-| 11 | `ENDPOINTS` | 32 | one record per checked endpoint |
+| 11 | `ENDPOINTS` | 36 (32) | one record per checked endpoint |
 | 12 | `EP_SLACK` | 16 | setup and hold slack per (corner, endpoint) |
 | 13 | `EP_ORDER` | 4 | endpoint rows sorted by slack per (corner, setup or hold) |
-| 14 | `PATH_RANK` | 8 | one record per ranked path, in rank order |
-| 15 | `PATH_CHAIN_PTR` | 4 | row pointer per ranked path into `PATH_CHAIN` |
+| 14 | `PATH_RANK` | 12 (8) | one record per ranked path, in rank order |
+| 15 | `PATH_CHAIN_PTR` | 8 (4) | `u64` (`u32`) row pointer per ranked path into `PATH_CHAIN` |
 | 16 | `PATH_CHAIN` | 4 | the steps of every ranked path |
 | 17 | `PATHS` | 56 | the header of each materialized path |
 | 18 | `PATH_POINTS` | 32 | the points of the materialized paths |
@@ -74,20 +74,25 @@ stated; `NO_INDEX` = `0xFFFF_FFFF` marks an absent index; time in ns):
   `corner * num_nodes + node`.
 - `ENDPOINTS`: `data_node`, `clock_node`, `capture_clock`, `path_group_str`, check arc,
   `kind_flags` (bits 0 to 7: kind 0 flip-flop, 1 latch, 2 output port, 3 recovery/removal pin,
-  4 clock gate; bits 8 and 9: capture edge 0 rise, 1 fall, 2 none; bits 10 to 31: the data
-  node's `NAME_HASH` bucket plus one, or 0), the rank of the endpoint's worst setup-family and
-  hold-family ranked path (or `NO_INDEX`). `EP_SLACK`: `f64` setup and hold slack, NaN when
+  4 clock gate; bits 8 and 9: capture edge 0 rise, 1 fall, 2 none; bits 10 to 31 zero), the
+  rank of the endpoint's worst setup-family and hold-family ranked path (or `NO_INDEX`), and the
+  data node's `NAME_HASH` bucket plus one, or 0. `EP_SLACK`: `f64` setup and hold slack, NaN when
   absent, row `corner * num_endpoints + endpoint`. `EP_ORDER`: bucket
   `(corner * 2 + hold) * num_endpoints` holds the endpoint rows by ascending slack.
-- `PATH_RANK`: `f32` slack, `u16` bits 0 to 15 of the endpoint row, `u8` corner in bits 0 to 3
-  and bits 16 to 19 of the endpoint row in bits 4 to 7, `u8` flags (bit 0: hold family, bit 1:
-  end transition fall, bits 2 and 3: check 0 setup, 1 hold, 2 recovery, 3 removal, bit 7:
-  materialized).
+- `PATH_RANK`: `f32` slack, `u32` endpoint row, `u16` corner, `u8` flags (bit 0: hold family,
+  bit 1: end transition fall, bits 2 and 3: check 0 setup, 1 hold, 2 recovery, 3 removal, bit 7:
+  materialized), `u8` padding.
 - `PATH_CHAIN` slice of a ranked path: required time and check value as `f64` word pairs (low
-  word first), then per step the step word (bits 0 to 23 node, bit 24 transition fall, bits 25
-  and 26 point kind 0 port, 1 net, 2 cell, 3 clock launch, bits 27 to 31 tag slot) and the
-  node's `NAME_HASH` bucket; the step word keeps the low 24 bits of the node, whose whole value
-  the bucket holds.
+  word first), then per step three words: the node, the step word (bit 0 transition fall, bits 1
+  and 2 point kind 0 port, 1 net, 2 cell, 3 clock launch, bits 3 to 31 tag slot) and the node's
+  `NAME_HASH` bucket.
+- Format version 1 differs in three records, which the reader converts to the version 2 values:
+  `ENDPOINTS` has no ninth word and keeps the `NAME_HASH` bucket plus one in bits 10 to 31 of
+  `kind_flags`; `PATH_RANK` is `f32` slack, `u16` bits 0 to 15 of the endpoint row, `u8` corner
+  in bits 0 to 3 and bits 16 to 19 of the endpoint row in bits 4 to 7, `u8` flags; a chain step
+  is two words, the step word (bits 0 to 23 node, bit 24 transition fall, bits 25 and 26 point
+  kind, bits 27 to 31 tag slot) and the node's `NAME_HASH` bucket, so a step names only the low
+  24 bits of its node, whose whole value the bucket holds.
 - `PATHS`: `f64` slack, arrival, required time and check value; rank, endpoint row, launch
   clock, capture clock, first and end index into `PATH_POINTS`. `PATH_POINTS`: `f64` arrival,
   increment and transition time; node, `u8` transition (0 rise, 1 fall), `u8` point kind,
@@ -163,10 +168,11 @@ the rank records (check, corner, endpoint row, end transition, `f32` slack) and
 **WS-REQ-0134** The first `num_top_k_paths` ranked paths are materialized: `PATHS[row]` (whose
 rank and endpoint must be those of the rank record) gives the exact `f64` slack and its point
 range gives the points with their arrival times; the chain of the same row, when it has steps,
-has one step per point with the same node (the step's 24 bits are the low bits of the point's
-node) and gives each point's name bucket (without steps the name is found by node,
-WS-REQ-0129). A ranked path beyond those is read from its chain alone: its points have the names
-of their buckets (whose node must agree with the step's 24 bits), kinds and transitions but no
+has one step per point with the same node (in a version 1 table, the step's 24 bits are the low
+bits of the point's node) and gives each point's name bucket (without steps the name is found by
+node, WS-REQ-0129). A ranked path beyond those is read from its chain alone: its points have the
+names of their buckets (whose node must agree with the step's node, or its 24 bits in version 1),
+kinds and transitions but no
 arrival times, and its slack is the `f32` of the rank record (`slack_exact` false). Both hold in
 the full and the summary mode.
 `StaTable::path_required(row)` returns the required time and check value of the chain header.
@@ -174,7 +180,7 @@ the full and the summary mode.
 
 ## Builder
 
-**WS-REQ-0135** `StaTableBuilder` writes a valid `STA` v1 table from ports, instance pins (with
+**WS-REQ-0135** `StaTableBuilder` writes a valid `STA` v2 table from ports, instance pins (with
 optional cell names), corners, clocks, endpoints with their per-corner slacks and ranked paths
 with their points; it analyzes nothing, and every slack and arrival is the caller's. It numbers
 the port bits first, then the pins instance by instance; writes string 0 empty and shares equal
@@ -185,11 +191,12 @@ the first `top_k` ranked paths (default all); writes one path group `**`, one la
 disabled arcs, unconstrained endpoints or notes, a `SCOPE` with `wire_model` `none`,
 `clock_model` `ideal` and backend `builder`, and in the full mode absent values in `NODE_REC`
 except the arrivals of path points. A path that does not end at an endpoint, an unknown corner
-or node, a non-finite time, no corner, more than 16 corners, 2^20 endpoints, 2^24 nodes or 4095
-pins of one instance is `INTERNAL`. `StaTableBuilder::stage(txn, upstream)` adds the table as
+or node, a non-finite time, no corner, more than 16 corners, 2^32 - 1 endpoints or nodes, more
+than 4095 pins of one instance or a cell name past string 2^20 - 1 (the fields of `INST_HASH`)
+is `INTERNAL`. `StaTableBuilder::stage(txn, upstream)` adds the table as
 `sta` (`sta.rbin`) with `upstream` in its header (WS-REQ-0038) and sets the summary values
 `setup_wns_ns`, `setup_tns_ns`, `setup_violating_endpoints`, `hold_wns_ns`, `hold_tns_ns`,
-`hold_violating_endpoints`, `max_trans_violating`, `max_cap_violating`, `total_endpoints`,
+`hold_violating_endpoints`, the design-rule values of WS-REQ-0137, `total_endpoints`,
 `unconstrained_endpoints` and `corners`, and the status `timing` (`met` or `violated`), of the
 timing table; `to_bytes(upstream)` returns the bytes.
 
@@ -197,3 +204,7 @@ timing table; `to_bytes(upstream)` returns the bytes.
 written as `+0.0` and NaN as the quiet NaN `0x7ff8_0000_0000_0000`, and every table it writes
 passes the validation of WS-REQ-0128 and WS-REQ-0129 and reads back with the queries of
 WS-REQ-0131 to WS-REQ-0134.
+
+**WS-REQ-0137** The builder checks no design rule: it sets the summary values
+`max_trans_violating` and `max_cap_violating` to `null` and `drv_status` to `"unchecked"`, never
+to zero, and its `SUMMARY` rows hold no design-rule counts.

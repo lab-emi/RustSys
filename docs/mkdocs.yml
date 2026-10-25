@@ -122,6 +122,7 @@ nav:
           - Compiled libraries: specs/workspace/rlib.md
           - Workspace timing: specs/workspace/sta.md
           - RustEDA CLI: specs/rusteda-cli/README.md
+          - Detailed parasitic import: specs/rusteda-cli/spef.md
           - Core data structures: specs/core/README.md
           - Core netlist: specs/core/netlist.md
           - Compute backends: specs/compute/README.md
@@ -155,3 +156,6 @@ nav:
           - Synthesis manual: user/synth/README.md
           - Reset handling: user/synth/reset.md
           - RustSys CLI manual: user/cli/README.md
+
+hooks:
+  - _tools/site_hooks.py

@@ -12,15 +12,16 @@ authors = ["RustSys contributors"]
 repository = "https://github.com/lab-emi/RustSys"
 
 [workspace.dependencies]
-rusteda-core = { path = "crates/core/rusteda-core" }
-rusteda-workspace = { path = "crates/core/rusteda-workspace" }
-rusteda-compute = { path = "crates/core/rusteda-compute" }
-rusteda-formats = { path = "crates/formats/rusteda-formats" }
+rusteda-core = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "c96ef1520ab08b40e48ed7643002b5c06ad13e07" }
+rusteda-workspace = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "c96ef1520ab08b40e48ed7643002b5c06ad13e07" }
+rusteda-compute = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "c96ef1520ab08b40e48ed7643002b5c06ad13e07" }
+rusteda-formats = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "c96ef1520ab08b40e48ed7643002b5c06ad13e07" }
 rustsys = { path = "crates/engines/rustsys" }
 rustsys-check = { path = "crates/verify/rustsys-check" }
 rustsys-fixtures = { path = "crates/verify/rustsys-fixtures" }
 rustsys-defects = { path = "crates/verify/rustsys-defects" }
 rusteda-cli = { path = "crates/apps/rusteda-cli" }
+rusteda-cli-shared = { package = "rusteda-cli-common", git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "c96ef1520ab08b40e48ed7643002b5c06ad13e07" }
 clap = { version = "=4.6.7", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions"] }
 clap_complete = { version = "=4.6.11", default-features = false }
 # Terminal size for the progress line of the command line. `windows`: crossterm does not compile
@@ -29,6 +30,10 @@ crossterm = { version = "=0.29.0", default-features = false, features = ["window
 serde = { version = "=1.0.228", features = ["derive"] }
 # float_roundtrip: the decimal text of a stored f64 parses back to the same value.
 serde_json = { version = "=1.0.149", features = ["float_roundtrip"] }
+# Gzip sources of the SPEF reader (pure-Rust backend).
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
+# Unix open flags of the SPEF import.
+libc = "=0.2.189"
 thiserror = "=2.0.18"
 rayon = "=1.12.0"
 rustc-hash = "=2.1.2"

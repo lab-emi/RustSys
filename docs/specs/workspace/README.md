@@ -16,9 +16,9 @@ protocol, the library cache and the `rusteda.v1` JSON envelope and text-mode ren
 | [Library cache](#library-cache) | WS-REQ-0080 to 0082 |
 | [Envelope and text mode](#envelope-and-text-mode) | WS-REQ-0090 to 0097 |
 | [Determinism](#determinism) | WS-REQ-0100 |
-| [Compiled Liberty libraries (`rlib.md`)](rlib.md) | WS-REQ-0110 to 0116 |
+| [Compiled Liberty libraries (`rlib.md`)](rlib.md) | WS-REQ-0110 to 0117 |
 | [Netlist tables (`netlist.md`)](netlist.md) | WS-REQ-0120 to 0125 |
-| [Timing table: read-only view and builder (`sta.md`)](sta.md) | WS-REQ-0126 to 0136 |
+| [Timing table: read-only view and builder (`sta.md`)](sta.md) | WS-REQ-0126 to 0137 |
 
 ## Workspace layout and files
 

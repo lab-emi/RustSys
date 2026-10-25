@@ -72,6 +72,11 @@ def execute(argv, directory, name, seconds=180, memory_gib=8, haskell=False,
     """Kill the whole process group, including ABC, on deadline exhaustion."""
     if not 0 < max_file_bytes <= 4 * 1024**3:
         raise ValueError("output file limit must be between one byte and 4 GiB")
+    timer = Path(os.environ.get("RUSTEDA_GNU_TIME", "/usr/bin/time"))
+    if not timer.is_absolute() or not timer.is_file() or not os.access(timer, os.X_OK):
+        raise ValueError("a GNU time executable is required; set RUSTEDA_GNU_TIME to its absolute path")
+    timer = timer.resolve()
+    timer_identity = {"path": str(timer), "sha256": digest(timer)}
     directory.mkdir(parents=True, exist_ok=True)
     save(directory / f"{name}.command.json", argv)
     with open(directory / f"{name}.stdout", "wb") as out, open(
@@ -83,7 +88,7 @@ def execute(argv, directory, name, seconds=180, memory_gib=8, haskell=False,
         guarded = (["systemd-run", "--user", "--scope", "--quiet", "-p", f"MemoryMax={memory_gib}G",
                     "-p", "MemorySwapMax=1G", *argv] if haskell else argv)
         process = subprocess.Popen(
-            ["/usr/bin/time", "-v", "-o", str(directory / f"{name}.time"),
+            [str(timer), "-v", "-o", str(directory / f"{name}.time"),
              "timeout", "--kill-after=2s", f"{seconds}s", *guarded],
             stdout=out, stderr=err, stdin=subprocess.DEVNULL,
             start_new_session=True, preexec_fn=lambda: limits(None if haskell else memory_gib, max_file_bytes),
@@ -139,7 +144,7 @@ def execute(argv, directory, name, seconds=180, memory_gib=8, haskell=False,
         status = "missing_metrics"
     result = {"status": status, "exit_code": code, "wall_s": measured if wall else None,
               "guard_wall_s": elapsed,
-              "peak_rss_kib": int(rss[1]) if rss else None}
+              "peak_rss_kib": int(rss[1]) if rss else None, "timer": timer_identity}
     user = re.search(r"User time \(seconds\): ([0-9.]+)", text)
     system = re.search(r"System time \(seconds\): ([0-9.]+)", text)
     result.update(user_cpu_s=float(user[1]) if user else None,

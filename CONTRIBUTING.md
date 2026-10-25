@@ -4,7 +4,7 @@ RustSys is one of the tools of RustEDA, a suite of electronic design automation 
 share their core crates and a disk workspace. This file holds the rules that every change follows:
 the eight engineering rules of RustEDA, the rules of this repository, ownership and hand-over
 between work items, and the checks to run before sending a change. The phases of the suite and
-their work items are in the [roadmap](docs/roadmap.md).
+their work items are in the [scope](https://lab-emi.github.io/RustEDA/verification/).
 
 Instruction files for coding agents, such as `AGENTS.md`, stay local and are never committed; this
 file is the tracked statement of the rules.
@@ -193,7 +193,7 @@ the lab checks them:
 
 ## Ownership and hand-over
 
-Work is divided into work items (see the [roadmap](docs/roadmap.md)), each with its specification,
+Work is divided into work items (see the [scope](https://lab-emi.github.io/RustEDA/verification/)), each with its specification,
 its acceptance criteria and the paths it owns.
 
 - Every path has one owner at a time. A work item edits only the paths it owns, plus minimal
@@ -240,8 +240,8 @@ cargo xtask verify pdk --require
 ### Canonical first-party foundation (2026-10-25)
 
 The four shared library implementations and the workspace CLI implementation are owned by
-lab-emi/RustEDA-Common, a private first-party repository. Workspace dependencies and Cargo.lock
-pin one exact revision; authorized Git access is required. The local rusteda-cli package is a
+lab-emi/RustEDA-Common, the public first-party foundation. Workspace dependencies and Cargo.lock
+pin one exact revision over HTTPS; no GitHub credentials are required. The local rusteda-cli package is a
 product adapter and retains its package version in command output and revision history.
 
 This supersedes the legacy requirement to copy shared implementation files between tool
@@ -250,6 +250,5 @@ Third-party package versions, licenses and source restrictions are unchanged. Sh
 and automation manifests still require deliberate updates. Canonical core tests run in the
 foundation repository; product adapters and engines retain their local tests.
 
-Do not add a private foundation read key to public workflow logs or caches. Cross-repository
-validation belongs in an authorized private integration environment; the unchanged public main
+Cross-repository validation uses the pinned foundation source. The historical public main
 branch retains its existing build policy until a reviewed migration is merged.

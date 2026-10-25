@@ -87,6 +87,7 @@ validation:
     unrecognized_links: warn
 
 nav:
+  - RustEDA: https://lab-emi.github.io/RustEDA/
   - Home: index.md
   - Get started:
       - Install from source: guide/installation.md

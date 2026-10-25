@@ -428,7 +428,7 @@ dependencies = [
 [[package]]
 name = "rusteda-cli-common"
 version = "0.1.0"
-source = "git+ssh://git@github.com/lab-emi/RustEDA-Common.git?rev=7e78e705908a3475018ab39df94b94423e158a13#7e78e705908a3475018ab39df94b94423e158a13"
+source = "git+https://github.com/lab-emi/RustEDA-Common.git?rev=c7038fd9ce672cc98efbabd23d094886e66313fc#c7038fd9ce672cc98efbabd23d094886e66313fc"
 dependencies = [
  "clap",
  "clap_complete",
@@ -444,7 +444,7 @@ dependencies = [
 [[package]]
 name = "rusteda-compute"
 version = "0.1.0"
-source = "git+ssh://git@github.com/lab-emi/RustEDA-Common.git?rev=7e78e705908a3475018ab39df94b94423e158a13#7e78e705908a3475018ab39df94b94423e158a13"
+source = "git+https://github.com/lab-emi/RustEDA-Common.git?rev=c7038fd9ce672cc98efbabd23d094886e66313fc#c7038fd9ce672cc98efbabd23d094886e66313fc"
 dependencies = [
  "bytemuck",
  "cudarc",
@@ -455,7 +455,7 @@ dependencies = [
 [[package]]
 name = "rusteda-core"
 version = "0.1.0"
-source = "git+ssh://git@github.com/lab-emi/RustEDA-Common.git?rev=7e78e705908a3475018ab39df94b94423e158a13#7e78e705908a3475018ab39df94b94423e158a13"
+source = "git+https://github.com/lab-emi/RustEDA-Common.git?rev=c7038fd9ce672cc98efbabd23d094886e66313fc#c7038fd9ce672cc98efbabd23d094886e66313fc"
 dependencies = [
  "bytemuck",
  "rustc-hash",
@@ -464,7 +464,7 @@ dependencies = [
 [[package]]
 name = "rusteda-formats"
 version = "0.1.0"
-source = "git+ssh://git@github.com/lab-emi/RustEDA-Common.git?rev=7e78e705908a3475018ab39df94b94423e158a13#7e78e705908a3475018ab39df94b94423e158a13"
+source = "git+https://github.com/lab-emi/RustEDA-Common.git?rev=c7038fd9ce672cc98efbabd23d094886e66313fc#c7038fd9ce672cc98efbabd23d094886e66313fc"
 dependencies = [
  "flate2",
  "rayon",
@@ -478,7 +478,7 @@ dependencies = [
 [[package]]
 name = "rusteda-workspace"
 version = "0.1.0"
-source = "git+ssh://git@github.com/lab-emi/RustEDA-Common.git?rev=7e78e705908a3475018ab39df94b94423e158a13#7e78e705908a3475018ab39df94b94423e158a13"
+source = "git+https://github.com/lab-emi/RustEDA-Common.git?rev=c7038fd9ce672cc98efbabd23d094886e66313fc#c7038fd9ce672cc98efbabd23d094886e66313fc"
 dependencies = [
  "bytemuck",
  "memmap2",

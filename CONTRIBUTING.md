@@ -4,7 +4,7 @@ RustSys is one of the tools of RustEDA, a suite of electronic design automation 
 share their core crates and a disk workspace. This file holds the rules that every change follows:
 the eight engineering rules of RustEDA, the rules of this repository, ownership and hand-over
 between work items, and the checks to run before sending a change. The phases of the suite and
-their work items are in the [roadmap](docs/roadmap.md).
+their work items are in the [scope](https://lab-emi.github.io/RustEDA/verification/).
 
 Instruction files for coding agents, such as `AGENTS.md`, stay local and are never committed; this
 file is the tracked statement of the rules.
@@ -193,7 +193,7 @@ the lab checks them:
 
 ## Ownership and hand-over
 
-Work is divided into work items (see the [roadmap](docs/roadmap.md)), each with its specification,
+Work is divided into work items (see the [scope](https://lab-emi.github.io/RustEDA/verification/)), each with its specification,
 its acceptance criteria and the paths it owns.
 
 - Every path has one owner at a time. A work item edits only the paths it owns, plus minimal

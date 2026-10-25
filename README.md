@@ -1,38 +1,24 @@
 <p align="center">
-  <img src="docs/assets/rustsys-wordmark.svg" alt="RustSys — a RustEDA tool" width="360">
+  <img src="docs/assets/rustsys-wordmark.svg" alt="RustSys" width="440">
 </p>
 
-# RustSys
+<h1 align="center">Synthesis for the next design iteration.</h1>
 
-**Ultrafast Verilog/SystemVerilog synthesis. Built for terminals and agents.**
-
-[![CI](https://github.com/lab-emi/RustSys/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lab-emi/RustSys/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Rust 1.97.1](https://img.shields.io/badge/rust-1.97.1-orange.svg?logo=rust)](rust-toolchain.toml)
-[![Documentation](https://img.shields.io/badge/docs-online-57D6BE)](https://lab-emi.github.io/RustSys/)
-
-RustSys is a high-performance Verilog/SystemVerilog synthesizer written in Rust.
-Map RTL to standard cells, export gate-level Verilog and JSON reports, and check
-equivalence from your terminal, CI pipeline, or coding agent. Part of the **RustEDA** family.
+<p align="center">
+  <a href="https://lab-emi.github.io/RustEDA/modules/rustsys/">Documentation</a> ·
+  <a href="https://github.com/lab-emi/RustEDA">RustEDA</a> ·
+  <a href="https://lab-emi.github.io/RustEDA/benchmarks/">Benchmarks</a> ·
+  <a href="LICENSE">Apache-2.0</a>
+</p>
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/rustsys-banner.svg">
-  <img src="docs/assets/rustsys-banner.gif" alt="Verilog source flows through RustSys synthesis into connected standard-cell gates." width="1200">
+  <img src="docs/assets/rustsys-banner.gif" alt="RustSys turns RTL into mapped netlists with bounded synthesis, technology mapping and independently checked equivalence" width="1200" height="360">
 </picture>
 
-[Static banner](docs/assets/rustsys-banner.svg) · [Get started](#quick-start) ·
-[Agent guide](docs/guide/agents.md) · [Documentation](https://lab-emi.github.io/RustSys/) · [Benchmarks](#benchmarks)
+RustSys turns RTL into mapped netlists with bounded synthesis, technology mapping and independently checked equivalence.
 
-<!-- measured-performance-pitch -->
-
-- **High performance:** 1.50×–42.46× faster than pinned Yosys 0.67 on the measured five-design, three-PDK suite, with 16 physical host cores per tool.
-- **Easy to script:** result-only stdout, coded diagnostics on stderr, JSON output, fixed exit statuses.
-- **Easy to resume:** recorded commands, input hashes, artifacts, and event logs; query reports as JSON or TSV.
-- **Safe to coordinate:** daemonless disk workspaces, immutable revisions, and explicit `--base-rev` conflict checks.
-- **Built to check:** an independent synthesis checker, bounded proof work, and external open-source LEC evidence.
-
-> **Development preview:** version 0.1.0 is unreleased and is not on crates.io. Build from this
-> repository. Linux is tested in CI; other platforms are not tested.
+Part of **[RustEDA](https://github.com/lab-emi/RustEDA)**, infrastructure for chip-design recursive self-improvement. Native tools shorten the work between inference steps; verified results guide the next iteration.
 
 ## Benchmarks
 
@@ -71,7 +57,7 @@ Aggregate cgroup memory peaks remain in the complete receipts.
 
 † **Setup-Fmax is an OpenSTA estimate** at the TT corner with ideal clocks and no wire
 parasitics. SERV/EZ130 and OpenC910 loads exceed Liberty characterization limits;
-these raw estimates do not establish achievable frequency. [Timing scope](https://lab-emi.github.io/RustSys/guide/performance/#interpret-the-timing-estimate).
+these raw estimates do not establish achievable frequency. [Timing scope](https://lab-emi.github.io/RustEDA/modules/rustsys/guide/performance/#interpret-the-timing-estimate).
 
 Speedup = **Yosys time ÷ RustSys time**. All **30 distinct netlists pass
 arbitrary-state RTL LEC**, with no reset or input assumption added.
@@ -79,7 +65,7 @@ arbitrary-state RTL LEC**, with no reset or input assumption added.
 [Current runtime audit, three-PDK refresh and LEC](verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md) ·
 [Historical Sky130/GF180: full 1/16-core results and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) ·
 [IHP/EZ130: 16-core results and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md) ·
-[Benchmark method](https://lab-emi.github.io/RustSys/guide/benchmarks/).
+[Benchmark method](https://lab-emi.github.io/RustEDA/modules/rustsys/guide/benchmarks/).
 
 SERV/EZ130 uses **0.77% less cell area than Yosys**, with **3.55×** faster synthesis.
 The current runtime repair remeasures RustSys across all three PDKs and retains
@@ -87,7 +73,7 @@ the pinned Yosys runs. All fifteen RustSys netlists are unchanged from the area
 fix; exact-byte LEC and timing reuse is explicit.
 EZ130 functional LEC follows the vendor’s nominal tie-cell Verilog
 models; the Liberty driver-type conflict and checked supplement are
-[documented explicitly](https://lab-emi.github.io/RustSys/verification/pdk/#additional-ihp-sg13g2-benchmark-library).
+[documented explicitly](https://lab-emi.github.io/RustEDA/modules/rustsys/verification/pdk/#additional-ihp-sg13g2-benchmark-library).
 
 <!-- gf180-audit:start -->
 
@@ -241,7 +227,7 @@ of an existing workspace names the expected revision; a stale base fails with
 | Bounded work | Proof/search budgets report exhaustion as undecided; `unverified` evidence stays unverified. |
 
 [Agent integration recipes](docs/guide/agents.md) · [CLI reference](docs/reference/cli.md) ·
-[JSON and report contracts](docs/reference/reports.md) · [Agent documentation index](https://lab-emi.github.io/RustSys/llms.txt).
+[JSON and report contracts](docs/reference/reports.md) · [Agent documentation index](https://lab-emi.github.io/RustEDA/modules/rustsys/llms.txt).
 
 ## Synthesis and verification
 
@@ -271,12 +257,12 @@ modports, tri-state logic, `inout`, and dynamic types are among the current limi
 
 ## Documentation
 
-The [documentation site](https://lab-emi.github.io/RustSys/) follows a task-based path from a first netlist to repeatable automation
+The [documentation site](https://lab-emi.github.io/RustEDA/modules/rustsys/) follows a task-based path from a first netlist to repeatable automation
 and inspectable proof evidence. All pages also live in this repository.
 
 | Start here | Go deeper |
 |---|---|
-| [Documentation home](https://lab-emi.github.io/RustSys/) | [Architecture and crate boundaries](docs/architecture/index.md) |
+| [Documentation home](https://lab-emi.github.io/RustEDA/modules/rustsys/) | [Architecture and crate boundaries](docs/architecture/index.md) |
 | [Install and run your first design](docs/guide/quickstart.md) | [Synthesis specifications](docs/specs/synth/README.md) |
 | [Automate with scripts and agents](docs/guide/agents.md) | [Workspace and JSON protocol](docs/specs/workspace/README.md) |
 | [Check equivalence](docs/guide/checking.md) | [Verification evidence and limitations](docs/verification/index.md) |

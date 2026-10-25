@@ -377,6 +377,17 @@ pub(crate) fn run(root: &Path) -> Result<(), String> {
             }
         }
     }
+    if let Some(common) = crate::foundation::root(root)? {
+        for p in walk(&common.join("crates"), "rs") {
+            let text = std::fs::read_to_string(&p).map_err(|e| e.to_string())?;
+            let at = format!("@common/{}", rel(&common, &p));
+            for id in citations(&text) {
+                if defs.spec.contains_key(&id) {
+                    refs.entry(id).or_default().insert(at.clone());
+                }
+            }
+        }
+    }
     let (text, gaps) = matrix(&defs, &refs);
     crate::write(&root.join("docs/verification/requirements.md"), &text)?;
     println!("{} requirements, {} gaps", defs.spec.len(), gaps.len());

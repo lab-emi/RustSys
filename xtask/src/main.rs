@@ -18,6 +18,7 @@
 #![allow(clippy::print_stdout)]
 
 mod coverage;
+mod foundation;
 mod guard;
 mod layout;
 mod pdk;

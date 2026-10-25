@@ -155,3 +155,6 @@ nav:
           - Synthesis manual: user/synth/README.md
           - Reset handling: user/synth/reset.md
           - RustSys CLI manual: user/cli/README.md
+
+hooks:
+  - _tools/site_hooks.py

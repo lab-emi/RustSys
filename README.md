@@ -15,6 +15,10 @@ RustSys is a high-performance Verilog/SystemVerilog synthesizer written in Rust.
 Map RTL to standard cells, export gate-level Verilog and JSON reports, and check
 equivalence from your terminal, CI pipeline, or coding agent. Part of the **RustEDA** family.
 
+This branch consumes a fixed revision of the private [RustEDA-Common](https://github.com/lab-emi/RustEDA-Common)
+foundation. Building it requires authorized Git/SSH access. Shared implementation paths now
+belong to that repository; see the canonical-foundation section in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/rustsys-banner.svg">
   <img src="docs/assets/rustsys-banner.gif" alt="Verilog source flows through RustSys synthesis into connected standard-cell gates." width="1200">

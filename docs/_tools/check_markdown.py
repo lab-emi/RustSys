@@ -13,6 +13,7 @@ from urllib.parse import unquote, urlsplit
 import markdown
 
 from check_site import Document, LinkParser
+from foundation_paths import relocated
 
 
 def main() -> int:
@@ -62,7 +63,14 @@ def main() -> int:
                 path = unquote(url.path)
                 target = (source.parent / path).resolve() if path else source
                 checked += 1
-                if not target.is_relative_to(root) or not target.exists():
+                moved_target = False
+                if target.is_relative_to(root) and not target.exists():
+                    moved = relocated(root, target)
+                    if moved is not None:
+                        target = moved[0]
+                        moved_target = True
+                allowed = target.is_relative_to(root) or moved_target
+                if not allowed or not target.exists():
                     print(f"{source.relative_to(root)}: missing source target: {link}")
                     failures += 1
                     continue

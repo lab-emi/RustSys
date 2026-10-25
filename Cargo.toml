@@ -12,15 +12,16 @@ authors = ["RustSys contributors"]
 repository = "https://github.com/lab-emi/RustSys"
 
 [workspace.dependencies]
-rusteda-core = { path = "crates/core/rusteda-core" }
-rusteda-workspace = { path = "crates/core/rusteda-workspace" }
-rusteda-compute = { path = "crates/core/rusteda-compute" }
-rusteda-formats = { path = "crates/formats/rusteda-formats" }
+rusteda-core = { git = "ssh://git@github.com/lab-emi/RustEDA-Common.git", rev = "7e78e705908a3475018ab39df94b94423e158a13" }
+rusteda-workspace = { git = "ssh://git@github.com/lab-emi/RustEDA-Common.git", rev = "7e78e705908a3475018ab39df94b94423e158a13" }
+rusteda-compute = { git = "ssh://git@github.com/lab-emi/RustEDA-Common.git", rev = "7e78e705908a3475018ab39df94b94423e158a13" }
+rusteda-formats = { git = "ssh://git@github.com/lab-emi/RustEDA-Common.git", rev = "7e78e705908a3475018ab39df94b94423e158a13" }
 rustsys = { path = "crates/engines/rustsys" }
 rustsys-check = { path = "crates/verify/rustsys-check" }
 rustsys-fixtures = { path = "crates/verify/rustsys-fixtures" }
 rustsys-defects = { path = "crates/verify/rustsys-defects" }
 rusteda-cli = { path = "crates/apps/rusteda-cli" }
+rusteda-cli-shared = { package = "rusteda-cli-common", git = "ssh://git@github.com/lab-emi/RustEDA-Common.git", rev = "7e78e705908a3475018ab39df94b94423e158a13" }
 clap = { version = "=4.6.7", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions"] }
 clap_complete = { version = "=4.6.11", default-features = false }
 # Terminal size for the progress line of the command line. `windows`: crossterm does not compile

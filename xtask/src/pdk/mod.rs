@@ -19,7 +19,7 @@
 
 mod designs;
 mod fetch;
-mod json;
+pub(crate) mod json;
 mod manifest;
 mod run;
 mod scan;

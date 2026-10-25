@@ -20,6 +20,7 @@ path = "src/main.rs"
 doc = false
 
 [dependencies]
+rusteda-cli-shared.workspace = true
 rusteda-core.workspace = true
 rusteda-formats.workspace = true
 rusteda-workspace.workspace = true

@@ -39,6 +39,7 @@
 .md-header__topic:first-child { font-weight: 750; letter-spacing: -.025em; }
 .md-grid { max-width: 74rem; }
 .md-typeset { line-height: 1.65; }
+.md-typeset picture > img { display: block; max-width: 100%; height: auto; }
 .md-typeset h1, .md-typeset h2, .md-typeset h3 { font-weight: 700; letter-spacing: -.025em; }
 .md-typeset h1 { color: var(--md-default-fg-color); }
 .md-typeset h2 { margin-top: 1.9em; }

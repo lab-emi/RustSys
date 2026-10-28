@@ -6,8 +6,19 @@ RustSys turns RTL into mapped netlists with bounded synthesis, technology mappin
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="assets/rustsys-banner.svg">
-  <img src="assets/rustsys-banner.gif" alt="Synthesis for the next design iteration." width="1200" height="360">
+  <img src="assets/rustsys-banner.gif" alt="Synthesis for the next design iteration." width="1200">
 </picture>
+
+
+## Latest RustEDA integration · 2026-10-28
+
+The integrated RustSys development is documented in the
+[RustEDA module site](https://lab-emi.github.io/RustEDA/modules/rustsys/).
+This standalone site describes the older `main` source preview; it does not
+ship the integration branch's newer capabilities.
+
+[Development progress and evidence](development-status.md) ·
+[Use the integrated source](https://github.com/lab-emi/RustSys/tree/codex/unified-brand)
 
 ## 16-core synthesis speed
 

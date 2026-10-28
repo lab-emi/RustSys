@@ -4,6 +4,14 @@ RustSys 0.1.0 is unreleased and is not published on crates.io. Install from this
 
 ## Build from source
 
+Use RustEDA's pinned recursive checkout, or clone the integration branch directly
+(the standalone `main` branch can lag this documentation):
+
+```sh
+git clone --branch codex/unified-brand https://github.com/lab-emi/RustSys.git
+cd RustSys
+```
+
 From the repository root:
 
 ```sh

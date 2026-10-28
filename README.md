@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/rustsys-wordmark.svg" alt="RustSys" width="440">
+  <img src="docs/assets/rustsys-wordmark.svg" alt="RustSys" width="360">
 </p>
 
 <h1 align="center">Synthesis for the next design iteration.</h1>
@@ -13,12 +13,27 @@
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/rustsys-banner.svg">
-  <img src="docs/assets/rustsys-banner.gif" alt="RustSys turns RTL into mapped netlists with bounded synthesis, technology mapping and independently checked equivalence" width="1200" height="360">
+  <img src="docs/assets/rustsys-banner.gif" alt="RustSys turns RTL into mapped netlists with bounded synthesis, technology mapping and independently checked equivalence" width="1200">
 </picture>
 
 RustSys turns RTL into mapped netlists with bounded synthesis, technology mapping and independently checked equivalence.
 
 Part of **[RustEDA](https://github.com/lab-emi/RustEDA)**, infrastructure for chip-design recursive self-improvement. Native tools shorten the work between inference steps; verified results guide the next iteration.
+
+## Development status · 2026-10-28
+
+The **RustEDA integration branch** combines bounded synthesis and mapping,
+BLIF/AIGER/mapped-netlist inputs, revision-aware optimization and the shared
+RustEDA foundation. The five-design, three-library benchmark retains arbitrary
+initial state: all 30 tool/design/library netlists pass RTL equivalence.
+
+Real-SRAM macro preservation is being developed for IHP Ibex in a separate
+experimental checkout. It is not included in this integration snapshot and does
+not establish physical closure. The standalone `main` branch can lag this
+integration; use `codex/unified-brand` or RustEDA's pinned recursive checkout.
+
+[Development status and evidence](docs/development-status.md) ·
+[RustEDA engine progress](https://lab-emi.github.io/RustEDA/engine-status/)
 
 ## Benchmarks
 
@@ -154,7 +169,7 @@ Install [Rust with rustup](https://rustup.rs) and Git. The repository pins Rust 
 The CPU flow needs no GPU or CUDA toolkit. Run these commands in one POSIX shell:
 
 ```sh
-git clone https://github.com/lab-emi/RustSys.git
+git clone --branch codex/unified-brand https://github.com/lab-emi/RustSys.git
 cd RustSys
 cargo install --locked --path crates/apps/rustsys-cli
 

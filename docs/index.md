@@ -6,8 +6,18 @@ RustSys turns RTL into mapped netlists with bounded synthesis, technology mappin
 
 <picture>
   <source media="(prefers-reduced-motion: reduce)" srcset="assets/rustsys-banner.svg">
-  <img src="assets/rustsys-banner.gif" alt="Synthesis for the next design iteration." width="1200" height="360">
+  <img src="assets/rustsys-banner.gif" alt="Synthesis for the next design iteration." width="1200">
 </picture>
+
+## Development status · 2026-10-28
+
+The RustEDA integration combines bounded synthesis, BLIF/AIGER and mapped-netlist
+inputs, revision-bound timing optimization and a shared RustEDA foundation.
+The retained five-design, three-library comparison proves all 30 benchmark
+netlists equivalent with arbitrary initial state. Real-SRAM preservation for
+IHP Ibex remains experimental; physical closure is a separate open gate.
+
+[Progress, source revisions and verification limits →](development-status.md)
 
 ## 16-core synthesis speed
 

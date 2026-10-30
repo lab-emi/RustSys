@@ -6,22 +6,14 @@ Captured tool messages are part of those timed jobs. The raw invocations retain 
 
 ## Current 16-core refresh
 
-The [latest complete measurements](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md) cover all five designs on all three PDKs.
-RustSys is **1.50×–42.46× faster than Yosys** in these runs. The Yosys measurements retain
-their pinned original campaigns; the current RustSys producer is remeasured.
-All thirty compared netlists have complete arbitrary-state RTL LEC with no reset
-or input assumptions. Each refreshed RustSys result preserves or reduces area
-and preserves or improves the same raw OpenSTA setup estimate.
+The [latest complete measurements](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md) cover Ibex on all three PDKs;
+the [benchmark table](benchmarks.md#16-core-synthesis-speed) lists the results.
+The Yosys measurements retain their pinned original campaigns; the current RustSys
+producer is remeasured. All six compared Ibex netlists have complete arbitrary-state
+RTL LEC with no reset or input assumptions. Each refreshed RustSys result preserves
+or reduces area and preserves or improves the same raw OpenSTA setup estimate.
 
-The earlier SERV/EZ130 area fix changed an area disadvantage to **0.77% less area than Yosys**:
-
-| SERV / EZ130 8T | Before | After |
-|---|---:|---:|
-| Cell area, µm² | 69,321 | 64,550 |
-| 16-core synthesis, s | 0.35 | 0.31 |
-| Raw OpenSTA setup estimate, MHz | 121.65 | 181.49 |
-
-The mapper uses bounded Liberty truth/cost checks to preserve efficient mux trees
+The current mapper uses bounded Liberty truth/cost checks to preserve efficient mux trees
 for one- and two-bit variable-index reads. Clocked output drivers may use a
 compatible stronger cell when an affordable buffering plan is unavailable.
 Pin roles and state equations must match; the existing area ceiling remains.
@@ -29,19 +21,17 @@ A feasible buffering plan keeps priority. No design names, PDK names, reset
 sequences or per-design timing targets select this behavior.
 
 The [expanded GF180 audit](benchmarks.md#gf180-runtime-audit) uses a native
-monotonic clock, 40 paired observations each for Ibex/PicoRV32/SERV, 64 for
-VexRiscv and 12 for full OpenC910, plus same-binary controls. The repaired small
-cores do not reproduce the original fixed 0.01 s slowdown. VexRiscv's earlier
-positive shifts motivated removal of duplicate drive/launch/sink calculations
-and work on unaffordable alternatives. Sequential pin compatibility and the
+monotonic clock, 40 paired Ibex observations and same-binary controls. The
+repaired producer does not reproduce the original fixed 0.01 s Ibex slowdown.
+The repair removes duplicate drive/launch/sink calculations and work on
+unaffordable alternatives. Sequential pin compatibility and the
 original area ceiling remain. A balanced-truth precheck rejects impossible mux
 functions before the bounded cofactor search. Every selected three-PDK netlist
 is unchanged; area, raw timing and complete arbitrary-state LEC are preserved.
 
 The audit publishes 99% paired median intervals, mean/bootstrap intervals and
 Holm-adjusted sign tests. No confirmed regression is detected, but an interval
-crossing zero does not prove equality. VexRiscv and OpenC910 cannot resolve a
-0.01 s change at this confidence level on this shared host. All prior cohorts,
+crossing zero does not prove equality. All prior cohorts,
 A/A controls, commands and resource receipts remain in the archive. The overview
 keeps a separate fresh three-run RustSys measurement and the pinned Yosys runs.
 
@@ -50,29 +40,12 @@ The estimates below retain their original ideal-clock, zero-wire scope.
 ## Historical 1/16-core CPU controls
 
 The [Sky130/GF180 baseline](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md)
-contains all forty configurations. At sixteen cores RustSys is **1.50×–42.11× faster**
-than the pinned Yosys reference across this suite, with lower area and a higher setup estimate
-in all ten design/PDK pairs. Maximum RustSys self-scaling is **4.02×**. All twenty distinct
-netlists have complete arbitrary-state LEC and independent timing evidence. The physical timing
-limits below remain part of the result.
+contains the 1- and 16-core Ibex configurations for both tools; the
+[historical baseline table](benchmarks.md#16-core-synthesis-speed) lists them. Those
+netlists have complete arbitrary-state LEC and independent timing evidence. The physical
+timing limits below remain part of the result.
 
 These historical controls use the frozen compiler in the 2026-10-21 campaign, with one warm-up and three timed repetitions per allocation. The linked README archive identifies the exact producer and reference campaigns. Every one-core and sixteen-core RustSys pair emits identical netlist bytes.
-
-| Design · PDK | RustSys 16 cores before / after, s | 1→16 scaling before / after | Average active cores before / after |
-|---|---:|---:|---:|
-| VexRiscv · Sky130 HD | 2.83 / 2.46 | 3.57× / 4.02× | 6.14 / 6.67 |
-| VexRiscv · GF180 7T | 2.59 / 2.23 | 2.90× / 3.27× | 4.75 / 5.26 |
-| OpenC910 · Sky130 HD | 77.42 / 69.06 | 2.39× / 2.57× | 3.95 / 4.17 |
-| OpenC910 · GF180 7T | 73.10 / 64.41 | 2.21× / 2.36× | 3.51 / 3.78 |
-
-Default SERV cleanup also improves the independently measured setup estimate while preserving or reducing its starting area:
-
-| PDK | Cell area before / after, µm² | OpenSTA setup estimate before / after, MHz |
-|---|---:|---:|
-| Sky130 HD | 51,460.6 / 51,460.6 | 17.99 / 60.28 |
-| GF180 7T | 163,516.1 / 163,404.1 | 7.18 / 43.27 |
-
-These are the ordinary area/medium pipeline results; no per-design timing target or reset assumption was supplied. Both resulting SERV netlists pass complete arbitrary-state RTL LEC. Electrical limits and the ideal-clock timing scope below still apply.
 
 The [earlier IHP SG13G2 / EZ130 8T extension](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md)
 remains an immutable record of the previous producer. The current refresh above
@@ -86,9 +59,9 @@ At each allocation, both tools receive the same **1 or 16 physical host cores**,
 
 The reference completes ordinary X/Z **data** before optimizing flip-flops. A flip-flop whose next value is X must retain its arbitrary current value until its first clock under RustSys's two-valued contract. Folding it into an undriven X wire and then completing that wire to zero changes the initial behavior. Dual-PDK controls check this case alongside constant-next, independently initialized, enabled, latched and memory state. Later flip-flop enable extraction remains enabled.
 
-Each selected design/library/tool/core configuration has one excluded warm-up and three measured repetitions. The baseline matrix contains five designs, two libraries and both tools at 1 and 16 physical cores: forty measured configurations. Earlier three-allocation campaigns retain their original scope and are labeled as historical evidence.
+Each selected design/library/tool/core configuration has one excluded warm-up and three measured repetitions. The baseline matrix measures both tools on both libraries at 1 and 16 physical cores. Earlier three-allocation campaigns retain their original scope and are labeled as historical evidence.
 
-The RTL is unchanged between CPU allocations. OpenC910 remains the complete `ct_core` processor design with its default 64 KiB instruction and data caches. The 16 cores in a benchmark configuration refer to the **host computer**, not extra processors in the RTL. RAM models are lowered to standard cells inside the measured interval.
+The RTL is unchanged between CPU allocations. The 16 cores in a benchmark configuration refer to the **host computer**, not extra processors in the RTL. RAM models are lowered to standard cells inside the measured interval.
 
 ## Read two different speedups
 
@@ -166,7 +139,7 @@ An opaque OpenSTA executable analyzes the exact exported netlist using the same 
 
 The [OpenSTA command reference](https://opensta.readthedocs.io/en/latest/Commands/#report_clock_min_period) defines the reported minimum-period metric over same-clock, same-edge register setup paths. It excludes port paths, cross-edge paths, and level-sensitive latch paths. The table labels this **setup-Fmax estimate**; it is not post-layout Fmax, timing signoff, hold closure, or a physical DRC result.
 
-Unclocked and otherwise unconstrained endpoints are also outside this estimate. For example, the common PicoRV32 analyses report 68 unclocked register/latch pins for each tool and library, with 104 unconstrained endpoints except for Yosys/Sky130, which reports 136. These warnings remain in the bound `check_setup` receipts; they are not counted as passing timing paths.
+Unclocked and otherwise unconstrained endpoints are also outside this estimate. These warnings remain in the bound `check_setup` receipts; they are not counted as passing timing paths.
 
 OpenSTA's structural reader rejects signed wire declarations retained for unused loop integers in some Yosys netlists. A bounded adapter erases that marker only after checking that each wire appears solely in its declaration and an optional constant driver. Any port, cell, alias or expression use rejects the adaptation. Every port, cell, bit and connection remains unchanged. Receipts bind the measured netlist, adapted analysis file and exact edit ledger; failed reader attempts stay in the record.
 
@@ -174,20 +147,10 @@ The 1000 ns reference clock period is a loose analysis reference. OpenSTA derive
 
 The harness computes MHz as `1000 / reported minimum period in ns`. It checks that this period and OpenSTA's separately printed frequency agree within their printed rounding intervals. This avoids rejecting a valid low-frequency result merely because OpenSTA rounds the frequency to two decimal places. Both original values remain in the receipts; the derived frequency retains the precision limit of the reported period.
 
-OpenC910 exceeds the default cleanup budget. Its current Sky130 critical-path
-loads are 49.60 pF for RustSys and 55.98 pF for Yosys, against the respective
-cells' Liberty limits of 0.052195 pF and 0.190440 pF. These loads are outside
-the characterized range, so the raw setup estimates do not establish achievable
-processor frequencies. On EZ130 8T, the selected critical-path INVX1 loads
-are 52.44 pF (RustSys) and 35.84 pF (Yosys), against a 0.10 pF Liberty limit.
-Those estimates also extrapolate beyond the characterized range. Usable Fmax requires electrical and physical closure,
-followed by new timing and equivalence checks of the resulting netlists.
-
-SERV/EZ130 also uses extrapolated timing before and after this change. The largest
-cell delay on its former critical path drives 0.5768 pF from an OAI21X2 whose
-characterized limit is 0.20 pF. The refreshed path drives 2.451 pF from a DFFQX6
-whose limit is 0.60 pF. The area and equivalence results do not imply electrical
-closure; these setup estimates require the same caution as the full-core results.
+A critical-path load beyond the Liberty characterization range makes the raw
+setup estimate an extrapolation; it does not establish achievable frequency.
+Usable Fmax requires electrical and physical closure, followed by new timing and
+equivalence checks of the resulting netlists.
 
 ## Reproduce the campaign
 

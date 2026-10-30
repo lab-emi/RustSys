@@ -65,7 +65,7 @@ Use `--cycles N` for additional seeded sequential simulation where supported. Si
 
 ## External LEC evidence
 
-The common five-design benchmark protocol uses the same native two-valued RTL event model for both tools. External ABC checks Boolean obligations; inferred arithmetic uses exact Arisca component proofs, checked reconstruction, complete Boolean context and transport to the actual measured netlist. Every original input/state quantifier, output and retained event obligation remains in scope, with no reset sequence or initial-state choice. [The complete campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) records the tool versions, bounds and raw receipts.
+The common benchmark protocol uses the same native two-valued RTL event model for both tools. External ABC checks Boolean obligations; inferred arithmetic uses exact Arisca component proofs, checked reconstruction, complete Boolean context and transport to the actual measured netlist. Every original input/state quantifier, output and retained event obligation remains in scope, with no reset sequence or initial-state choice. [The complete campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) records the tool versions, bounds and raw receipts.
 
 Historical campaigns used different transports and undefined-value scopes, which remain documented with their own certificates. A native check, external RTL LEC and synthesis timing result are distinct artifacts.
 

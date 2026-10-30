@@ -85,12 +85,15 @@ For the IHP SG13G2 / EZ130 extension, use `additional_report.py --update-docs`
 with the complete new measurement/validation/control directories. It combines
 the pinned baseline and additional campaign into one table across all three
 surfaces. `scaling_report.py` alone must not replace this combined overview.
-Review the nearby design/PDK counts, speedup range, proof totals and campaign
-links when changing the selected campaigns. The EZ130 extension measures
+The README, homepage and benchmark guide publish only the Ibex rows. When a
+publisher regenerates these marker blocks, keep the Ibex rows and remove the
+other designs; the dated archives retain each campaign's complete matrix.
+Review the nearby design/PDK counts, proof totals and campaign links when
+changing the selected campaigns. The EZ130 extension measures
 16-core allocations; it does not supply new single-core scaling results.
 State the benchmark CPU before the table using the campaign's host provenance;
 peak memory is the largest measured GNU time peak RSS across the three timed runs.
-Keep the setup-Fmax scope and OpenC910 characterization-limit caveat beside each table.
+Keep the setup-Fmax scope and characterization-limit caveat beside each table.
 Do not revive a certificate listed in the historical
 proof invalidation registry.
 

@@ -13,7 +13,7 @@ preview; use RustEDA's recursive checkout to reproduce its exact module pin.
 | Synthesis | Bounded AIG optimization and cut-based technology mapping; explicit diagnostics and work/memory budgets |
 | Agent workflow | Recorded commands, hashes, reports and events; revision-guarded workspace synthesis, resize and timing optimization |
 | Shared foundation | RustEDA Common owns the shared IR, parsers, workspace tables and compute interfaces |
-| Equivalence | Independent RTL/event interpretation and external CEC in the published large-design campaign; budget exhaustion is not a proof |
+| Equivalence | Independent RTL/event interpretation and external CEC in the published benchmark campaign; budget exhaustion is not a proof |
 
 The last engine/infrastructure revision before this documentation refresh is
 [`b034e62`](https://github.com/lab-emi/RustSys/commit/b034e62207790a6939cfca606a6f5cd297f22328).
@@ -22,15 +22,13 @@ records feature details and compatibility limits.
 
 ## Retained measurement and proof evidence
 
-Five complete RISC-V designs—Ibex, PicoRV32, SERV, VexRiscv and OpenC910—are
-measured on Sky130 HD, GF180 7T and IHP SG13G2/EZ130 8T. All **30 distinct
-tool/design/library netlists** pass arbitrary-state RTL equivalence, without
-added reset or input assumptions.
+The Ibex RISC-V core is measured on Sky130 HD, GF180 7T and IHP SG13G2/EZ130 8T.
+All **six RustSys/Yosys Ibex netlists** pass arbitrary-state RTL equivalence,
+without added reset or input assumptions.
 
 The 16-host-core timings include initialization, import, synthesis, mmap and
 full netlist export. Proof, STA and physical implementation are excluded.
-Setup-Fmax is an ideal-clock, no-parasitics TT estimate; SERV/EZ130 and OpenC910
-include loads beyond Liberty characterization. It is not achievable frequency.
+Setup-Fmax is an ideal-clock, no-parasitics TT estimate. It is not achievable frequency.
 
 [Measurements, paired runtime audit and certificates](guide/benchmarks.md) ·
 [Timing interpretation](guide/performance.md#interpret-the-timing-estimate) ·

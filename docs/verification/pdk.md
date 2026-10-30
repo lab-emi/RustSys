@@ -21,7 +21,7 @@ A full run takes about a minute on a workstation.
 
 ## Additional IHP SG13G2 benchmark library
 
-The separate five-design synthesis benchmark also uses
+The separate Ibex synthesis benchmark also uses
 [ETH Zurich's EZ130 8T v1.1](https://iip.ethz.ch/ez-library/ihp130-8t.html)
 on IHP SG13G2 130 nm, at **TT, 1.20 V, 25°C**. This supplements the required
 Sky130/GF180 fixture matrix above.

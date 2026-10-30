@@ -1,10 +1,10 @@
 # Verification evidence and limits
 
-The current [common five-design campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) binds each measured implementation to its original RTL, Liberty library and exact exported Verilog bytes. Performance sampling, logical equivalence and timing analysis are separate operations with separate receipts.
+The current [common benchmark campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) binds each measured implementation to its original RTL, Liberty library and exact exported Verilog bytes. Performance sampling, logical equivalence and timing analysis are separate operations with separate receipts.
 
 ## Current common campaign
 
-The selected matrix is five designs × two libraries × RustSys/Yosys at both 1 and 16 physical host cores: forty configurations. Each selected configuration has three measured runs after one warm-up; all repetitions must complete. Each tool's 1/16-core netlists must be byte-identical.
+The published Ibex comparison covers two libraries × RustSys/Yosys at both 1 and 16 physical host cores. Each selected configuration has three measured runs after one warm-up; all repetitions must complete. Each tool's 1/16-core netlists must be byte-identical.
 
 Functional validation uses the independent RTL event model and external ABC CEC. Inferred multiplication/addition uses exact observed-operand components checked by Arisca, with complete ABC checks of extraction, context reconstruction, the Boolean context and transport to the actual measured netlist. Observations add obligations; they do not assume internal signals equivalent. The model completes ordinary X/Z data and undriven values to zero while keeping **arbitrary register initial states**. It adds no reset pulse, reachability restriction or new input assumption. Wildcards retain their language matching semantics.
 

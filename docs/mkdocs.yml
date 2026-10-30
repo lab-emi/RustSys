@@ -136,7 +136,7 @@ nav:
           - AIGER: specs/aiger/README.md
           - BLIF: specs/blif/README.md
   - Evidence:
-      - Benchmark results: guide/benchmarks.md
+      - Whole-flow benchmark: guide/benchmarks.md
       - Proof scope and status: verification/index.md
       - Checker specification: specs/check/synth.md
       - Synthesis verification: specs/synth/verification.md

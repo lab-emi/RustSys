@@ -24,8 +24,8 @@ Part of **[RustEDA](https://github.com/lab-emi/RustEDA)**, infrastructure for ch
 
 The **RustEDA integration branch** combines bounded synthesis and mapping,
 BLIF/AIGER/mapped-netlist inputs, revision-aware optimization and the shared
-RustEDA foundation. The Ibex three-library benchmark retains arbitrary
-initial state: all six tool/library netlists pass RTL equivalence.
+RustEDA foundation. The earlier Ibex three-library synthesis campaign retains
+arbitrary initial state: all six tool/library netlists pass RTL equivalence.
 
 Real-SRAM macro preservation is being developed for IHP Ibex in a separate
 experimental checkout. It is not included in this integration snapshot and does
@@ -37,113 +37,15 @@ integration; use `codex/unified-brand` or RustEDA's pinned recursive checkout.
 
 ## Benchmarks
 
-This section covers synthesis only. The
-[Ibex RTL-to-GDS benchmark](https://lab-emi.github.io/RustEDA/benchmarks/) compares
-the complete RustEDA flow with LibreLane.
+The published benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
+SG13G2 with the ETH EZ130 8T library, run end to end through the native RustEDA
+flow and compared with LibreLane. RustSys synthesizes the Ibex + SRAM design in
+that flow; the flow's synthesis and final CEC gates prove the synthesized and
+final netlists equivalent to the original RTL. The SRAM macro preservation that
+this run needs is the separate development noted above, not part of this snapshot.
 
-**CPU: AMD Ryzen 9 9950X3D 16-Core Processor** · 16 physical host cores per tool, no SMT siblings.
-
-The Ibex RISC-V core × three PDKs: Sky130 HD, GF180 7T, and
-**EZ130 8T v1.1 on IHP SG13G2** (TT, 1.20 V, 25°C). **16 physical host cores per tool**,
-one warm-up and three measured runs; median wall times below.
-Time includes workspace init/import, synthesis, mmap and full Verilog export;
-source preparation, LEC and timing analysis are outside the timer.
-
-<!-- open-hardware-benchmark:start -->
-
-| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys<br>Speedup ↑ | RustSys<br>Peak mem, MiB ↓ | Yosys<br>Peak mem, MiB ↓ | RustSys<br>Area, µm² ↓ | Yosys<br>Area, µm² ↓ | RustSys<br>Setup Fmax†, MHz ↑ | Yosys<br>Setup Fmax†, MHz ↑ |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Ibex | Sky130 HD | 0.90 | 6.66 | **7.40×** | 92.1 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
-| Ibex | GF180 7T | 1.00 | 6.69 | **6.69×** | 122.8 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
-| Ibex | EZ130 8T | 0.79 | 6.80 | **8.61×** | 91.9 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
-
-<!-- open-hardware-benchmark:end -->
-
-**Peak mem** = maximum GNU time process peak RSS across the three timed runs, in MiB.
-Aggregate cgroup memory peaks remain in the complete receipts.
-
-† **Setup-Fmax is an OpenSTA estimate** at the TT corner with ideal clocks and no wire
-parasitics. These raw estimates do not establish achievable frequency. [Timing scope](https://lab-emi.github.io/RustEDA/modules/rustsys/guide/performance/#interpret-the-timing-estimate).
-
-Speedup = **Yosys time ÷ RustSys time**. All **six Ibex netlists pass
-arbitrary-state RTL LEC**, with no reset or input assumption added.
-
-[Current runtime audit, three-PDK refresh and LEC](verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md) ·
-[Historical Sky130/GF180: full 1/16-core results and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) ·
-[IHP/EZ130: 16-core results and LEC certificates](verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md) ·
-[Benchmark method](https://lab-emi.github.io/RustEDA/modules/rustsys/guide/benchmarks/).
-
-The current runtime repair remeasures RustSys across all three PDKs and retains
-the pinned Yosys runs. The RustSys netlists are unchanged from the previous
-checked campaign; exact-byte LEC and timing reuse is explicit.
-EZ130 functional LEC follows the vendor’s nominal tie-cell Verilog
-models; the Liberty driver-type conflict and checked supplement are
-[documented explicitly](https://lab-emi.github.io/RustEDA/modules/rustsys/verification/pdk/#additional-ihp-sg13g2-benchmark-library).
-
-<!-- gf180-audit:start -->
-
-**GF180 repeated before/current RustSys audit · 16 physical cores.**
-Two excluded paired warm-ups, 40 A/B pairs and eight same-binary control pairs.
-These use a high-resolution complete-CLI timer; the RustSys/Yosys overview above
-keeps its separate three-run protocol.
-
-| Design · GF180 7T | A/B pairs | Paired median Δ, ms | 99% interval, ms |
-|---|---:|---:|---:|
-| Ibex | 40 | -2.898 | [-9.946, +1.393] |
-
-Δ = current minus before; positive means slower. Δ is the median of paired differences. Before is the frozen
-pre-area-fix producer; current includes the runtime repair. No confirmed
-regression was detected. Intervals crossing zero do not prove exact equality.
-All measured GF180 netlists match the checked implementation bytes; area and
-raw setup-Fmax are unchanged. [All rounds, A/A controls, limits and revalidated
-arbitrary-state LEC certificates](verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md).
-
-<!-- gf180-audit:end -->
-
-<!-- large-hardware-benchmark:start -->
-
-<details>
-<summary>Workload, proof and timing scope</summary>
-
-### Configuration and proof scope
-
-Ibex is the upstream configured RV32IMC core with a flip-flop register file and
-no instruction cache, lowered to standard cells. The 16 cores above are **host
-CPU resources**, not a change to the hardware configuration.
-
-The common Yosys flow preserves arbitrary initial state and uses default ABC
-library mapping. RustSys uses area/medium mapping with its 4 GiB cut-storage
-budget, retaining the effective cut counts in every report.
-
-All netlists use the independent RTL event model with
-ordinary X/Z data and undriven wires completed to zero, plus external ABC CEC.
-Inferred multiply/add blocks use exact arithmetic components checked by Arisca,
-with complete ABC checks of their Boolean context, component/context
-reconstruction, and transport to the actual measured netlist.
-The same semantic contract applies to every tool/design pair. Every result
-keeps arbitrary implementation initial state under checked correspondence;
-**no reset sequence or input assumption is added**.
-
-† OpenSTA 3.1.0 setup-Fmax estimate at each library's TT corner: ideal clocks,
-100 ps input/clock slew, 10 fF output load, zero I/O delays and no wire parasitics.
-MHz = 1000 / reported minimum period in ns, within the report's printed precision.
-Same-clock, same-edge register paths only; port paths, cross-edge paths and
-level-sensitive latch paths are excluded by `report_clock_min_period`.
-Unclocked or otherwise unconstrained endpoints are outside this estimate;
-constraint-check receipts are retained. These raw estimates do not establish achievable or signoff Fmax.
-
-</details>
-
-<!-- large-hardware-benchmark:end -->
-
-<!-- parallel-hardware-scaling:start -->
-
-For Sky130/GF180, both tools emit byte-identical netlists at 1 and 16 cores;
-thread count preserves measured area and timing. The linked baseline retains
-the single-core comparisons and CPU scaling evidence. The IHP/EZ130 extension
-measures 16 cores; it makes no new within-tool scaling claim.
-
-<!-- parallel-hardware-scaling:end -->
+[RustEDA benchmarks](https://lab-emi.github.io/RustEDA/benchmarks/) ·
+[RustSys in the whole-flow benchmark](https://lab-emi.github.io/RustEDA/modules/rustsys/guide/benchmarks/)
 
 ## Quick start
 
@@ -242,7 +144,7 @@ of an existing workspace names the expected revision; a stale base fails with
 
 By default, retained register and latch initial states remain arbitrary; state is not merged,
 retimed, or re-encoded. Reset assumptions and initial-state refinement are explicit opt-ins and
-change the proof scope. The benchmark proofs above add no reset sequence.
+change the proof scope.
 
 The synthesis semantics are two-valued: ordinary `x`/`z` data bits become zero, while language
 wildcards retain their matching semantics. Unsupported constructs are diagnosed. Interfaces,

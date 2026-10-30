@@ -63,39 +63,32 @@ Make example workspaces and output paths explicit. Distinguish a documented
 command contract from illustrative output, and keep budgets and unsupported
 semantics visible.
 
-Keep the product introduction and comparison table in the root `README.md`,
+Keep the product introduction in the root `README.md`,
 walkthroughs in `docs/guide/`, command summaries in `docs/reference/`, and exact
 behavior in `docs/specs/`. Benchmark measurements, proof receipts and source pins
 belong in `verification/benchmarks/open-hardware/results/`. Shared RustEDA marks
 and the RustSys animation live in `docs/assets/`; the [brand guide](../brand/README.md)
 documents their use.
 
-Benchmark values and proof status must be updated from the tracked result
-records. Retain the README's `open-hardware-benchmark` and
-`large-hardware-benchmark` marker pairs because the benchmark report tools
-replace their contents. The common multicore layout also keeps the
-`parallel-hardware-scaling` marker pair and is published by `scaling_report.py`;
-legacy campaign publishers must not overwrite its compact 16-core overview or mix
-tool profiles. The dated archive retains the full single-core/multicore and quality
-table. Generate the README, homepage and benchmark guide tables with
-`scaling_report.comparison_table(..., include_quality=True)` to show both tools'
-cell area and setup-Fmax alongside time, speedup and peak RSS. All three use the same
-archived measurements and certificates.
-For the IHP SG13G2 / EZ130 extension, use `additional_report.py --update-docs`
-with the complete new measurement/validation/control directories. It combines
-the pinned baseline and additional campaign into one table across all three
-surfaces. `scaling_report.py` alone must not replace this combined overview.
-The README, homepage and benchmark guide publish only the Ibex rows. When a
-publisher regenerates these marker blocks, keep the Ibex rows and remove the
-other designs; the dated archives retain each campaign's complete matrix.
-Review the nearby design/PDK counts, proof totals and campaign links when
-changing the selected campaigns. The EZ130 extension measures
-16-core allocations; it does not supply new single-core scaling results.
-State the benchmark CPU before the table using the campaign's host provenance;
-peak memory is the largest measured GNU time peak RSS across the three timed runs.
-Keep the setup-Fmax scope and characterization-limit caveat beside each table.
-Do not revive a certificate listed in the historical
-proof invalidation registry.
+The README, homepage and benchmark page publish no synthesis-only measurement
+tables. The only published benchmark is the RustEDA whole-flow Ibex result
+(Ibex RV32 with two real IHP SRAMs on IHP SG13G2 / EZ130 8T, compared with
+LibreLane); link to the
+[RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/)
+instead of copying its values. Describe RustSys's part in that run, not
+separate synthesis timings.
+
+The benchmark publication marker pairs (`open-hardware-benchmark`,
+`large-hardware-benchmark`, `parallel-hardware-scaling` and `gf180-audit` in
+the README; `benchmark-16-core` and `benchmark-full-matrix` in the homepage and
+benchmark page) have been removed. The report tools that rewrote them,
+`scaling_report.py --root-readme`, `large_report.py`, `publish.py --root-readme`
+and the `--update-docs` option of `additional_report.py` and
+`refresh_report.py`, therefore stop with an error when they reach the
+documentation update. Do not restore the markers to republish a campaign. The dated archives under
+`verification/benchmarks/open-hardware/results/` keep each campaign's complete
+receipts. Do not revive a certificate listed in the historical proof
+invalidation registry.
 
 ## Publish to GitHub Pages
 

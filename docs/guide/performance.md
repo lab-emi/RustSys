@@ -1,57 +1,26 @@
 # Measure synthesis performance and CPU scaling
 
-Performance comparisons need the same design, technology library, resource allocation, timing boundary, and quality checks. RustSys's benchmark measures complete CLI jobs: workspace initialization and import, RTL synthesis, memory-mapped tables, and exported gate-level Verilog. Source preparation, equivalence checking, and static timing analysis run separately.
+Performance comparisons need the same design, technology library, resource allocation, timing boundary, and quality checks. The synthesis harness in `verification/benchmarks/open-hardware/` measures complete CLI jobs: workspace initialization and import, RTL synthesis, memory-mapped tables, and exported gate-level Verilog. Source preparation, equivalence checking, and static timing analysis run separately.
 
 Captured tool messages are part of those timed jobs. The raw invocations retain each tool's logging options, thread environment and CPU affinity alongside wall time, CPU seconds and memory receipts.
 
-## Current 16-core refresh
+This page describes that harness and the parallel design of the synthesis engine. It
+publishes no measured results; the only published benchmark is the RustEDA
+whole-flow Ibex result described on the [benchmark page](benchmarks.md).
 
-The [latest complete measurements](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md) cover Ibex on all three PDKs;
-the [benchmark table](benchmarks.md#16-core-synthesis-speed) lists the results.
-The Yosys measurements retain their pinned original campaigns; the current RustSys
-producer is remeasured. All six compared Ibex netlists have complete arbitrary-state
-RTL LEC with no reset or input assumptions. Each refreshed RustSys result preserves
-or reduces area and preserves or improves the same raw OpenSTA setup estimate.
+## Mapping choices that affect quality and runtime
 
-The current mapper uses bounded Liberty truth/cost checks to preserve efficient mux trees
+The mapper uses bounded Liberty truth/cost checks to preserve efficient mux trees
 for one- and two-bit variable-index reads. Clocked output drivers may use a
 compatible stronger cell when an affordable buffering plan is unavailable.
 Pin roles and state equations must match; the existing area ceiling remains.
 A feasible buffering plan keeps priority. No design names, PDK names, reset
 sequences or per-design timing targets select this behavior.
 
-The [expanded GF180 audit](benchmarks.md#gf180-runtime-audit) uses a native
-monotonic clock, 40 paired Ibex observations and same-binary controls. The
-repaired producer does not reproduce the original fixed 0.01 s Ibex slowdown.
-The repair removes duplicate drive/launch/sink calculations and work on
-unaffordable alternatives. Sequential pin compatibility and the
+Candidate evaluation avoids duplicate drive, launch and sink calculations and
+skips work on unaffordable alternatives. Sequential pin compatibility and the
 original area ceiling remain. A balanced-truth precheck rejects impossible mux
-functions before the bounded cofactor search. Every selected three-PDK netlist
-is unchanged; area, raw timing and complete arbitrary-state LEC are preserved.
-
-The audit publishes 99% paired median intervals, mean/bootstrap intervals and
-Holm-adjusted sign tests. No confirmed regression is detected, but an interval
-crossing zero does not prove equality. All prior cohorts,
-A/A controls, commands and resource receipts remain in the archive. The overview
-keeps a separate fresh three-run RustSys measurement and the pinned Yosys runs.
-
-The estimates below retain their original ideal-clock, zero-wire scope.
-
-## Historical 1/16-core CPU controls
-
-The [Sky130/GF180 baseline](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md)
-contains the 1- and 16-core Ibex configurations for both tools; the
-[historical baseline table](benchmarks.md#16-core-synthesis-speed) lists them. Those
-netlists have complete arbitrary-state LEC and independent timing evidence. The physical
-timing limits below remain part of the result.
-
-These historical controls use the frozen compiler in the 2026-10-21 campaign, with one warm-up and three timed repetitions per allocation. The linked README archive identifies the exact producer and reference campaigns. Every one-core and sixteen-core RustSys pair emits identical netlist bytes.
-
-The [earlier IHP SG13G2 / EZ130 8T extension](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-ez130/README.md)
-remains an immutable record of the previous producer. The current refresh above
-supersedes its comparison table. EZ130 still has no one-core scaling measurement.
-Its functional proof uses the
-[explicit vendor tie-cell model supplement](../verification/pdk.md#additional-ihp-sg13g2-benchmark-library).
+functions before the bounded cofactor search.
 
 ## Compare equal host resources
 
@@ -59,7 +28,7 @@ At each allocation, both tools receive the same **1 or 16 physical host cores**,
 
 The reference completes ordinary X/Z **data** before optimizing flip-flops. A flip-flop whose next value is X must retain its arbitrary current value until its first clock under RustSys's two-valued contract. Folding it into an undriven X wire and then completing that wire to zero changes the initial behavior. Dual-PDK controls check this case alongside constant-next, independently initialized, enabled, latched and memory state. Later flip-flop enable extraction remains enabled.
 
-Each selected design/library/tool/core configuration has one excluded warm-up and three measured repetitions. The baseline matrix measures both tools on both libraries at 1 and 16 physical cores. Earlier three-allocation campaigns retain their original scope and are labeled as historical evidence.
+Each selected design/library/tool/core configuration has one excluded warm-up and three measured repetitions.
 
 The RTL is unchanged between CPU allocations. The 16 cores in a benchmark configuration refer to the **host computer**, not extra processors in the RTL. RAM models are lowered to standard cells inside the measured interval.
 
@@ -72,7 +41,7 @@ The RTL is unchanged between CPU allocations. The 16 cores in a benchmark config
 | Average active CPU cores | (user CPU seconds + system CPU seconds) ÷ wall seconds | Actual CPU work, including waited-for compiler children. |
 | Average allocation utilization | Average active cores ÷ allocated cores | Fraction of available CPU capacity used over the entire job. |
 
-The tables use three-run median wall time, worst observed process RSS, and the median average active-core measurement. They do not substitute peak CPU usage for whole-job utilization. A request for 16 threads is not a claim of 16× scaling.
+Harness reports use three-run median wall time, worst observed process RSS, and the median average active-core measurement. They do not substitute peak CPU usage for whole-job utilization. A request for 16 threads is not a claim of 16× scaling.
 
 These measurements run on a shared host with explicit affinity and resource guards. They are observations under the recorded conditions, not an isolated-machine performance guarantee. Keep the raw samples and their variation when interpreting a small difference.
 
@@ -137,13 +106,13 @@ All functional comparisons retain arbitrary implementation initial states under 
 
 An opaque OpenSTA executable analyzes the exact exported netlist using the same TT library, ideal root clock, 100 ps input/clock slew, 10 fF output load, and zero I/O delay budgets. No estimated or routed wire parasitics are added. Constraint-check output is retained.
 
-The [OpenSTA command reference](https://opensta.readthedocs.io/en/latest/Commands/#report_clock_min_period) defines the reported minimum-period metric over same-clock, same-edge register setup paths. It excludes port paths, cross-edge paths, and level-sensitive latch paths. The table labels this **setup-Fmax estimate**; it is not post-layout Fmax, timing signoff, hold closure, or a physical DRC result.
+The [OpenSTA command reference](https://opensta.readthedocs.io/en/latest/Commands/#report_clock_min_period) defines the reported minimum-period metric over same-clock, same-edge register setup paths. It excludes port paths, cross-edge paths, and level-sensitive latch paths. Harness reports label this **setup-Fmax estimate**; it is not post-layout Fmax, timing signoff, hold closure, or a physical DRC result.
 
 Unclocked and otherwise unconstrained endpoints are also outside this estimate. These warnings remain in the bound `check_setup` receipts; they are not counted as passing timing paths.
 
 OpenSTA's structural reader rejects signed wire declarations retained for unused loop integers in some Yosys netlists. A bounded adapter erases that marker only after checking that each wire appears solely in its declaration and an optional constant driver. Any port, cell, alias or expression use rejects the adaptation. Every port, cell, bit and connection remains unchanged. Receipts bind the measured netlist, adapted analysis file and exact edit ledger; failed reader attempts stay in the record.
 
-The 1000 ns reference clock period is a loose analysis reference. OpenSTA derives a minimum period from the constrained paths; the table does not report the reference clock's frequency as Fmax. Missing paths, model errors, resource limits, and absent metrics remain unverified.
+The 1000 ns reference clock period is a loose analysis reference. OpenSTA derives a minimum period from the constrained paths; the reports do not give the reference clock's frequency as Fmax. Missing paths, model errors, resource limits, and absent metrics remain unverified.
 
 The harness computes MHz as `1000 / reported minimum period in ns`. It checks that this period and OpenSTA's separately printed frequency agree within their printed rounding intervals. This avoids rejecting a valid low-frequency result merely because OpenSTA rounds the frequency to two decimal places. Both original values remain in the receipts; the derived frequency retains the precision limit of the reported period.
 
@@ -172,4 +141,4 @@ First prepare the pinned hardware and libraries using the [reproduction instruct
 
 Large children use a 32 GiB physical-memory guard, 1 GiB swap guard, separate address-space limit, and explicit deadline. Jobs estimated above 4 GiB RSS serialize behind the scale lock. The controller waits within a bounded budget when host RAM is temporarily unavailable. An incomplete repetition cannot become a published median or an equivalence pass.
 
-The [README benchmark section](https://github.com/lab-emi/RustSys#benchmarks) links the current measured results and exact reproduction artifacts. The [benchmark interpretation guide](benchmarks.md) explains the design configurations and historical proof invalidations.
+The dated archives under `verification/benchmarks/open-hardware/results/` are historical synthesis-only records, not current benchmark results. The [benchmark page](benchmarks.md) describes the published whole-flow benchmark and RustSys's part in it.

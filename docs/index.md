@@ -13,52 +13,22 @@ RustSys turns RTL into mapped netlists with bounded synthesis, technology mappin
 
 The RustEDA integration combines bounded synthesis, BLIF/AIGER and mapped-netlist
 inputs, revision-bound timing optimization and a shared RustEDA foundation.
-The retained Ibex three-library comparison proves all six benchmark
+The earlier Ibex three-library synthesis campaign proves all six RustSys/Yosys
 netlists equivalent with arbitrary initial state. Real-SRAM preservation for
 IHP Ibex remains experimental; physical closure is a separate open gate.
 
 [Progress, source revisions and verification limits →](development-status.md)
 
-## 16-core synthesis speed
+## Benchmark
 
-**CPU: AMD Ryzen 9 9950X3D 16-Core Processor** · 16 physical host cores per tool, no SMT siblings.
-One warm-up and three measured synthesis/export runs; median seconds shown.
-**Speedup = Yosys time ÷ RustSys time.**
+The published benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
+SG13G2 with the ETH EZ130 8T library, run end to end through the native RustEDA
+flow and compared with LibreLane. RustSys synthesizes the Ibex + SRAM design in
+that flow; the flow's synthesis and final CEC gates prove the synthesized and
+final netlists equivalent to the original RTL.
 
-<p class="rustsys-comparison-hint">Swipe horizontally to compare all columns. Design and PDK stay visible.</p>
-
-<div class="rustsys-comparison" markdown="1" role="region" aria-label="16-core RustSys and Yosys synthesis comparison" tabindex="0">
-
-<!-- benchmark-16-core:start -->
-
-| Design | PDK | RustSys<br>16 cores, s ↓ | Yosys<br>16 cores, s ↓ | RustSys<br>Speedup ↑ | RustSys<br>Peak mem, MiB ↓ | Yosys<br>Peak mem, MiB ↓ | RustSys<br>Area, µm² ↓ | Yosys<br>Area, µm² ↓ | RustSys<br>Setup Fmax†, MHz ↑ | Yosys<br>Setup Fmax†, MHz ↑ |
-|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Ibex | Sky130 HD | 0.90 | 6.66 | **7.40×** | 92.1 | 273.1 | 117,405 | 123,670 | 42.92 | 33.47 |
-| Ibex | GF180 7T | 1.00 | 6.69 | **6.69×** | 122.8 | 273.0 | 356,149 | 379,410 | 14.93 | 8.33 |
-| Ibex | EZ130 8T | 0.79 | 6.80 | **8.61×** | 91.9 | 272.4 | 145,667 | 151,762 | 55.13 | 43.31 |
-
-<!-- benchmark-16-core:end -->
-
-</div>
-
-**Peak mem** = maximum GNU time process peak RSS across the three timed runs,
-in MiB. Aggregate cgroup memory peaks remain in the complete receipts.
-
-† **Setup-Fmax is an OpenSTA estimate** at the TT corner with ideal clocks and no wire
-parasitics. These raw estimates do not establish achievable frequency. [Timing scope](guide/performance.md#interpret-the-timing-estimate).
-
-All **six Ibex netlists pass arbitrary-state RTL LEC**, with no reset or input
-assumptions. EZ130 8T means **IHP SG13G2, library v1.1, TT 1.20 V / 25°C**.
-Its functional proof uses the vendor’s nominal tie-cell models through an
-[explicitly checked supplement](verification/pdk.md#additional-ihp-sg13g2-benchmark-library).
-[Current measurements and regression evidence](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-23-gf180-runtime-audit/README.md); pinned Yosys runs are retained with their original provenance.
-[Method, complete results and timing scope](guide/benchmarks.md).
-
-The [extended GF180 audit](guide/benchmarks.md#gf180-runtime-audit) adds 40 paired
-Ibex runs, with same-binary controls and 99% intervals. All three-PDK
-implementations preserve area, timing and arbitrary-state LEC.
-The [Ibex RTL-to-GDS benchmark](https://lab-emi.github.io/RustEDA/benchmarks/)
-compares the complete RustEDA flow with LibreLane.
+[RustEDA benchmarks](https://lab-emi.github.io/RustEDA/benchmarks/) ·
+[RustSys in the whole-flow benchmark](guide/benchmarks.md)
 
 ## A CLI you can compose
 
@@ -91,14 +61,14 @@ compares the complete RustEDA flow with LibreLane.
 
     [Equivalence workflow →](guide/checking.md)
 
-- **Inspect the comparison.**
+- **Follow the benchmark.**
 
     ---
 
-    Compare RustSys and Yosys on the Ibex RISC-V core across three PDKs.
-    Every result states its workload, library, measurement method, and proof scope.
+    RustSys synthesizes the Ibex + SRAM design in the RustEDA whole-flow
+    benchmark on IHP SG13G2. The flow proves its netlists equivalent to the RTL.
 
-    [Benchmarks and proof status →](guide/benchmarks.md)
+    [Benchmark and proof scope →](guide/benchmarks.md)
 
 </div>
 
@@ -110,7 +80,7 @@ compares the complete RustEDA flow with LibreLane.
 | Synthesize my own RTL against a cell library | [Synthesis](guide/synthesis.md) → [language support](reference/language-support.md) |
 | Drive the tools from an agent or CI system | [Agent workflow](guide/agents.md) → [commands](reference/cli.md) → [reports](reference/reports.md) |
 | Understand what a proof establishes | [Equivalence checking](guide/checking.md) → [verification scope](verification/index.md) |
-| Reproduce a comparison or assess a performance claim | [Benchmarks](guide/benchmarks.md) |
+| Find the published benchmark or assess a performance claim | [Benchmarks](guide/benchmarks.md) |
 | Scale CPU synthesis and compare area or setup-Fmax | [CPU performance and scaling](guide/performance.md) |
 | Extend RustSys or another RustEDA tool | [Architecture](architecture/index.md) → [contributing](contributing.md) |
 

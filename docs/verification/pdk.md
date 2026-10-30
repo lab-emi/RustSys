@@ -21,7 +21,7 @@ A full run takes about a minute on a workstation.
 
 ## Additional IHP SG13G2 benchmark library
 
-The separate Ibex synthesis benchmark also uses
+The benchmark harness in `verification/benchmarks/open-hardware/` also supports
 [ETH Zurich's EZ130 8T v1.1](https://iip.ethz.ch/ez-library/ihp130-8t.html)
 on IHP SG13G2 130 nm, at **TT, 1.20 V, 25°C**. This supplements the required
 Sky130/GF180 fixture matrix above.
@@ -48,7 +48,7 @@ library bytes stay pinned. This scope covers functional logic under nominal
 cell models; electrical strengths and high impedance remain outside the proof.
 
 See the [EZ130 CLI example](../guide/synthesis.md#use-ez130-cells-on-ihp-sg13g2)
-and [benchmark protocol and evidence](../guide/benchmarks.md). Please cite
+and the [benchmark page](../guide/benchmarks.md). Please cite
 Castañeda et al., [An Open-Source Standard-Cell Library for IHP 130 nm Developed by Students](https://arxiv.org/abs/2609.29965).
 
 ## Sources and licenses

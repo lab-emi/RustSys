@@ -20,18 +20,22 @@ The last engine/infrastructure revision before this documentation refresh is
 The [integration changelog](https://github.com/lab-emi/RustSys/blob/codex/unified-brand/CHANGELOG.md)
 records feature details and compatibility limits.
 
-## Retained measurement and proof evidence
+## Benchmark and proof evidence
 
-The Ibex RISC-V core is measured on Sky130 HD, GF180 7T and IHP SG13G2/EZ130 8T.
-All **six RustSys/Yosys Ibex netlists** pass arbitrary-state RTL equivalence,
-without added reset or input assumptions.
+The published benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
+SG13G2 with the ETH EZ130 8T library, run end to end through the native RustEDA
+flow and compared with LibreLane on the
+[RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/).
+RustSys synthesizes the Ibex + SRAM design in that flow; the flow's synthesis
+and final CEC gates prove the synthesized and final netlists equivalent to the
+original RTL.
 
-The 16-host-core timings include initialization, import, synthesis, mmap and
-full netlist export. Proof, STA and physical implementation are excluded.
-Setup-Fmax is an ideal-clock, no-parasitics TT estimate. It is not achievable frequency.
+The earlier synthesis-only campaign proved all **six RustSys/Yosys Ibex
+netlists** on Sky130 HD, GF180 7T and IHP SG13G2/EZ130 8T equivalent to their
+RTL with arbitrary initial state, without added reset or input assumptions. Its
+timing and quality receipts are historical archives, not current benchmark results.
 
-[Measurements, paired runtime audit and certificates](guide/benchmarks.md) ·
-[Timing interpretation](guide/performance.md#interpret-the-timing-estimate) ·
+[RustSys in the whole-flow benchmark](guide/benchmarks.md) ·
 [Equivalence scope](guide/checking.md)
 
 ## Active SRAM development
@@ -39,7 +43,6 @@ Setup-Fmax is an ideal-clock, no-parasitics TT estimate. It is not achievable fr
 A separate IHP Ibex checkout is developing opaque SRAM preservation: validated
 macro interfaces, bounded input/output cuts and retention of the original macro
 instances through mapping. That work is **not part of this integration revision**.
-Do not infer SRAM support in this build, or whole-chip DRC/LVS/timing closure,
-from the standard-cell benchmarks.
+Do not infer SRAM support in this build from the whole-flow Ibex benchmark.
 
 [RustEDA integration progress](https://lab-emi.github.io/RustEDA/engine-status/)

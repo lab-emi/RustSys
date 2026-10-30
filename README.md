@@ -42,7 +42,8 @@ SG13G2 with the ETH EZ130 8T library, run end to end through the native RustEDA
 flow and compared with LibreLane. RustSys synthesizes the Ibex + SRAM design in
 that flow; the flow's synthesis and final CEC gates prove the synthesized and
 final netlists equivalent to the original RTL. The SRAM macro preservation that
-this run needs is the separate development noted above, not part of this snapshot.
+this run needs is the separate development noted above: run16 used the separately
+qualified RustSys binary `e6cf0c77…` built from it, not this snapshot.
 
 [RustEDA benchmarks](https://lab-emi.github.io/RustEDA/benchmarks/) ·
 [RustSys in the whole-flow benchmark](https://lab-emi.github.io/RustEDA/modules/rustsys/guide/benchmarks/)

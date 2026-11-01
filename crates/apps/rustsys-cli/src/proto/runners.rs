@@ -27,8 +27,16 @@ pub(crate) fn libraries(paths: &[PathBuf], code: &str, ctx: Ctx<'_>) -> Option<V
     let mut out = Vec::with_capacity(paths.len());
     let mut ok = true;
     for p in paths {
-        match rusteda_formats::liberty::read_file(p) {
-            Ok(l) => out.push(l),
+        match rusteda_formats::liberty::read_file_diags(p) {
+            Ok((l, diagnostics)) => {
+                for diagnostic in diagnostics {
+                    if diagnostic.severity == rusteda_core::diag::Severity::Error {
+                        ok = false;
+                    }
+                    ctx.diag(|| diagnostic);
+                }
+                out.push(l);
+            }
             Err(e) => {
                 ok = false;
                 ctx.diag(|| Diag::error(code, format!("{}: {e}", p.display())));
@@ -191,6 +199,7 @@ pub(crate) fn run_synth(j: &SynthJob, dir: Option<&Path>, ctx: Ctx<'_>) -> Produ
         default_quality: Some(Default::default()),
         electrical_corners,
         backend,
+        opaque_limits: Default::default(),
         gate_libs,
         gate_netlist: j.fe.gate_netlist.is_some(),
         initial_values: j.fe.initial_values.unwrap_or_default().engine(),

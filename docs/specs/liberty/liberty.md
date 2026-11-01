@@ -5,7 +5,7 @@ Source: the Liberty library format as published by the Liberty Technical Advisor
 `liberty`: `read_file`, `read_text`, `read_file_diags`, `read_text_diags` and `parse_function`)
 accepts and reports. The library model it builds is specified with `rusteda-core`:
 [Liberty library model](../core/README.md#liberty-library-model) (LIBERTY-REQ-0010 to 0019,
-0022 to 0026, 0030 to 0034 and 0040 to 0048).
+0022 to 0026, 0030 to 0034 and 0040 to 0049).
 
 | Section | Requirements |
 |---|---|

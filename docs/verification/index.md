@@ -1,10 +1,12 @@
 # Verification evidence and limits
 
-The current [common five-design campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md) binds each measured implementation to its original RTL, Liberty library and exact exported Verilog bytes. Performance sampling, logical equivalence and timing analysis are separate operations with separate receipts.
+The published benchmark is the RustEDA whole-flow Ibex run with two real IHP SRAMs on IHP SG13G2 / EZ130 8T, on the [RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/). Its synthesis and final CEC gates prove the synthesized and final netlists equivalent to the original RTL; the [benchmark page](../guide/benchmarks.md) describes RustSys's part and the proof scope.
 
-## Current common campaign
+The retained synthesis-only [common campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md), whose archive is mainly historical timing and quality receipts, binds each measured implementation to its original RTL, Liberty library and exact exported Verilog bytes. Performance sampling, logical equivalence and timing analysis are separate operations with separate receipts.
 
-The selected matrix is five designs × two libraries × RustSys/Yosys at both 1 and 16 physical host cores: forty configurations. Each selected configuration has three measured runs after one warm-up; all repetitions must complete. Each tool's 1/16-core netlists must be byte-identical.
+## Common campaign proof method
+
+The common campaign checks RustSys and Yosys netlists on Sky130 HD and GF180 7T. Each tool's 1/16-core netlists must be byte-identical, so one proof covers both allocations.
 
 Functional validation uses the independent RTL event model and external ABC CEC. Inferred multiplication/addition uses exact observed-operand components checked by Arisca, with complete ABC checks of extraction, context reconstruction, the Boolean context and transport to the actual measured netlist. Observations add obligations; they do not assume internal signals equivalent. The model completes ordinary X/Z data and undriven values to zero while keeping **arbitrary register initial states**. It adds no reset pulse, reachability restriction or new input assumption. Wildcards retain their language matching semantics.
 
@@ -22,9 +24,9 @@ No timing result implies physical DRC, placement/routing, clock-tree correctness
 
 ## Historical proof scopes
 
-The [earlier four-core campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-20-lec-complete/README.md) used EQY/SBY, ABC CEC and undef-aware Yosys SAT with checked arithmetic compositions. It established defined-bit refinement under its documented state correspondence. The two historical native VexRiscv SAT checks stayed unverified under their budgets, despite completed external proofs in that campaign.
+The [earlier four-core campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-20-lec-complete/README.md), whose archive also tabulates historical timing and area results, used EQY/SBY, ABC CEC and undef-aware Yosys SAT with checked arithmetic compositions. It established defined-bit refinement under its documented state correspondence. The two historical native VexRiscv SAT checks stayed unverified under their budgets, despite completed external proofs in that campaign.
 
-The [corrected single-run OpenC910 campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-20-openc910-verified/README.md) calibrated the independent two-valued RTL model against actual Yosys netlists and checked complete projected obligations with ABC. Its producer and source snapshots are retained. It is a different measurement profile from the current common default-mapping campaign.
+The [corrected single-run OpenC910 campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-20-openc910-verified/README.md), whose archive is mainly a historical stress-run timing record, calibrated the independent two-valued RTL model against actual Yosys netlists and checked complete projected obligations with ABC. Its producer and source snapshots are retained. It is a different measurement profile from the common default-mapping campaign.
 
 ### Invalidations remain part of the record
 

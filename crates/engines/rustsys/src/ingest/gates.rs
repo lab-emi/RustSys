@@ -342,6 +342,7 @@ fn lower_inner(g: &GateNetlist, libs: &[Library], top: Option<&str>) -> Result<L
         aig,
         ports: design_ports,
         states,
+        opaque_instances: Vec::new(),
     };
     check_states(&design)?;
     Ok(Lowered {

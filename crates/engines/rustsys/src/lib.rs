@@ -15,6 +15,7 @@ pub mod emit;
 pub mod estimate;
 pub mod ingest;
 pub mod map;
+mod opaque;
 pub mod opt;
 pub mod sat;
 pub mod view;
@@ -79,6 +80,8 @@ pub struct SynthOptions {
     pub delay_relax: f64,
     /// Where the mapper's cut passes run (SYNTH-REQ-0516).
     pub backend: map::MapBackend,
+    /// Hard limits for opaque macro interface expansion.
+    pub opaque_limits: elab::OpaqueLimits,
     /// Optional load-aware buffering and sizing after compact Boolean covering.
     pub electrical: Option<electrical::Options>,
     /// Optional area-capped cleanup when no timing constraints were supplied.
@@ -110,6 +113,7 @@ impl Default for SynthOptions {
             goal: Goal::Delay,
             delay_relax: 0.1,
             backend: map::MapBackend::Cpu,
+            opaque_limits: elab::OpaqueLimits::default(),
             electrical: None,
             default_quality: Some(Default::default()),
             electrical_corners: Vec::new(),
@@ -132,6 +136,9 @@ pub struct Report {
     pub cells: std::collections::BTreeMap<String, usize>,
     pub area: f64,
     pub sequential_cells: usize,
+    /// Opaque hard macros retained with their original interfaces.
+    #[serde(default)]
+    pub macro_cells: usize,
     pub combinational_cells: usize,
     pub inverters: usize,
     pub logic_depth: u32,
@@ -434,6 +441,13 @@ fn run(
         }
     }
     let eopts = elab::ElabOptions {
+        opaque_cells: libs
+            .iter()
+            .flat_map(|lib| &lib.cells)
+            .filter(|cell| cell.is_macro_cell)
+            .map(|cell| cell.name.clone())
+            .collect(),
+        opaque_limits: opts.opaque_limits,
         prefer_narrow_muxes: map::library::prefer_narrow_muxes(libs, &opts.dont_use),
         parallel_carry: opts.electrical.is_some() && carry != Carry::Ripple,
         carry_cost_weight: carry.area_weight(),
@@ -484,6 +498,14 @@ fn run(
             .count();
         (design, w)
     };
+    opaque::validate_interfaces(ctx, &mut design, libs)?;
+    if !design.opaque_instances.is_empty() && opts.electrical.is_some() {
+        return Err(fail(ctx, vec!["error[S0134]: synthesis electrical optimization does not yet model opaque macro buses; use physical timing closure after macro-preserving synthesis".into()], false));
+    }
+    if !design.opaque_instances.is_empty() {
+        messages.push("warning[S0134]: mapping delay and depth stop at opaque macro boundaries; SRAM internal delay and setup/hold require macro-aware static timing analysis".into());
+        warnings += 1;
+    }
     // Elaboration ends after its messages, and only when it succeeded.
     lap("elaborate", Some("optimize"), &mut phase_s);
     let has_parallel_arithmetic = design.aig.has_parallel_arithmetic;
@@ -934,8 +956,9 @@ fn run(
     } else {
         None
     };
-    let default_quality = if let Some(limits) =
-        opts.default_quality.filter(|_| electrical.is_none())
+    let default_quality = if let Some(limits) = opts
+        .default_quality
+        .filter(|_| electrical.is_none() && design.opaque_instances.is_empty())
     {
         let mut aliases = Vec::new();
         if netlist.instances.len() <= limits.max_gates {
@@ -980,6 +1003,10 @@ fn run(
         }
         Some(Box::new(quality))
     } else {
+        if !design.opaque_instances.is_empty() && opts.default_quality.is_some() {
+            messages.push("warning[S0134]: unconstrained quality cleanup skipped for opaque macro buses; no timing closure is claimed".into());
+            warnings += 1;
+        }
         None
     };
     let text = write::write_netlist(&netlist);
@@ -1004,6 +1031,7 @@ fn run(
         cells: stats.cells.iter().map(|(k, v)| (k.clone(), *v)).collect(),
         area: stats.area,
         sequential_cells: stats.sequential,
+        macro_cells: design.opaque_instances.len(),
         combinational_cells: stats.combinational,
         inverters: stats.inverters,
         logic_depth: electrical.as_ref().map_or_else(

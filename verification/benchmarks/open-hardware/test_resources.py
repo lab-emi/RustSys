@@ -6,11 +6,21 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 import run
 
 
 class ResourceGuardTests(unittest.TestCase):
+    def test_missing_timer_is_explicit_and_never_starts_the_job(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            marker = directory / "started"
+            with patch.dict("os.environ", {"RUSTEDA_GNU_TIME": str(directory / "missing")}):
+                with self.assertRaisesRegex(ValueError, "GNU time executable is required"):
+                    run.execute([sys.executable, "-c", f"from pathlib import Path; Path({str(marker)!r}).touch()"], directory, "missing")
+            self.assertFalse(marker.exists())
+
     def test_live_budget_failure_stops_the_child_and_is_never_a_pass(self):
         with tempfile.TemporaryDirectory() as name:
             def exhausted():

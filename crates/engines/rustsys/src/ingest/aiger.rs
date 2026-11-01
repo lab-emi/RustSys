@@ -117,6 +117,7 @@ fn lower_inner(g: &Graph, module: &str, mode: InitialValues) -> Result<Lowered, 
         aig,
         ports,
         states,
+        opaque_instances: Vec::new(),
     };
     check_states(&design)?;
     let mut messages = Vec::new();

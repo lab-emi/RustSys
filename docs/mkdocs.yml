@@ -123,6 +123,7 @@ nav:
           - Compiled libraries: specs/workspace/rlib.md
           - Workspace timing: specs/workspace/sta.md
           - RustEDA CLI: specs/rusteda-cli/README.md
+          - Detailed parasitic import: specs/rusteda-cli/spef.md
           - Core data structures: specs/core/README.md
           - Core netlist: specs/core/netlist.md
           - Compute backends: specs/compute/README.md
@@ -135,7 +136,7 @@ nav:
           - AIGER: specs/aiger/README.md
           - BLIF: specs/blif/README.md
   - Evidence:
-      - Benchmark results: guide/benchmarks.md
+      - Whole-flow benchmark: guide/benchmarks.md
       - Proof scope and status: verification/index.md
       - Checker specification: specs/check/synth.md
       - Synthesis verification: specs/synth/verification.md
@@ -156,3 +157,6 @@ nav:
           - Synthesis manual: user/synth/README.md
           - Reset handling: user/synth/reset.md
           - RustSys CLI manual: user/cli/README.md
+
+hooks:
+  - _tools/site_hooks.py

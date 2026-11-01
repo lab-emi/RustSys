@@ -28,7 +28,7 @@ use rusteda_formats::verilog::{Diagnostic, SourceMap, Span};
 
 use crate::aig::{Aig, Lit};
 use crate::bits::Bv;
-pub use resolve::{Design, Port, State, StateKind};
+pub use resolve::{Design, OpaqueInstance, OpaquePort, Port, State, StateKind};
 use types::{Range, Ty};
 
 pub type ScopeId = usize;
@@ -192,8 +192,30 @@ impl Default for Env {
 }
 
 /// Elaboration options.
+#[derive(Debug, Clone, Copy)]
+pub struct OpaqueLimits {
+    /// Maximum number of retained hard macro instances.
+    pub max_instances: usize,
+    /// Maximum combined number of input and output bits across hard macros.
+    pub max_pin_bits: usize,
+}
+
+impl Default for OpaqueLimits {
+    fn default() -> Self {
+        Self {
+            max_instances: 4096,
+            max_pin_bits: 65_536,
+        }
+    }
+}
+
+/// Elaboration options.
 #[derive(Debug, Clone, Default)]
 pub struct ElabOptions {
+    /// Cells explicitly identified by the supplied technology library as
+    /// opaque macros. Their declared ports become combinational cut points.
+    pub opaque_cells: Vec<String>,
+    pub opaque_limits: OpaqueLimits,
     /// Keep narrow variable-index reads as mux trees when the target library
     /// implements four-way muxes more cheaply than decoded product gates.
     pub prefer_narrow_muxes: bool,
@@ -233,6 +255,10 @@ pub struct Elaborator<'a> {
     pub(crate) select_of: FxHashMap<u32, usize>,
     pub procs: Vec<ProcInfo>,
     pub states: Vec<StateRec>,
+    pub(crate) opaque_cells: rustc_hash::FxHashSet<String>,
+    pub(crate) opaque_instances: Vec<(String, String, Vec<module::PortInfo<'a>>)>,
+    pub(crate) opaque_limits: OpaqueLimits,
+    pub(crate) opaque_pin_bits: usize,
     var_inits: Vec<(SigId, Vec<Bv>, Span)>,
     pub locals: Vec<LocalVar>,
     pub env: Option<Env>,
@@ -287,6 +313,10 @@ impl<'a> Elaborator<'a> {
             select_of: FxHashMap::default(),
             procs: Vec::new(),
             states: Vec::new(),
+            opaque_cells: Default::default(),
+            opaque_instances: Vec::new(),
+            opaque_limits: OpaqueLimits::default(),
+            opaque_pin_bits: 0,
             var_inits: Vec::new(),
             locals: Vec::new(),
             env: None,

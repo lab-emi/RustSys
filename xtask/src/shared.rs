@@ -51,8 +51,9 @@ pub(crate) const DOCS: [&str; 9] = [
 
 /// Individual files outside [`CRATES`] and [`DOCS`] that are shared verbatim across the tool
 /// repositories.
-pub(crate) const FILES: [&str; 7] = [
+pub(crate) const FILES: [&str; 8] = [
     "verification/pdks.toml",
+    "xtask/src/foundation.rs",
     "xtask/src/pdk/fetch.rs",
     "xtask/src/pdk/json.rs",
     "xtask/src/pdk/manifest.rs",

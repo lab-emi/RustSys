@@ -332,6 +332,9 @@ pub fn emit_with_states(
     for s in merged {
         names.reserved.insert(s.name.as_str());
     }
+    for instance in &d.opaque_instances {
+        names.reserved.insert(instance.name.as_str());
+    }
     let mut m = NlModule {
         name: d.top.clone(),
         ..NlModule::default()
@@ -594,6 +597,29 @@ pub fn emit_with_states(
                 ));
             }
         }
+    }
+    // All ordinary passes see each opaque boundary as a primary cut point.
+    // At emission the cut ports become internal wires of the exact same width
+    // and the original macro instance reconnects them. No RAM behavior is
+    // substituted and no macro output is allowed to become an undriven zero.
+    for instance in &d.opaque_instances {
+        let mut conns = Vec::with_capacity(instance.ports.len());
+        for opaque in &instance.ports {
+            let index = m
+                .ports
+                .iter()
+                .position(|p| p.name == opaque.cut)
+                .expect("opaque cut point retained by synthesis");
+            let port = m.ports.remove(index);
+            m.wires.push((port.name, port.width));
+            conns.push((opaque.name.clone(), NlRef::Net(opaque.cut.clone())));
+        }
+        m.instances.push(NlInstance {
+            name: instance.name.clone(),
+            cell: instance.cell.clone(),
+            conns,
+        });
+        stats.cell(&instance.cell, instance.area);
     }
     (m, stats)
 }

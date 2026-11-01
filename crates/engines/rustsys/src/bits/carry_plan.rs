@@ -133,6 +133,7 @@ mod tests {
                 top: "slack".into(),
                 aig: g,
                 states: Vec::new(),
+                opaque_instances: Vec::new(),
                 ports: vec![
                     Port {
                         name: "critical".into(),

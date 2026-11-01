@@ -20,6 +20,7 @@ path = "src/main.rs"
 doc = false
 
 [dependencies]
+rusteda-cli-shared.workspace = true
 rusteda-core.workspace = true
 rusteda-formats.workspace = true
 rusteda-workspace.workspace = true
@@ -28,6 +29,12 @@ clap_complete.workspace = true
 rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[dev-dependencies]
+flate2.workspace = true
 
 [lints]
 workspace = true

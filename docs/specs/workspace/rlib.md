@@ -1,8 +1,8 @@
-# The `LIBERTY` v3 (`.rlib`) compiled library codec (`crates/core/rusteda-workspace/src/rlib.rs`)
+# The `LIBERTY` v4 (`.rlib`) compiled library codec (`crates/core/rusteda-workspace/src/rlib.rs`)
 
 ## Container and sections
 
-**WS-REQ-0110** A compiled Liberty library (`cache/<name>-<h16>.rlib`) is an `rbin` container of kind `"LIBERTY"` and `format_version = 3` (`3..=3`). When compiled from a cached `.lib` file, its `rbin` header records upstream `"lib"` mapped to the `xxh3-64` hash of the `.lib` bytes. It contains three sections in ascending ID order:
+**WS-REQ-0110** A compiled Liberty library (`cache/<name>-<h16>.rlib`) is an `rbin` container of kind `"LIBERTY"` and `format_version = 3` (`3..=3`; version 4 since WS-REQ-0117). When compiled from a cached `.lib` file, its `rbin` header records upstream `"lib"` mapped to the `xxh3-64` hash of the `.lib` bytes. It contains three sections in ascending ID order:
 - Section `1` (`STR`, `elem_size = 1`): concatenated UTF-8 bytes of all strings in the library, deduplicated in first-appearance order.
 - Section `2` (`MODEL`, `elem_size = 1`): deterministic little-endian byte stream encoding the `rusteda_core::liberty::Library` model.
 - Section `3` (`F64`, `elem_size = 8`): pool of little-endian IEEE-754 `f64` bit patterns (`u64` in little-endian byte order) referenced by `(start, len)` slices from `Template` and `Table` records in `MODEL`.
@@ -44,9 +44,19 @@
 
 ## Round-trip, validation, and cache loading
 
+**WS-REQ-0117** Format version 4. Writers write `format_version = 4` and readers accept `4..=4`;
+version 4 is the version 3 container and grammar of WS-REQ-0110 to WS-REQ-0112 with three fields
+appended to every `Pin` record after `line`: `min_pulse_width_high: opt<f64>`,
+`min_pulse_width_low: opt<f64>` and `min_period: opt<f64>` (LIBERTY-REQ-0049). The validation of
+WS-REQ-0114 applies with `4..=4`. A cached `.rlib` of version 3, which cannot hold the pin pulse
+attributes, is an older version and is compiled again from its cached `.lib` (WS-REQ-0116), so no
+reader sees a library without them; a version above 4 fails with `SCHEMA_TOO_NEW`. A tool that
+reads only version 3 rejects a version 4 cache with `SCHEMA_TOO_NEW` instead of reading it
+without the attributes.
+
 **WS-REQ-0113** Encoding and decoding are exact and reproducible: for every `Library` value `lib`, `decode(&encode(&lib)?)? == lib`, and re-encoding a decoded library produces identical `.rlib` bytes (`encode(&decode(&bytes)?)? == bytes`).
 
-**WS-REQ-0114** Decoding validates the `rbin` header (`kind == "LIBERTY"`, `format_version` in `3..=3`), the presence and element sizes of sections `STR`, `MODEL`, and `F64`, UTF-8 validity and character boundaries of `STR`, slice bounds into `STR` and `F64`, strictly ascending template map keys, valid boolean and enumeration tags, bounded `Func` recursion depth, and that `MODEL` has no trailing bytes; any malformed or truncated input fails with `CORRUPT_TABLE` without panicking, and a `format_version > 3` fails with `SCHEMA_TOO_NEW`.
+**WS-REQ-0114** Decoding validates the `rbin` header (`kind == "LIBERTY"`, `format_version` in `3..=3`, `4..=4` since WS-REQ-0117), the presence and element sizes of sections `STR`, `MODEL`, and `F64`, UTF-8 validity and character boundaries of `STR`, slice bounds into `STR` and `F64`, strictly ascending template map keys, valid boolean and enumeration tags, bounded `Func` recursion depth, and that `MODEL` has no trailing bytes; any malformed or truncated input fails with `CORRUPT_TABLE` without panicking, and a `format_version > 3` (`> 4` since WS-REQ-0117) fails with `SCHEMA_TOO_NEW`.
 
 **WS-REQ-0115** `rusteda import --lib` compiles each validated library with `rlib::put` into `cache/<name>-<h16>.rlib` atomically and records its cache entry in `meta.json` `libraries`.
 

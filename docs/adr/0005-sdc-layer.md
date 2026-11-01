@@ -1,7 +1,10 @@
 # ADR 0005: Shared SDC layer, bounded Tcl subset, and CONSTR v1 binary sections
 
 - Status: accepted
-- Date: 2026-10-17
+- Date: 2026-10-17; amended 2026-10-24 (`set_propagated_clock` and `unset_propagated_clock`
+  are interpreted typed commands kept in `CONSTR v1`, SDC-REQ-0070; the readers of
+  `rusteda-formats` also use `thiserror`, `serde`, `flate2`, `rayon`, `rustc-hash` and
+  `smallvec`)
 
 ## Context
 Timing constraints arrive as Synopsys Design Constraints (SDC) files (`[@sdc2016]`) written in a

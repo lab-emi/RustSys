@@ -45,13 +45,34 @@ pub struct State {
     pub arst: Option<(Lit, bool)>,
 }
 
-/// Elaborated design.
+/// An opaque macro's original port and its internal synthesis cut.
+#[derive(Debug, Clone)]
+pub struct OpaquePort {
+    pub name: String,
+    pub cut: String,
+    /// Original packed range. Keep the base name once instead of allocating
+    /// one copy per bit; even long identifiers have bounded linear storage.
+    pub range: Option<super::types::Range>,
+}
+
+/// A preserved hard macro instance.
+#[derive(Debug, Clone)]
+pub struct OpaqueInstance {
+    pub name: String,
+    pub cell: String,
+    pub ports: Vec<OpaquePort>,
+    /// Filled from the validated technology library before netlist emission.
+    pub area: f64,
+}
+
+/// Elaborated design. Opaque interfaces remain roots through every logic pass.
 #[derive(Debug, Clone)]
 pub struct Design {
     pub top: String,
     pub aig: Aig,
     pub ports: Vec<Port>,
     pub states: Vec<State>,
+    pub opaque_instances: Vec<OpaqueInstance>,
 }
 
 const UNSET: Lit = Lit(u32::MAX);
@@ -103,7 +124,44 @@ impl Elaborator<'_> {
         img[0] = Lit::FALSE;
         color[0] = 2;
         let mut ports = Vec::new();
-        let top_ports = self.top_ports.clone();
+        let mut top_ports = self.top_ports.clone();
+        let mut reserved: FxHashSet<String> = self.signals.iter().map(|s| s.name.clone()).collect();
+        reserved.extend(top_ports.iter().map(|p| p.0.clone()));
+        let mut opaque_instances = Vec::new();
+        let mut cut_index = 0usize;
+        for (name, cell, pins) in &self.opaque_instances {
+            let mut connections = Vec::new();
+            for p in pins {
+                let cut = loop {
+                    let n = format!("__rustsys_macro_cut_{cut_index}");
+                    cut_index += 1;
+                    if reserved.insert(n.clone()) {
+                        break n;
+                    }
+                };
+                top_ports.push((
+                    cut.clone(),
+                    p.sig,
+                    p.dir == rusteda_formats::verilog::ast::Direction::Output,
+                ));
+                let range = match &self.signals[p.sig as usize].ty {
+                    Ty::Bit { .. } => None,
+                    Ty::Vector { range, .. } => Some(*range),
+                    _ => unreachable!("opaque port type validated during elaboration"),
+                };
+                connections.push(OpaquePort {
+                    name: p.name.clone(),
+                    cut,
+                    range,
+                });
+            }
+            opaque_instances.push(OpaqueInstance {
+                name: name.clone(),
+                cell: cell.clone(),
+                ports: connections,
+                area: 0.0,
+            });
+        }
         // Inputs first, in port order, so that input numbering follows the port list.
         for (name, sig, is_in) in &top_ports {
             if !*is_in {
@@ -263,6 +321,7 @@ impl Elaborator<'_> {
             aig: ng,
             ports: ordered,
             states,
+            opaque_instances,
         })
     }
 

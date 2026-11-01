@@ -219,6 +219,8 @@ fn design_cases(
     let (units, diags) = read_texts(&mut sm, &[("m.sv", src)], PpOptions::default());
     assert!(!diags.iter().any(|d| d.is_error()));
     let opts = ElabOptions {
+        opaque_cells: Vec::new(),
+        opaque_limits: Default::default(),
         prefer_narrow_muxes: false,
         parallel_carry: false,
         carry_cost_weight: None,

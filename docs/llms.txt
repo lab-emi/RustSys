@@ -20,9 +20,9 @@ that site root. Source paths are relative to the repository root.
 
 - [Equivalence workflow and budgets](guide/checking/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/checking.md))
 - [Proof scope and status](verification/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/verification/index.md))
-- [RustSys/Yosys comparisons](guide/benchmarks/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/benchmarks.md))
+- [RustSys in the RustEDA whole-flow Ibex benchmark](guide/benchmarks/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/benchmarks.md))
 - [CPU performance, actual utilization, and quality preservation](guide/performance/) ([source](https://github.com/lab-emi/RustSys/blob/main/docs/guide/performance.md))
-- [Canonical evidence archives](https://github.com/lab-emi/RustSys/tree/main/verification/benchmarks/open-hardware/results/)
+- [Historical synthesis-only evidence archives](https://github.com/lab-emi/RustSys/tree/main/verification/benchmarks/open-hardware/results/)
 - [Invalidated historical proofs](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/proof-invalidations.json)
 
 ## Integration rules

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 RustEDA contributors
 
-//! Integration tests for `rusteda import --netlist` (RCLI-REQ-0011, RCLI-REQ-0019).
+//! Integration tests for `rusteda import --netlist` (RCLI-REQ-0011, RCLI-REQ-0019,
+//! RCLI-REQ-0024).
 
 use std::env;
 use std::fs;
@@ -311,6 +312,231 @@ endmodule
     assert_eq!(code_stale, 4);
     assert_eq!(env_stale["error"]["code"], "REVISION_CONFLICT");
 
+    let _ = fs::remove_dir_all(&root);
+}
+
+/// RCLI-REQ-0019: a flat netlist with concatenations, part-selects in both directions, sized
+/// constants and escaped buses in `assign` statements imports bit for bit as the reader specifies
+/// (most significant bit first, the bits of a part-select from its left to its right index); a
+/// width mismatch is still rejected.
+#[test]
+fn import_flat_concatenations_part_selects_and_sized_constants() {
+    let root = temp_dir("concat-assigns");
+    let ws_path = root.join("ws");
+    let ws_s = ws_path.to_str().unwrap();
+    let (code, _, _) = run_json(&["init", "-w", ws_s]);
+    assert_eq!(code, 0);
+    let lib_file = root.join("synth_pg.lib");
+    fs::write(&lib_file, SYNTH_PG_LIB).unwrap();
+
+    let v_file = root.join("top.v");
+    let verilog = r#"
+module top(a, b, y, z, q);
+  input [3:0] a;
+  input b;
+  output [3:0] y;
+  output [1:0] z;
+  output [0:2] q;
+  wire [3:0] \u.bus ;
+  wire [1:0] w;
+  INVX1 i0 (
+    .A(a[0]),
+    .Y(\u.bus [0])
+  );
+  INVX1 i1 (
+    .A(a[1]),
+    .Y(\u.bus [1])
+  );
+  NAND2X1 n0 (
+    .A(a[2]),
+    .B(b),
+    .Y(w[1])
+  );
+  assign \u.bus [3:2] = 2'h1;
+  assign w[0] = 1'b0;
+  assign y = { \u.bus [1:0], w };
+  assign z[1:0] = { a[3], 1'h1 };
+  assign q = a[1:3];
+endmodule
+"#;
+    fs::write(&v_file, verilog).unwrap();
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws_s,
+        "--base-rev",
+        "rev0",
+        "--lib",
+        lib_file.to_str().unwrap(),
+        "--netlist",
+        v_file.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "import failed: {env}");
+    assert_eq!(env["metrics"]["cells"], 3);
+    assert_eq!(env["metrics"]["assigns"], 12);
+
+    let ws = Workspace::open(&ws_path).unwrap();
+    let rev1 = ws.revision(ws.resolve_query("rev1").unwrap()).unwrap();
+    let rbin = rusteda_workspace::netlist::open_rev(&rev1).unwrap();
+    let n = rusteda_workspace::netlist::decode(&rbin).unwrap();
+    let name = |row: u32| -> String {
+        match row {
+            rusteda_core::netlist::CONST0 => "0".to_string(),
+            rusteda_core::netlist::CONST1 => "1".to_string(),
+            r => {
+                let rec = &n.nets[r as usize];
+                let base = n.string(rec.name).unwrap().to_string();
+                if rec.index == rusteda_core::netlist::SCALAR {
+                    base
+                } else {
+                    format!("{base}[{}]", rec.index)
+                }
+            }
+        }
+    };
+    let got: Vec<(String, String)> = n
+        .assigns
+        .iter()
+        .map(|a| (name(a.lhs), name(a.rhs)))
+        .collect();
+    let want: Vec<(String, String)> = [
+        ("u.bus[3]", "0"),
+        ("u.bus[2]", "1"),
+        ("w[0]", "0"),
+        ("y[3]", "u.bus[1]"),
+        ("y[2]", "u.bus[0]"),
+        ("y[1]", "w[1]"),
+        ("y[0]", "w[0]"),
+        ("z[1]", "a[3]"),
+        ("z[0]", "1"),
+        ("q[0]", "a[1]"),
+        ("q[1]", "a[2]"),
+        ("q[2]", "a[3]"),
+    ]
+    .iter()
+    .map(|&(l, r)| (l.to_string(), r.to_string()))
+    .collect();
+    assert_eq!(got, want);
+
+    // 3 bits to 4: rejected with a width diagnostic, as by the full reader.
+    let bad = verilog.replace("assign q = a[1:3];", "assign y = a[2:0];");
+    let v_bad = root.join("bad.v");
+    fs::write(&v_bad, bad).unwrap();
+    let ws2 = root.join("ws2");
+    let ws2_s = ws2.to_str().unwrap();
+    assert_eq!(run_json(&["init", "-w", ws2_s]).0, 0);
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws2_s,
+        "--base-rev",
+        "rev0",
+        "--lib",
+        lib_file.to_str().unwrap(),
+        "--netlist",
+        v_bad.to_str().unwrap(),
+    ]);
+    assert_ne!(code, 0, "a width mismatch must be rejected: {env}");
+    let _ = fs::remove_dir_all(&root);
+}
+
+/// RCLI-REQ-0024: a netlist that the streaming reader declines (here a part-select against the
+/// declared direction) is read by the full reader only within `--max-netlist-ast-mib`; beyond it
+/// the import is rejected with a `V0300` error that names the budget and the option, and HEAD
+/// does not move. A netlist that the streaming reader takes ignores the budget.
+#[test]
+fn full_reader_budget_bounds_netlists_the_streaming_reader_declines() {
+    let root = temp_dir("ast-budget");
+    let ws_path = root.join("ws");
+    let ws_s = ws_path.to_str().unwrap();
+    assert_eq!(run_json(&["init", "-w", ws_s]).0, 0);
+    let lib_file = root.join("synth_pg.lib");
+    fs::write(&lib_file, SYNTH_PG_LIB).unwrap();
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws_s,
+        "--base-rev",
+        "rev0",
+        "--lib",
+        lib_file.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "library import failed: {env}");
+
+    let netlist = |select: &str| {
+        format!(
+            "module top(a, y, q);\n  input [3:0] a;\n  output y;\n  output [2:0] q;\n  \
+             INVX1 i0 (.A(a[0]), .Y(y));\n  assign q = {select};\nendmodule\n"
+        )
+    };
+    let declined = root.join("declined.v");
+    fs::write(&declined, netlist("a[1:3]")).unwrap();
+    let streamed = root.join("streamed.v");
+    fs::write(&streamed, netlist("a[3:1]")).unwrap();
+    let import = |file: &Path, extra: &[&str]| {
+        let mut args = vec![
+            "import",
+            "-w",
+            ws_s,
+            "--base-rev",
+            "rev1",
+            "--netlist",
+            file.to_str().unwrap(),
+        ];
+        args.extend_from_slice(extra);
+        run_json(&args)
+    };
+
+    let (code, env, _) = import(&declined, &["--max-netlist-ast-mib", "0"]);
+    assert_eq!(code, 1, "over the budget: {env}");
+    assert_eq!(env["error"]["code"], "INPUT_REJECTED");
+    let d0 = &env["diagnostics"][0];
+    assert_eq!(d0["code"], "V0300");
+    let msg = d0["message"].as_str().unwrap();
+    assert!(
+        msg.contains("0 MiB") && msg.contains("--max-netlist-ast-mib"),
+        "{msg}"
+    );
+
+    // The rejection left HEAD at rev1; the streaming reader ignores the budget.
+    assert_eq!(run_json(&["show", "-w", ws_s]).1["rev"], "rev1");
+    let (code, env, _) = import(&streamed, &["--max-netlist-ast-mib", "0"]);
+    assert_eq!(code, 0, "streamed netlist: {env}");
+    assert_eq!(env["metrics"]["assigns"], 3);
+    assert_eq!(run_json(&["show", "-w", ws_s]).1["rev"], "rev2");
+
+    // The default budget (64 MiB) reads the declined netlist with the full reader.
+    let ws2 = root.join("ws2");
+    let ws2_s = ws2.to_str().unwrap();
+    assert_eq!(run_json(&["init", "-w", ws2_s]).0, 0);
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws2_s,
+        "--base-rev",
+        "rev0",
+        "--lib",
+        lib_file.to_str().unwrap(),
+        "--netlist",
+        declined.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "within the default budget: {env}");
+    assert_eq!(env["metrics"]["assigns"], 3);
+
+    // The budget only applies to a netlist import.
+    let (code, env, _) = run_json(&[
+        "import",
+        "-w",
+        ws2_s,
+        "--base-rev",
+        "rev1",
+        "--lib",
+        lib_file.to_str().unwrap(),
+        "--max-netlist-ast-mib",
+        "1",
+    ]);
+    assert_eq!(code, 1, "a budget without --netlist: {env}");
+    assert_eq!(env["error"]["code"], "USAGE");
     let _ = fs::remove_dir_all(&root);
 }
 

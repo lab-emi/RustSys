@@ -38,7 +38,7 @@ rustsys --threads 16 synth --top counter --goal area --effort medium \
 
 The Python helper downloads library data; synthesis runs in the native Rust CLI.
 Keep the exact Liberty file with the result. See [library provenance](../verification/pdk.md#additional-ihp-sg13g2-benchmark-library)
-and the [five-design comparison](benchmarks.md).
+and the [benchmark page](benchmarks.md).
 
 EZ130 v1.1 has a documented tie-cell driver-type conflict between Liberty and
 the vendor Verilog models. The benchmark verification workflow certifies an

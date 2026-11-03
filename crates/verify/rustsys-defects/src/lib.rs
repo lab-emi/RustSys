@@ -187,6 +187,38 @@ fn cell_kind(lib: &Library, name: &str) -> Option<(bool, u64, Vec<String>, Strin
     Some((!c.sequentials.is_empty(), tt, ins, out.name.clone()))
 }
 
+/// Output nets of the combinational cells that read, directly or through other combinational
+/// cells, the output of instance `i` (including that output).
+fn comb_fanout(m: &NlModule, lib: &Library, i: usize) -> Vec<NlRef> {
+    let output = |x: &NlInstance| -> Option<NlRef> {
+        let (seq, _, _, out) = cell_kind(lib, &x.cell)?;
+        if seq {
+            return None;
+        }
+        x.conns.iter().find(|c| c.0 == out).map(|c| c.1.clone())
+    };
+    let mut nets: Vec<NlRef> = output(&m.instances[i]).into_iter().collect();
+    let mut done = vec![false; m.instances.len()];
+    done[i] = true;
+    loop {
+        let before = nets.len();
+        for (k, x) in m.instances.iter().enumerate() {
+            if done[k] || !x.conns.iter().any(|c| nets.contains(&c.1)) {
+                continue;
+            }
+            done[k] = true;
+            if let Some(o) = output(x) {
+                if !nets.contains(&o) {
+                    nets.push(o);
+                }
+            }
+        }
+        if nets.len() == before {
+            return nets;
+        }
+    }
+}
+
 fn fresh(m: &NlModule, base: &str) -> String {
     let mut k = 0;
     loop {
@@ -308,12 +340,15 @@ pub fn plant(nl: &NlModule, lib: &Library, class: DefectClass, seed: u64) -> Opt
                     m.instances[i].conns[k].1 = NlRef::Const(true);
                 }
                 _ => {
-                    // Another net driven by a combinational cell earlier in the list (no loop).
+                    // Another net driven by a combinational cell earlier in the list, outside the
+                    // combinational fanout of this cell: no loop, even where cleanup after
+                    // covering left the list out of topological order.
+                    let fanout = comb_fanout(&m, lib, i);
                     let others: Vec<NlRef> = m.instances[..i]
                         .iter()
                         .filter(|x| cell_kind(lib, &x.cell).is_some_and(|k| !k.0))
                         .filter_map(|x| x.conns.last().map(|c| c.1.clone()))
-                        .filter(|r| *r != orig)
+                        .filter(|r| *r != orig && !fanout.contains(r))
                         .collect();
                     let r = others.get(rng.pick(others.len())?)?.clone();
                     m.instances[i].conns[k].1 = r;

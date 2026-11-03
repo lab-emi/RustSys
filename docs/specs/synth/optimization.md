@@ -114,8 +114,18 @@ the function or its complement when that needs fewer new nodes than the fanout-f
 `resub` re-expresses a node, within a window of at most 8 leaves, as an existing node or its
 complement or as the AND or OR of two or three existing nodes, when that frees more nodes than it
 adds, with reference counts updated after every accepted change [@mishchenko2006scalable];
-`merge` merges nodes proven functionally equivalent by random simulation followed by SAT
-[@kuehlmann2002robust]; `mux_merge` merges nested multiplexers (SYNTH-REQ-0406); `mux_decode` rewrites nested
+`merge` merges nodes proven functionally equivalent (or complementary, or constant) by
+simulation followed by SAT [@kuehlmann2002robust; @mishchenko2005fraigs]: 1024 random patterns,
+then up to four rounds of eight words of patterns that justify, backward from the node to the
+inputs, the other value of each apparently constant node and different values of apparently
+equivalent nodes (other inputs random, compatible requests packed into one pattern); the nodes are
+then rebuilt in topological order, each compared with the earlier nodes (inputs included) of its
+simulation class in the order they were added, and replaced by the first one proven equivalent
+whose AIG level is not above its own. Each proof is solved over the input cones of the compared
+nodes only, with at most 300 conflicts and random decision phases, in a solver rebuilt every 500
+proofs; at most 20,000 SAT calls are made. A refuted proof adds its counterexample, with eight
+random values of the inputs outside those cones, to the simulation, which separates every pair it
+distinguishes; `mux_merge` merges nested multiplexers (SYNTH-REQ-0406); `mux_decode` rewrites nested
 multiplexers with repeated selects as sums of products (SYNTH-REQ-0408). A pass whose
 result has more AND nodes than its input is discarded.
 
@@ -127,8 +137,8 @@ Memory or node-budget exhaustion leaves the input design unchanged. Internal mul
 probes retain their at most four structural readings inline. Resubstitution holds a scratch
 shard for a short node batch and still commits every proposal in its original order.
 
-**SYNTH-REQ-0412** The default (`--effort medium`) script is `sweep; mux_decode; balance; rewrite;
-refactor; resub; rewrite; balance; mux_merge; sweep`. `--effort low` runs `sweep` only; `--effort high`
+**SYNTH-REQ-0412** The default (`--effort medium`) script is `sweep; mux_decode; merge; balance;
+rewrite; refactor; resub; rewrite; balance; mux_merge; sweep`. `--effort low` runs `sweep` only; `--effort high`
 follows the default script with `merge; rewrite-zero; balance; refactor; resub; rewrite; refactor;
 balance`.
 

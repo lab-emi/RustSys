@@ -297,6 +297,7 @@ pub fn optimization_steps(effort: Effort) -> &'static [&'static str] {
     const MEDIUM: &[&str] = &[
         "sweep",
         "mux_decode",
+        "merge",
         "balance",
         "rewrite",
         "refactor",
@@ -309,6 +310,7 @@ pub fn optimization_steps(effort: Effort) -> &'static [&'static str] {
     const HIGH: &[&str] = &[
         "sweep",
         "mux_decode",
+        "merge",
         "balance",
         "rewrite",
         "refactor",
@@ -457,10 +459,10 @@ fn run(
         // Without a timing period, each addition chooses its own carry blocks from its operand
         // arrival levels (SYNTH-REQ-0405), so that only additions on deep paths pay for them.
         parallel_carry: carry != Carry::Ripple,
-        carry_cost_weight: carry.area_weight().or(
-            (opts.electrical.is_none() && carry == Carry::Prefix)
-                .then_some(UNCONSTRAINED_CARRY_WEIGHT),
-        ),
+        carry_cost_weight: carry
+            .area_weight()
+            .or((opts.electrical.is_none() && carry == Carry::Prefix)
+                .then_some(UNCONSTRAINED_CARRY_WEIGHT)),
         xor_carry: matches!(carry, Carry::Xor | Carry::XorFast),
         carry_plan: plan.unwrap_or_default().to_vec(),
         assume_full_case: opts.assume_full_case,
@@ -639,6 +641,25 @@ fn run(
                 name: "rewrite_budget_reached",
                 value: f64::from(stats.node_budget_reached || stats.storage_budget_reached),
             });
+        } else if name == "merge" {
+            let stats = opt::merge::sat_sweep(d);
+            opt_work.push(OptimizationWork {
+                pass: name.into(),
+                windows: stats.candidates,
+                bounded_windows: stats.undecided,
+                replayed_windows: 0,
+                pass_budget_reached: stats.sat_calls >= opt::merge::SWEEP_MAX_CALLS as u64,
+            });
+            for (metric, value) in [
+                ("merge_proved", stats.merged),
+                ("merge_refuted", stats.refuted),
+                ("merge_undecided", stats.undecided),
+            ] {
+                ctx.emit(|| Event::Metric {
+                    name: metric,
+                    value: value as f64,
+                });
+            }
         } else if name == "mux_decode" {
             let status =
                 opt::muxdecode::mux_decode_with_limits(d, opt::muxdecode::DecodeLimits::default());
@@ -680,6 +701,7 @@ fn run(
         Effort::Low => {}
         Effort::Medium | Effort::High => {
             run_pass("mux_decode", &mut design, opt::muxdecode::mux_decode)?;
+            run_pass("merge", &mut design, opt::merge::merge)?;
             run_pass("balance", &mut design, opt::balance::balance)?;
             run_pass("rewrite", &mut design, opt::rewrite::rewrite)?;
             run_pass("refactor", &mut design, opt::refactor::refactor)?;

@@ -16,8 +16,10 @@ report synthesis and final equivalence `proven`. On those scripts the native
 layout passes every design gate. The run is `unqualified`: the
 component-qualification evidence that the 16-gate composer needs is not
 published. Its producer stopped at the RustSTA/OpenSTA `timing_accuracy` gate
-(1.4052 ps against a 1 ps tolerance), which does not involve synthesis, so the
-receipt's status is `comparison_incomplete` and its end-to-end ratios are null.
+(1.4052 ps against a 1 ps tolerance), which does not involve synthesis.
+LibreLane's layout fails the timing gate and its equivalence is `unverified`,
+so neither flow passes every gate: the receipt's status is
+`comparison_incomplete` and its end-to-end ratios are null.
 The run is one timed sample with all 4 vCPUs and the recipe's 8 GiB memory cap.
 The EZ130 SG13G2 technology LEF and cell GDS were reconstructed from public
 sources, and the reference tools are nixpkgs builds, including Yosys 0.70
@@ -26,8 +28,8 @@ instead of LibreLane's pinned Yosys 0.62.
 The campaign's synthesis head-to-head maps the same prepared Ibex RTL (sv2v
 0.0.13.1 output) onto the same EZ130 TT and SRAM Liberty. RustSys runs as the
 native flow's workspace sequence (init, import, synth, export at 2 threads) and
-in single-process direct mode; Yosys 0.70 + ABC runs LibreLane 3.0.17's
-synthesis script. Each contender had one warm-up and three measured runs,
+in single-process direct mode (`--threads 0`, all 4 CPUs); Yosys 0.70 + ABC
+runs LibreLane 3.0.17's synthesis script on the same unpinned 4-vCPU host. Each contender had one warm-up and three measured runs,
 interleaved. RustSys had the shorter median wall time in both modes and the
 lower peak RSS (largest process, GNU time). Its netlist is larger in
 standard-cell area and deeper, with slightly fewer cells. Standard-cell area
@@ -38,9 +40,8 @@ cells.
 
 The equivalence verdicts come from the flows' synthesis gates, not from the
 head-to-head netlists. The native flow's RustSys netlist is `proven`; the
-head-to-head RustSys netlists have the same cells, differ from it only in SRAM
-port-connection syntax and were not checked separately. LibreLane's synthesis
-netlist, byte-identical to the head-to-head Yosys netlist, is `unverified`
+head-to-head RustSys netlists differ in bytes from it and were not checked
+separately. LibreLane's synthesis netlist is `unverified`
 because 433 of its registers lack a unique named RTL counterpart for the
 checker; that is not evidence of non-equivalence. The measured values, their scope and the host's
 deviations are on the RustEDA benchmarks page; they come from one host and
@@ -110,10 +111,13 @@ timing and quality receipts are historical archives, not current benchmark resul
 
 ## Publication checks
 
-The final isolated workspace passes 475 Rust tests (6 ignored), formatting,
-all-target/all-feature Clippy and rustdoc. Layout, 37 shared-file hashes and
-fixture regeneration checks pass; coverage is 621 requirements with zero gaps.
-All 120 existing benchmark/oracle harness controls pass. The negative SDC test
-uses an explicitly unsupported cell-check derate qualifier now that global
-derates are supported. Macro interface validation moved into a private module
-with its validation body byte-identical, preserving the public API and behavior.
+For the 2026-11-01 publication, the final isolated workspace passed 475 Rust
+tests (6 ignored), formatting, all-target/all-feature Clippy and rustdoc.
+Layout, 37 shared-file hashes and fixture regeneration checks passed; coverage
+was 621 requirements with zero gaps. All 120 existing benchmark/oracle harness
+controls passed. The negative SDC test uses an explicitly unsupported
+cell-check derate qualifier now that global derates are supported. Macro
+interface validation moved into a private module with its validation body
+byte-identical, preserving the public API and behavior. These checks were not
+rerun for the 2026-11-02 update, whose host campaign section is measurement
+evidence from the RustEDA host receipt.

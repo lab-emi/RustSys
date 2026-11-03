@@ -55,8 +55,8 @@ element outputs) and combinational outputs (primary output bits, state element d
 and asynchronous control functions).
 
 **SYNTH-REQ-0403** Word-level operators are lowered as follows: addition and subtraction by
-ripple-carry chains (or SYNTH-REQ-0405 under electrical constraints); comparison by magnitude
-chains or a balanced carry-transfer reduction; multiplication by partial
+carry chains whose structure SYNTH-REQ-0405 selects (ripple-carry chains below eight bits and in
+the ripple alternative); comparison by magnitude chains or a balanced carry-transfer reduction; multiplication by partial
 products reduced with carry-save adders [@wallace1964suggestion] and a final ripple-carry adder
 (SYNTH-REQ-0404); division and modulus by restoring division; variable shifts by logarithmic
 multiplexer stages; variable bit-selects and array reads by multiplexer trees, or, when it needs
@@ -140,10 +140,15 @@ enqueue so reconvergent fanin and feedback through state cannot materialize dupl
 copy in increasing topological node order and retain original state/input order. Check node
 and planning-storage limits before mutation, returning the unchanged design on exhaustion.
 
-## Carry depth under electrical constraints
+## Carry depth
 
-**SYNTH-REQ-0405** When electrical refinement is requested, addition and subtraction of at
-least eight bits use groups of at most four local carry steps. A group is represented by
+**SYNTH-REQ-0405** Addition and subtraction of at least eight bits use parallel-prefix carries.
+Without electrical refinement, each such addition chooses its local block width independently
+as in SYNTH-REQ-0557 with area weight 0.025: the candidate with the smallest largest AIG arrival
+level plus 0.025 times its new reachable AND nodes, so that an addition whose operands arrive
+late gets a short carry path and an early one stays compact. When electrical refinement is
+requested, addition and subtraction of at least eight bits use groups of at most four local
+carry steps, and the alternatives of SYNTH-REQ-0554 choose other structures. A group is represented by
 `(G, P)`, meaning `c_out = G | (P & c_in)`. The associative composition of adjacent low and
 high groups is `(G_high | P_high & G_low, P_high & P_low)`. Pairwise reduction followed by
 expansion computes all group prefixes with linear work and logarithmic depth, using the

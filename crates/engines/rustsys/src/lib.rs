@@ -33,6 +33,10 @@ use serde::{Deserialize, Serialize};
 
 pub use ingest::{InitialValues, SourceFormat};
 
+/// Area weight of the carry-block choice of each addition without a timing period: the level of
+/// the result plus this weight times its new AND nodes is minimized (SYNTH-REQ-0405).
+const UNCONSTRAINED_CARRY_WEIGHT: f64 = 0.025;
+
 /// Optimization effort (SYNTH-REQ-0412).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Effort {
@@ -449,8 +453,14 @@ fn run(
             .collect(),
         opaque_limits: opts.opaque_limits,
         prefer_narrow_muxes: map::library::prefer_narrow_muxes(libs, &opts.dont_use),
-        parallel_carry: opts.electrical.is_some() && carry != Carry::Ripple,
-        carry_cost_weight: carry.area_weight(),
+        // Parallel-prefix carries and grouped comparisons, except in the ripple alternative.
+        // Without a timing period, each addition chooses its own carry blocks from its operand
+        // arrival levels (SYNTH-REQ-0405), so that only additions on deep paths pay for them.
+        parallel_carry: carry != Carry::Ripple,
+        carry_cost_weight: carry.area_weight().or(
+            (opts.electrical.is_none() && carry == Carry::Prefix)
+                .then_some(UNCONSTRAINED_CARRY_WEIGHT),
+        ),
         xor_carry: matches!(carry, Carry::Xor | Carry::XorFast),
         carry_plan: plan.unwrap_or_default().to_vec(),
         assume_full_case: opts.assume_full_case,
@@ -509,7 +519,7 @@ fn run(
     // Elaboration ends after its messages, and only when it succeeded.
     lap("elaborate", Some("optimize"), &mut phase_s);
     let has_parallel_arithmetic = design.aig.has_parallel_arithmetic;
-    let carry_plan = if carry == Carry::Prefix {
+    let carry_plan = if carry == Carry::Prefix && opts.electrical.is_some() {
         bits::carry_plan(&design)
     } else {
         Vec::new()

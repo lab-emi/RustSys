@@ -240,6 +240,51 @@ fn signed_multiplier() {
     }
 }
 
+// SYNTH-REQ-0404, SYNTH-REQ-0407: the carry-save rows of every product sum to it modulo the
+// context width, signed and unsigned, every significant width up to 5 + 5 bits and every context
+// width up to two beyond the product; adding a third row through one sum gives `a * b + c`.
+#[test]
+fn product_rows_sum_to_the_product() {
+    for signed in [false, true] {
+        for n in 1..=5usize {
+            for m in 1..=5usize {
+                for w in n.max(m)..=n + m + 2 {
+                    let mut g = Aig::new();
+                    let a = resize(&inputs(&mut g, n), w, signed);
+                    let b = resize(&inputs(&mut g, m), w, signed);
+                    let c = inputs(&mut g, w);
+                    let (p, [x, y]) = mul_rows(&mut g, &a, &b, signed);
+                    let rows = add(&mut g, &x, &y, Lit::FALSE).0;
+                    let sum = Sum {
+                        rows: vec![x, y, c],
+                        konst: vec![false; w],
+                    };
+                    let mac = add_columns(&mut g, sum.columns());
+                    let mask = (1u64 << w) - 1;
+                    let ext = |v: u64, bits: usize| {
+                        if signed {
+                            (((v << (64 - bits)) as i64) >> (64 - bits)) as u64
+                        } else {
+                            v
+                        }
+                    };
+                    for xv in 0..1u64 << n {
+                        for yv in 0..1u64 << m {
+                            let want = ext(xv, n).wrapping_mul(ext(yv, m)) & mask;
+                            let got = |v: &[Lit], z: u64| eval(&g, v, &[xv, yv, z], &[n, m, w]);
+                            assert_eq!(got(&p, 0), want, "{signed} {n}x{m}@{w}: {xv}*{yv}");
+                            assert_eq!(got(&rows, 0), want, "{signed} {n}x{m}@{w} rows");
+                            for z in [0, 1, mask, mask / 3] {
+                                assert_eq!(got(&mac, z), want.wrapping_add(z) & mask);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // SYNTH-REQ-0557: the local carry choice also preserves arithmetic with skewed operands.
 #[test]
 fn adaptive_carry_with_unequal_input_arrivals() {

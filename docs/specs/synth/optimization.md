@@ -47,7 +47,13 @@ rows, with the third bit of the lowest column as its carry-in. A conditional ope
 operands are both such sums of the same width selects row-wise, since `c ? (t1 + t2) : (f1 + f2)
 = (c ? t1 : f1) + (c ? t2 : f2)`: rows common to both stay unselected, the other rows are paired
 in order (a missing row is zero) and selected bit by bit, and unequal constants are selected as
-one more row. Sums of more than 8192 row bits keep no terms. `$countones` and the counts of
+one more row. A product (SYNTH-REQ-0404) is itself such a sum: its terms are the two rows that
+precede its final addition, so `a * b + c` reduces the product's rows with `c` and needs one
+adder. For a signed product of `n + m < w` significant bits, these rows come from columns built
+over all `w` positions, with the constant 1 of column `n + m - 1` extended to every column from
+`n + m - 1` up to `w - 1` (the sign extension of `-2^(n+m-1)`); the partial products and the
+carry-save cells they share with the product are the same nodes. Sums of more than 8192 row bits
+keep no terms. `$countones` and the counts of
 `$onehot` and `$onehot0` reduce all their bits from the lowest column in the same way.
 
 **SYNTH-REQ-0402** The AIG boundary consists of combinational inputs (primary input bits and state

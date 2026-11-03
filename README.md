@@ -20,15 +20,35 @@ RustSys turns RTL into mapped netlists with bounded synthesis, technology mappin
 
 Part of **[RustEDA](https://github.com/lab-emi/RustEDA)**, infrastructure for chip-design recursive self-improvement. Native tools shorten the work between inference steps; verified results guide the next iteration.
 
-## Latest development · 2026-11-01
+## Latest development · 2026-11-02
 
-Opaque SRAM interfaces are now preserved through elaboration, mapping and
-netlist export. Port widths, bus indices and instance/pin identities are checked;
-unsupported or inconsistent interfaces produce diagnostics. The macro's behavior
-continues to come from its original vendor model for independent checking.
+The RustEDA Ibex host campaign reran the IHP SG13G2 / EZ130 design with two
+real SRAMs on a 4-vCPU cloud host, with RustSys built from commit `0f8a2d8`.
+RustSys synthesized the design in the native flow, and the flow's synthesis and
+final equivalence gates are `proven`. The native run is `unqualified`, and its
+producer stopped at the RustSTA/OpenSTA `timing_accuracy` gate, which does not
+involve synthesis; the remaining gates ran separately with the recipe's scripts.
+
+The campaign also includes a RustSys-vs-Yosys head-to-head on the same prepared
+RTL and Liberty, with Yosys + ABC running LibreLane's synthesis script. RustSys
+had the shorter median wall time and the lower peak memory (three measured runs
+per contender on this task and host); the Yosys + ABC netlist has the smaller
+standard-cell area and fewer logic levels. The equivalence verdicts come from
+the flows' synthesis gates, not from the head-to-head netlists: RustSys's
+native-flow netlist is `proven`, and LibreLane's synthesis netlist, the same
+bytes as the head-to-head Yosys netlist, is `unverified`, which is not evidence
+of non-equivalence. Results, scope and deviations are on the
+[RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/).
+
+The 2026-11-01 update preserves opaque SRAM interfaces through elaboration,
+mapping and netlist export. Port widths, bus indices and instance/pin identities
+are checked; unsupported or inconsistent interfaces produce diagnostics. The
+macro's behavior continues to come from its original vendor model for
+independent checking.
 
 [Current source and qualification](docs/development-status.md) ·
-[Latest complete-flow evidence](https://lab-emi.github.io/RustEDA/benchmarks/)
+[Synthesis head-to-head](https://lab-emi.github.io/RustEDA/benchmarks/#rustsys-vs-yosys) ·
+[Host campaign evidence](https://lab-emi.github.io/RustEDA/benchmarks/#ibex-host-campaign-2026-11-02)
 
 ## Benchmarks
 
@@ -38,6 +58,8 @@ flow and compared with LibreLane. RustSys synthesizes the Ibex + SRAM design in
 that flow; the flow's synthesis and final CEC gates prove the synthesized and
 final netlists equivalent to the original RTL. The macro-preserving source is included in this development publication.
 Run16 retains the frozen RustSys executable `e6cf0c77…` as its measurement identity.
+The 2026-11-02 host campaign ran the run16-class recipe with RustSys built from
+`0f8a2d8` (executable SHA-256 `a6507ecc…`), not run16's frozen executable.
 
 [RustEDA benchmarks](https://lab-emi.github.io/RustEDA/benchmarks/) ·
 [RustSys in the whole-flow benchmark](https://lab-emi.github.io/RustEDA/modules/rustsys/guide/benchmarks/)

@@ -71,9 +71,9 @@ and the RustSys animation live in `docs/assets/`; the [brand guide](../brand/REA
 documents their use.
 
 The README, homepage and benchmark page publish no synthesis-only measurement
-tables. The only published benchmark is the RustEDA whole-flow Ibex result
-(Ibex RV32 with two real IHP SRAMs on IHP SG13G2 / EZ130 8T, compared with
-LibreLane); link to the
+tables. The only published benchmark is the RustEDA whole-flow Ibex result and
+its module head-to-heads (Ibex RV32 with two real IHP SRAMs on IHP SG13G2 / EZ130
+8T, compared with LibreLane); link to the
 [RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/)
 instead of copying its values. Describe RustSys's part in that run, not
 separate synthesis timings.

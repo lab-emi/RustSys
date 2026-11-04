@@ -538,6 +538,36 @@ fn opt_timing_on_a_timing_table_path() {
     env.assert_equivalent(&new_rev);
 }
 
+// CLI-REQ-0204: opt-timing also improves a timing-table path of the default (medium-effort)
+// cover; the pipeline test above synthesizes at low effort.
+#[test]
+fn opt_timing_on_a_medium_effort_path() {
+    let env = WsEnv::new("medium");
+    let ws = env.seed("counter", Some(SDC));
+    let (code, synth) = env.json(&["synth", "--base-rev", "rev3"]);
+    assert_eq!(code, 0, "{synth}");
+    let (table_rev, path1) = commit_table(&ws, |b, nl, lib| add_path(b, nl, lib, -0.25));
+    assert_eq!(table_rev, "rev5");
+    let (code, v) = env.json(&[
+        "opt-timing",
+        "--base-rev",
+        "rev5",
+        "--target",
+        "path1",
+        "--stop-when",
+        "no-improvement",
+    ]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["new_rev"], "rev6");
+    assert_eq!(v["scope"]["target_instances"], path1.len());
+    let changed = assert_changes_within(&v, &ws, &path1);
+    assert!(changed > 0, "{v}");
+    let m = &v["metrics"];
+    assert!(m["estimated_slack_ns"].as_f64() >= m["estimated_slack_before_ns"].as_f64());
+    env.assert_equivalent("rev6");
+}
+
 // CLI-REQ-0207: path<N> and ep<N> need the timing table of the base revision: without it the
 // command fails with MISSING_TABLE and a help line, and out-of-range rows are UNKNOWN_HANDLE.
 #[test]

@@ -187,21 +187,23 @@ impl Sat {
         cref
     }
 
-    /// Propagates; returns a conflicting clause or `NIL`.
+    /// Propagates; returns a conflicting clause or `NIL`. Each visited watch list is compacted
+    /// in place (kept watches move to its front in their order), without allocating.
     fn propagate(&mut self) -> u32 {
         while self.head < self.trail.len() {
             let p = self.trail[self.head];
             self.head += 1;
             let f = neg(p);
-            let ws = std::mem::take(&mut self.watches[f as usize]);
-            let mut keep: Vec<Watch> = Vec::with_capacity(ws.len());
+            // `f` is false, so no watch moves to its own list while it is taken.
+            let mut ws = std::mem::take(&mut self.watches[f as usize]);
             let mut conflict = NIL;
-            let mut i = 0;
+            let (mut i, mut j) = (0, 0);
             while i < ws.len() {
                 let w = ws[i];
                 i += 1;
                 if self.lit_val(w.blocker) == 1 {
-                    keep.push(w);
+                    ws[j] = w;
+                    j += 1;
                     continue;
                 }
                 let base = w.clause as usize + 1;
@@ -211,10 +213,11 @@ impl Sat {
                 }
                 let other = self.arena[base];
                 if other != w.blocker && self.lit_val(other) == 1 {
-                    keep.push(Watch {
+                    ws[j] = Watch {
                         clause: w.clause,
                         blocker: other,
-                    });
+                    };
+                    j += 1;
                     continue;
                 }
                 let mut moved = false;
@@ -233,15 +236,21 @@ impl Sat {
                 if moved {
                     continue;
                 }
-                keep.push(w);
+                ws[j] = w;
+                j += 1;
                 if self.lit_val(other) == 2 {
                     conflict = w.clause;
-                    keep.extend_from_slice(&ws[i..]);
+                    while i < ws.len() {
+                        ws[j] = ws[i];
+                        i += 1;
+                        j += 1;
+                    }
                     break;
                 }
                 self.assign(other, w.clause);
             }
-            self.watches[f as usize] = keep;
+            ws.truncate(j);
+            self.watches[f as usize] = ws;
             if conflict != NIL {
                 return conflict;
             }

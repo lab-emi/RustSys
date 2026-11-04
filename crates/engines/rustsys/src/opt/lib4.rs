@@ -252,9 +252,17 @@ pub fn dry_cost(
     freed: &FxHashSet<u32>,
 ) -> usize {
     let mut cost = 0;
-    let mut memo: FxHashMap<u16, Option<Lit>> = FxHashMap::default();
+    let mut memo = DryMemo::new();
     dry_rec(lib, aig, f, leaves, freed, &mut memo, &mut cost);
     cost
+}
+
+/// The results of the subfunctions of one dry run: a decomposition of a function of four
+/// variables has few of them, so a short list searched in order replaces a hash map.
+type DryMemo = smallvec::SmallVec<[(u16, Option<Lit>); 24]>;
+
+fn memo_get(memo: &DryMemo, f: u16) -> Option<Option<Lit>> {
+    memo.iter().find(|(g, _)| *g == f).map(|(_, l)| *l)
 }
 
 fn dry_and(
@@ -290,13 +298,13 @@ fn dry_rec(
     f: u16,
     leaves: &[Lit; 4],
     freed: &FxHashSet<u32>,
-    memo: &mut FxHashMap<u16, Option<Lit>>,
+    memo: &mut DryMemo,
     cost: &mut usize,
 ) -> Option<Lit> {
-    if let Some(l) = memo.get(&f) {
-        return *l;
+    if let Some(l) = memo_get(memo, f) {
+        return l;
     }
-    if let Some(l) = memo.get(&!f) {
+    if let Some(l) = memo_get(memo, !f) {
         return l.map(|x| !x);
     }
     let (_, d) = lib.get(f);
@@ -336,7 +344,7 @@ fn dry_rec(
             super::refactor::dry_cost(aig, &form, &ls, freed, cost).map(|l| l.xor(inv))
         }
     };
-    memo.insert(f, r);
+    memo.push((f, r));
     r
 }
 

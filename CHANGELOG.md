@@ -91,6 +91,16 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
     summary without `drv_status` (RCLI-REQ-0023).
 
 ### Changed
+- Synthesis quality at the default medium effort without a timing period: additions of eight or
+  more bits choose adaptive parallel-prefix carry blocks and wide comparisons use grouped
+  carry-transfer reductions (SYNTH-REQ-0405); a product read by a sum contributes its carry-save
+  rows, so `a * b + c` has one carry-propagate adder (SYNTH-REQ-0407); `merge` is a
+  counterexample-refined SAT sweep that never deepens a node and now runs at medium effort after
+  `mux_decode` (SYNTH-REQ-0411, SYNTH-REQ-0412); untimed mapping adds a per-stage delay term,
+  keeps every complemented-leaf variant of a cell and, at medium effort, 100 priority cuts
+  (SYNTH-REQ-0510, SYNTH-REQ-0511, SYNTH-REQ-0513). On the Ibex SRAM benchmark (EZ130 TT) the
+  standard-cell area goes from 151,095.8 to 146,224.3 um2 and the longest combinational path from
+  57 to 36 cells, still proven by the shared synthesis gate.
 - The README now leads with CLI and agent workflows, recorded runs, structured output, and
   revision-aware workspaces while retaining the measured RustSys / Yosys comparison tables.
 - `rustsys check synth`: a proof or search that stops at its budget (the conflict budget of an

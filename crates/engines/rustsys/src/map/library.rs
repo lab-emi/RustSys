@@ -564,17 +564,24 @@ impl CellLib {
             let n = c.inputs.len();
             let perms = permutations(n);
             for p in &perms {
+                // The function of the leaves without complemented inputs: leaf assignment m
+                // gives cell input assignment y.
+                let mut base = 0u64;
+                for m in 0..(1u32 << n) {
+                    let mut y = 0u32;
+                    for (i, &leaf) in p.iter().enumerate() {
+                        y |= ((m >> leaf) & 1) << i;
+                    }
+                    if (c.tt >> y) & 1 == 1 {
+                        base |= 1 << m;
+                    }
+                }
                 for phase in 0..(1u32 << n) {
-                    let mut tt = 0u64;
-                    for m in 0..(1u32 << n) {
-                        // Leaf assignment m -> cell input assignment y.
-                        let mut y = 0u32;
-                        for (i, &leaf) in p.iter().enumerate() {
-                            let b = ((m >> leaf) & 1) ^ ((phase >> i) & 1);
-                            y |= b << i;
-                        }
-                        if (c.tt >> y) & 1 == 1 {
-                            tt |= 1 << m;
+                    // Complementing cell input i complements leaf p[i].
+                    let mut tt = base;
+                    for (i, &leaf) in p.iter().enumerate() {
+                        if (phase >> i) & 1 == 1 {
+                            tt = flip_variable(tt, leaf as usize);
                         }
                     }
                     let mut perm = [0u8; 6];
@@ -648,6 +655,13 @@ impl CellLib {
             .get(&(n as u8, tt & tt_mask(n)))
             .map_or(&[], Vec::as_slice)
     }
+}
+
+/// The truth table of `t` with variable `v` complemented: entry m becomes entry m ^ 2^v.
+fn flip_variable(t: u64, v: usize) -> u64 {
+    let mask = crate::map::cuts::var_mask(v);
+    let s = 1u32 << v;
+    ((t & mask) >> s) | ((t & !mask) << s)
 }
 
 /// All permutations of `0..n` (n ≤ 6).

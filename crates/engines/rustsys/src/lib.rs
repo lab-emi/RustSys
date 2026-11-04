@@ -753,10 +753,12 @@ fn run(
     lap("optimize", Some("map"), &mut phase_s);
     ctx.checkpoint()?;
     // Mapping.
+    // Every complemented-leaf variant of a cell stays a separate match, so that covering can
+    // use whichever leaf polarities the cover already has (SYNTH-REQ-0511).
     let lib = map::library::CellLib::build_profile(
         libs,
         &opts.dont_use,
-        opts.electrical.is_some(),
+        true,
         opts.electrical.as_ref().map(|e| e.input_slew_ns),
     )
     .map_err(|m| fail(ctx, vec![format!("error[S0500]: {m}")], false))?;

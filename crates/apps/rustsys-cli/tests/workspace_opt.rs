@@ -438,7 +438,10 @@ fn revert(ws: &Workspace, to: &str) {
 fn opt_timing_on_a_timing_table_path() {
     let env = WsEnv::new("path");
     let ws = env.seed("pipeline", Some(SDC));
-    let (code, synth) = env.json(&["synth", "--base-rev", "rev3"]);
+    // Low effort: the deepest path of the medium-effort cover of this fixture consists of cells
+    // that already have no faster variant in the test library, which leaves opt-timing nothing to
+    // change on it; this test is about opt-timing on a timing-table path, not about that cover.
+    let (code, synth) = env.json(&["synth", "--base-rev", "rev3", "--effort", "low"]);
     assert_eq!(code, 0, "{synth}");
     let (table_rev, path1) = commit_table(&ws, |b, nl, lib| add_path(b, nl, lib, -0.25));
     assert_eq!(table_rev, "rev5");

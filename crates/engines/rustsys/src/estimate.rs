@@ -256,8 +256,9 @@ mod tests {
             (2, 1, 0)
         );
         assert_eq!((e.unmodelled_cells, e.cyclic_cells), (1, 0));
-        // a -> u1 (0.5) -> u2 pin A (1.0) = 1.5; b -> u2 pin B (2.0) = 2.0.
-        assert!((e.estimated_delay - 2.0).abs() < 1e-9, "{e:?}");
+        // Untimed arcs include the per-stage term 0.75 * 0.5 (the inverter's delay):
+        // a -> u1 (0.875) -> u2 pin A (1.375) = 2.25; b -> u2 pin B (2.375) = 2.375.
+        assert!((e.estimated_delay - 2.375).abs() < 1e-9, "{e:?}");
         assert_eq!(e.cells["and2"], 1);
     }
 }

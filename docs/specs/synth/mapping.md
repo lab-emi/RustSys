@@ -33,7 +33,7 @@ combinational input to the cut's root passes through the set; k is the largest n
 a usable combinational cell. For every node, cuts are enumerated bottom-up and the best C cuts
 (priority cuts) are kept [@cong1999cut; @mishchenko2007combinational]. C and the number of
 area-flow and exact-local-area passes (SYNTH-REQ-0512) depend on the effort: 12, 2 and 2 for
-`low`; 100, 4 and 6 for `medium` without electrical refinement and 40, 4 and 6 with it; 100, 4
+`low`; 100, 4 and 5 for `medium` without electrical refinement and 40, 4 and 6 with it; 100, 4
 and 8 for `high`.
 
 **SYNTH-REQ-0511** A cell matches a cut when the cut function equals the cell function under some

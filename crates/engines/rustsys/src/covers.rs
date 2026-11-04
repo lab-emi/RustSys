@@ -348,10 +348,11 @@ pub(crate) fn default_alternative(
 /// Mapping options per effort and goal.
 pub(crate) fn map_options(opts: &SynthOptions) -> MapOptions {
     // Priority cuts and recovery passes per effort (SYNTH-REQ-0510). Without a timing period the
-    // single cover gets the cuts that electrical alternatives would otherwise multiply.
+    // single cover gets the cuts that electrical alternatives would otherwise multiply; its sixth
+    // exact-local-area pass no longer changed the area of any measured design.
     let (max_cuts, area_passes, exact_passes) = match opts.effort {
         Effort::Low => (12, 2, 2),
-        Effort::Medium if opts.electrical.is_none() => (100, 4, 6),
+        Effort::Medium if opts.electrical.is_none() => (100, 4, 5),
         Effort::Medium => (40, 4, 6),
         Effort::High => (100, 4, 8),
     };

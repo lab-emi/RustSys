@@ -303,6 +303,8 @@ pub fn optimization_steps(effort: Effort) -> &'static [&'static str] {
         "refactor",
         "resub",
         "rewrite",
+        "rewrite_zero",
+        "rewrite",
         "balance",
         "mux_merge",
         "sweep",
@@ -315,6 +317,8 @@ pub fn optimization_steps(effort: Effort) -> &'static [&'static str] {
         "rewrite",
         "refactor",
         "resub",
+        "rewrite",
+        "rewrite_zero",
         "rewrite",
         "balance",
         "mux_merge",
@@ -706,6 +710,8 @@ fn run(
             run_pass("rewrite", &mut design, opt::rewrite::rewrite)?;
             run_pass("refactor", &mut design, opt::refactor::refactor)?;
             run_pass("resub", &mut design, opt::resub::resub)?;
+            run_pass("rewrite", &mut design, opt::rewrite::rewrite)?;
+            run_pass("rewrite_zero", &mut design, opt::rewrite::rewrite_zero)?;
             run_pass("rewrite", &mut design, opt::rewrite::rewrite)?;
             run_pass("balance", &mut design, opt::balance::balance)?;
             run_pass("mux_merge", &mut design, opt::muxmerge::mux_merge)?;

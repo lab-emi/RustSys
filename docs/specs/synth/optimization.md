@@ -101,7 +101,8 @@ output exactly for all input values (no don't-care exploitation in this version)
 depends on; `balance` rebuilds multi-input AND trees, and exclusive-OR trees of at least four
 operands through exclusive ORs that feed nothing else, by level to reduce depth, combining the two
 shallowest operands first and, among equally deep operands, those of equal polarity first; `rewrite` replaces a
-node's function over a cut of at most 4 leaves by a precomputed structure when building it adds
+node's function over a cut of at most 4 leaves (up to 24 cuts per node, from the merged cuts of
+its fanins, smallest first) by a precomputed structure when building it adds
 fewer nodes than the node's fanout-free cone frees, counting nodes that already exist outside that
 cone as free [@mishchenko2006dag]; the structure of a 4-variable function is the cheapest of its
 one-variable decompositions (AND, OR, exclusive OR with the variable, multiplexer on it), its
@@ -138,7 +139,7 @@ probes retain their at most four structural readings inline. Resubstitution hold
 shard for a short node batch and still commits every proposal in its original order.
 
 **SYNTH-REQ-0412** The default (`--effort medium`) script is `sweep; mux_decode; merge; balance;
-rewrite; refactor; resub; rewrite; balance; mux_merge; sweep`. `--effort low` runs `sweep` only; `--effort high`
+rewrite; refactor; resub; rewrite; rewrite-zero; rewrite; balance; mux_merge; sweep`. `--effort low` runs `sweep` only; `--effort high`
 follows the default script with `merge; rewrite-zero; balance; refactor; resub; rewrite; refactor;
 balance`.
 

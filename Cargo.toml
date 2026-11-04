@@ -12,16 +12,16 @@ authors = ["RustSys contributors"]
 repository = "https://github.com/lab-emi/RustSys"
 
 [workspace.dependencies]
-rusteda-core = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "06a9cdac2336b054b79b4d3647421dcae6cb6a1c" }
-rusteda-workspace = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "06a9cdac2336b054b79b4d3647421dcae6cb6a1c" }
-rusteda-compute = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "06a9cdac2336b054b79b4d3647421dcae6cb6a1c" }
-rusteda-formats = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "06a9cdac2336b054b79b4d3647421dcae6cb6a1c" }
+rusteda-core = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "6668eecae9bb31c5f7d002f4f8088acf60ce05f4" }
+rusteda-workspace = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "6668eecae9bb31c5f7d002f4f8088acf60ce05f4" }
+rusteda-compute = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "6668eecae9bb31c5f7d002f4f8088acf60ce05f4" }
+rusteda-formats = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "6668eecae9bb31c5f7d002f4f8088acf60ce05f4" }
 rustsys = { path = "crates/engines/rustsys" }
 rustsys-check = { path = "crates/verify/rustsys-check" }
 rustsys-fixtures = { path = "crates/verify/rustsys-fixtures" }
 rustsys-defects = { path = "crates/verify/rustsys-defects" }
 rusteda-cli = { path = "crates/apps/rusteda-cli" }
-rusteda-cli-shared = { package = "rusteda-cli-common", git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "06a9cdac2336b054b79b4d3647421dcae6cb6a1c" }
+rusteda-cli-shared = { package = "rusteda-cli-common", git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "6668eecae9bb31c5f7d002f4f8088acf60ce05f4" }
 clap = { version = "=4.6.7", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions"] }
 clap_complete = { version = "=4.6.11", default-features = false }
 # Terminal size for the progress line of the command line. `windows`: crossterm does not compile

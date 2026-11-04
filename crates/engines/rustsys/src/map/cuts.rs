@@ -51,7 +51,7 @@ pub fn depends(t: u64, i: usize) -> bool {
 /// The signature bits of a list of cuts as bit sets over the list, so that `Cut::signs_fit`
 /// is decided for every member at once: per member, its common bits with a given signature
 /// are counted by bit-sliced addition of the sets of that signature's bits.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SignIndex {
     words: usize,
     /// Per signature bit, the members that have it (`words` words each).
@@ -63,27 +63,33 @@ pub struct SignIndex {
 impl SignIndex {
     /// The index of `cuts`, or `None` when a member has more than seven signature bits.
     pub fn new(cuts: &[Cut]) -> Option<SignIndex> {
+        let mut index = SignIndex::default();
+        index.rebuild(cuts).then_some(index)
+    }
+
+    /// Makes this the index of `cuts`, reusing its storage; false (and an unusable index) when
+    /// a member has more than seven signature bits.
+    pub fn rebuild(&mut self, cuts: &[Cut]) -> bool {
         let words = cuts.len().div_ceil(64);
-        let mut by_bit = vec![0u64; 64 * words];
-        let mut by_count = vec![0u64; 8 * words];
+        self.words = words;
+        self.by_bit.clear();
+        self.by_bit.resize(64 * words, 0);
+        self.by_count.clear();
+        self.by_count.resize(8 * words, 0);
         for (j, c) in cuts.iter().enumerate() {
             let (w, bit) = (j / 64, 1u64 << (j % 64));
             let count = c.sign.count_ones() as usize;
             if count > 7 {
-                return None;
+                return false;
             }
-            by_count[count * words + w] |= bit;
+            self.by_count[count * words + w] |= bit;
             let mut s = c.sign;
             while s != 0 {
-                by_bit[s.trailing_zeros() as usize * words + w] |= bit;
+                self.by_bit[s.trailing_zeros() as usize * words + w] |= bit;
                 s &= s - 1;
             }
         }
-        Some(SignIndex {
-            words,
-            by_bit,
-            by_count,
-        })
+        true
     }
 
     /// Calls `f` with the index of every member that `Cut::signs_fit` a cut with signature

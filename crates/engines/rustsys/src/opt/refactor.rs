@@ -96,8 +96,18 @@ fn is_full(t: &[u64], n: usize) -> bool {
 }
 
 /// Irredundant cover of a function in the interval `on <= f <= upper`; returns the cubes and the
-/// function they cover [@minato1992fast].
+/// function they cover [@minato1992fast]. The interval does not depend on the variables at or
+/// above `v_hi`.
 fn isop(on: &[u64], upper: &[u64], n: usize, v_hi: usize) -> (Vec<Cube>, Tt) {
+    // The first `nwords(v_hi)` words describe the interval; the others repeat them.
+    let len = nwords(v_hi).min(on.len());
+    let (cubes, f) = isop_words(&on[..len], &upper[..len], n, v_hi);
+    (cubes, (0..on.len()).map(|w| f[w % len]).collect())
+}
+
+/// `isop` on the `nwords(v_hi)` words of the interval; each split on a variable of at least six
+/// halves the words of the cofactors that the recursion visits.
+fn isop_words(on: &[u64], upper: &[u64], n: usize, v_hi: usize) -> (Vec<Cube>, Tt) {
     if is_zero(on) {
         return (Vec::new(), smallvec::smallvec![0; on.len()]);
     }
@@ -123,20 +133,25 @@ fn isop(on: &[u64], upper: &[u64], n: usize, v_hi: usize) -> (Vec<Cube>, Tt) {
         );
     }
     let x = v - 1;
+    // The cofactors do not depend on `x` or above: their first `nwords(x)` words describe them.
+    let lx = nwords(x).min(on.len());
     let (on0, on1) = cofactors(on, x);
     let (up0, up1) = cofactors(upper, x);
-    let a: Tt = on0.iter().zip(&up1).map(|(p, q)| p & !q).collect();
-    let (c0, f0) = isop(&a, &up0, n, x);
-    let b: Tt = on1.iter().zip(&up0).map(|(p, q)| p & !q).collect();
-    let (c1, f1) = isop(&b, &up1, n, x);
-    let rest: Tt = (0..on.len())
+    let a: Tt = (0..lx).map(|w| on0[w] & !up1[w]).collect();
+    let (c0, f0) = isop_words(&a, &up0[..lx], n, x);
+    let b: Tt = (0..lx).map(|w| on1[w] & !up0[w]).collect();
+    let (c1, f1) = isop_words(&b, &up1[..lx], n, x);
+    let rest: Tt = (0..lx)
         .map(|w| (on0[w] & !f0[w]) | (on1[w] & !f1[w]))
         .collect();
-    let both: Tt = up0.iter().zip(&up1).map(|(p, q)| p & q).collect();
-    let (c2, f2) = isop(&rest, &both, n, x);
+    let both: Tt = (0..lx).map(|w| up0[w] & up1[w]).collect();
+    let (c2, f2) = isop_words(&rest, &both, n, x);
     let m = var_tt(x, n);
     let f: Tt = (0..on.len())
-        .map(|w| ((f0[w] & !m[w]) | (f1[w] & m[w]) | f2[w]) & tail_mask(n))
+        .map(|w| {
+            let k = w % lx;
+            ((f0[k] & !m[w]) | (f1[k] & m[w]) | f2[k]) & tail_mask(n)
+        })
         .collect();
     let mut cubes = Vec::with_capacity(c0.len() + c1.len() + c2.len());
     cubes.extend(c0.into_iter().map(|c| Cube {
@@ -546,6 +561,93 @@ mod tests {
                     let bit = (t[(m >> 6) as usize] >> (m & 63)) & 1 == 1;
                     assert_eq!(eval_form(&form, m), bit, "nv={nv} m={m}");
                 }
+            }
+        }
+    }
+
+    /// The cover over all the words at every level of the recursion, as `isop` computed it
+    /// before it visited only the words that describe each cofactor.
+    fn isop_all_words(on: &[u64], upper: &[u64], n: usize, v_hi: usize) -> (Vec<Cube>, Tt) {
+        if is_zero(on) {
+            return (Vec::new(), smallvec::smallvec![0; on.len()]);
+        }
+        if is_full(upper, n) {
+            return (
+                vec![Cube { pos: 0, neg: 0 }],
+                smallvec::smallvec![tail_mask(n); on.len()],
+            );
+        }
+        let mut v = v_hi;
+        while v > 0 {
+            let (a0, a1) = cofactors(on, v - 1);
+            let (b0, b1) = cofactors(upper, v - 1);
+            if a0 != a1 || b0 != b1 {
+                break;
+            }
+            v -= 1;
+        }
+        if v == 0 {
+            return (
+                vec![Cube { pos: 0, neg: 0 }],
+                smallvec::smallvec![tail_mask(n); on.len()],
+            );
+        }
+        let x = v - 1;
+        let (on0, on1) = cofactors(on, x);
+        let (up0, up1) = cofactors(upper, x);
+        let a: Tt = on0.iter().zip(&up1).map(|(p, q)| p & !q).collect();
+        let (c0, f0) = isop_all_words(&a, &up0, n, x);
+        let b: Tt = on1.iter().zip(&up0).map(|(p, q)| p & !q).collect();
+        let (c1, f1) = isop_all_words(&b, &up1, n, x);
+        let rest: Tt = (0..on.len())
+            .map(|w| (on0[w] & !f0[w]) | (on1[w] & !f1[w]))
+            .collect();
+        let both: Tt = up0.iter().zip(&up1).map(|(p, q)| p & q).collect();
+        let (c2, f2) = isop_all_words(&rest, &both, n, x);
+        let m = var_tt(x, n);
+        let f: Tt = (0..on.len())
+            .map(|w| ((f0[w] & !m[w]) | (f1[w] & m[w]) | f2[w]) & tail_mask(n))
+            .collect();
+        let mut cubes = Vec::with_capacity(c0.len() + c1.len() + c2.len());
+        cubes.extend(c0.into_iter().map(|c| Cube {
+            pos: c.pos,
+            neg: c.neg | (1 << x),
+        }));
+        cubes.extend(c1.into_iter().map(|c| Cube {
+            pos: c.pos | (1 << x),
+            neg: c.neg,
+        }));
+        cubes.extend(c2);
+        (cubes, f)
+    }
+
+    // The covers of functions and of intervals (don't-cares) are those of the all-words
+    // recursion, cube for cube.
+    #[test]
+    fn isop_on_cofactor_words_gives_the_same_cover() {
+        let mut seed = 0x0bad_cafe_1234_5678u64;
+        let mut rnd = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for nv in [2usize, 5, 6, 7, 8, 9, 10] {
+            for round in 0..40 {
+                let on: Tt = (0..nwords(nv))
+                    .map(|_| {
+                        let x = if round % 2 == 0 { rnd() & rnd() } else { rnd() };
+                        x & tail_mask(nv)
+                    })
+                    .collect();
+                let upper: Tt = on
+                    .iter()
+                    .map(|w| (w | (rnd() & rnd())) & tail_mask(nv))
+                    .collect();
+                let (c, f) = isop(&on, &upper, nv, nv);
+                let (c_all, f_all) = isop_all_words(&on, &upper, nv, nv);
+                assert_eq!(c, c_all, "nv={nv}");
+                assert_eq!(f, f_all, "nv={nv}");
             }
         }
     }

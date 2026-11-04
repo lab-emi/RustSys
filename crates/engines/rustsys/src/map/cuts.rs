@@ -48,6 +48,96 @@ pub fn depends(t: u64, i: usize) -> bool {
     ((t >> s) ^ t) & !var_mask(i) != 0
 }
 
+/// The signature bits of a list of cuts as bit sets over the list, so that `Cut::signs_fit`
+/// is decided for every member at once: per member, its common bits with a given signature
+/// are counted by bit-sliced addition of the sets of that signature's bits.
+#[derive(Debug)]
+pub struct SignIndex {
+    words: usize,
+    /// Per signature bit, the members that have it (`words` words each).
+    by_bit: Vec<u64>,
+    /// Per number of signature bits (0 to 7), the members with that many.
+    by_count: Vec<u64>,
+}
+
+impl SignIndex {
+    /// The index of `cuts`, or `None` when a member has more than seven signature bits.
+    pub fn new(cuts: &[Cut]) -> Option<SignIndex> {
+        let words = cuts.len().div_ceil(64);
+        let mut by_bit = vec![0u64; 64 * words];
+        let mut by_count = vec![0u64; 8 * words];
+        for (j, c) in cuts.iter().enumerate() {
+            let (w, bit) = (j / 64, 1u64 << (j % 64));
+            let count = c.sign.count_ones() as usize;
+            if count > 7 {
+                return None;
+            }
+            by_count[count * words + w] |= bit;
+            let mut s = c.sign;
+            while s != 0 {
+                by_bit[s.trailing_zeros() as usize * words + w] |= bit;
+                s &= s - 1;
+            }
+        }
+        Some(SignIndex {
+            words,
+            by_bit,
+            by_count,
+        })
+    }
+
+    /// Calls `f` with the index of every member that `Cut::signs_fit` a cut with signature
+    /// `sign` within `k` leaves, in increasing order.
+    #[inline]
+    pub fn for_each_fit(&self, sign: u64, k: u32, mut f: impl FnMut(usize) -> bool) {
+        let pa = sign.count_ones();
+        for w in 0..self.words {
+            // Per member, its number of common bits with `sign` (at most 7) in three bit planes.
+            let (mut c0, mut c1, mut c2) = (0u64, 0u64, 0u64);
+            let mut s = sign;
+            while s != 0 {
+                let m = self.by_bit[s.trailing_zeros() as usize * self.words + w];
+                s &= s - 1;
+                let t0 = c0 & m;
+                c0 ^= m;
+                let t1 = c1 & t0;
+                c1 ^= t0;
+                c2 ^= t1;
+            }
+            let mut fit = 0u64;
+            for pb in 0..8u32 {
+                let members = self.by_count[pb as usize * self.words + w];
+                if members == 0 {
+                    continue;
+                }
+                // The union of the signatures has `pa + pb` minus the common bits.
+                fit |= if pa + pb <= k {
+                    members
+                } else {
+                    members
+                        & match pa + pb - k {
+                            1 => c0 | c1 | c2,
+                            2 => c1 | c2,
+                            3 => c2 | (c1 & c0),
+                            4 => c2,
+                            5 => c2 & (c1 | c0),
+                            6 => c2 & c1,
+                            7 => c2 & c1 & c0,
+                            _ => 0,
+                        }
+                };
+            }
+            while fit != 0 {
+                let j = w * 64 + fit.trailing_zeros() as usize;
+                fit &= fit - 1;
+                if !f(j) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
 /// A cut: sorted leaf node ids and the root function over them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Cut {
@@ -262,6 +352,53 @@ mod tests {
         assert_eq!(d.leaves(), &[1, 3]);
         assert_eq!(d.tt & 0xF, 0b1000);
         assert!(Cut::merge(&c, Lit(2), &c, Lit(2), 2).is_none());
+    }
+
+    #[test]
+    fn sign_index_finds_exactly_the_fitting_members() {
+        let mut x = 0x0fed_cba9_8765_4321u64;
+        let mut next = || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for round in 0..300 {
+            let len = (next() % 150) as usize;
+            let members: Vec<Cut> = (0..len)
+                .map(|_| {
+                    let mut sign = 0u64;
+                    for _ in 0..next() % 8 {
+                        // Few distinct bits, so that common bits are frequent.
+                        sign |= 1 << (next() % if round % 2 == 0 { 64 } else { 9 });
+                    }
+                    Cut {
+                        leaves: [0; 6],
+                        n: sign.count_ones() as u8,
+                        tt: 0,
+                        sign,
+                    }
+                })
+                .collect();
+            let index = SignIndex::new(&members).unwrap();
+            for _ in 0..20 {
+                let mut sa = 0u64;
+                for _ in 0..next() % 8 {
+                    sa |= 1 << (next() % if round % 2 == 0 { 64 } else { 9 });
+                }
+                for k in 0..=8u32 {
+                    let mut found = Vec::new();
+                    index.for_each_fit(sa, k, |j| {
+                        found.push(j);
+                        true
+                    });
+                    let expected: Vec<usize> = (0..len)
+                        .filter(|&j| (sa | members[j].sign).count_ones() <= k)
+                        .collect();
+                    assert_eq!(found, expected);
+                }
+            }
+        }
     }
 
     #[test]

@@ -13,7 +13,7 @@ use rustc_hash::FxHashSet;
 use rusteda_core::job::{Cancelled, Ctx, Event, JobError};
 
 pub use super::area::ExactLimits;
-use super::cuts::Cut;
+use super::cuts::{Cut, SignIndex};
 use super::library::{AF_MAX, ARR_INF, CellLib, DELAY_SCALE, Match};
 use crate::aig::{Aig, Lit};
 
@@ -615,27 +615,47 @@ impl<'a> Mapper<'a> {
         // Most pairs of large cut sets have too many leaves: reject them by their signatures
         // before merging, counting each signature's bits once.
         let k = self.k as u32;
-        let bits1: Vec<u32> = cuts1.iter().map(|c| c.sign.count_ones()).collect();
-        'pairs: for a in cuts0 {
-            let pa = a.sign.count_ones();
-            for (b, &pb) in cuts1.iter().zip(&bits1) {
-                if !Cut::signs_fit(a.sign, pa, b.sign, pb, k) {
-                    continue;
+        let mut pair = |a: &Cut, b: &Cut, cand: &mut Vec<(i32, u32, Cut)>| -> bool {
+            if let Some(c) = Cut::merge(a, f0, b, f1, self.k)
+                && c.n != 0
+            {
+                match insert_unique(&c, cand) {
+                    Ok(false) => {}
+                    Err(()) => {
+                        saturated = true;
+                        return false;
+                    }
+                    Ok(true) => {
+                        let (arr, af) = self.cut_costs(&c, fo2);
+                        cand.push((arr, af, c));
+                    }
                 }
-                if let Some(c) = Cut::merge(a, f0, b, f1, self.k) {
-                    if c.n == 0 {
-                        continue;
+            }
+            true
+        };
+        // Large sets: the fitting members of `cuts1` of each cut of `cuts0` at once.
+        let index = (cuts0.len() * cuts1.len() >= 256)
+            .then(|| SignIndex::new(cuts1))
+            .flatten();
+        if let Some(index) = index {
+            'indexed: for a in cuts0 {
+                let mut go = true;
+                index.for_each_fit(a.sign, k, |j| {
+                    go = pair(a, &cuts1[j], &mut cand);
+                    go
+                });
+                if !go {
+                    break 'indexed;
+                }
+            }
+        } else {
+            let bits1: Vec<u32> = cuts1.iter().map(|c| c.sign.count_ones()).collect();
+            'pairs: for a in cuts0 {
+                let pa = a.sign.count_ones();
+                for (b, &pb) in cuts1.iter().zip(&bits1) {
+                    if Cut::signs_fit(a.sign, pa, b.sign, pb, k) && !pair(a, b, &mut cand) {
+                        break 'pairs;
                     }
-                    match insert_unique(&c, &mut cand) {
-                        Ok(false) => continue,
-                        Err(()) => {
-                            saturated = true;
-                            break 'pairs;
-                        }
-                        Ok(true) => {}
-                    }
-                    let (arr, af) = self.cut_costs(&c, fo2);
-                    cand.push((arr, af, c));
                 }
             }
         }

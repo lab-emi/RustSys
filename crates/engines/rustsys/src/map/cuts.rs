@@ -188,7 +188,6 @@ impl Cut {
         t
     }
 
-    /// Merges two fanin cuts of an AND node with fanin literals `l0`, `l1`.
     /// Whether the leaves of `self` and `other` may fit in `k`: false exactly when their
     /// signatures already show more than `k` distinct leaves, the first test of `merge`. A
     /// signature has at most as many bits as its cut has leaves, so two cuts with at most `k`
@@ -221,6 +220,7 @@ impl Cut {
         false
     }
 
+    /// Merges two fanin cuts of an AND node with fanin literals `l0`, `l1`.
     pub fn merge(a: &Cut, l0: Lit, b: &Cut, l1: Lit, k: usize) -> Option<Cut> {
         if !a.may_merge(b, k) {
             return None;

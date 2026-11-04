@@ -103,11 +103,13 @@ pub(super) fn local_equal(g: &Aig, a: Lit, b: Lit) -> bool {
 
 /// Initial random simulation words of the global sweep (64 patterns each).
 const SWEEP_WORDS: usize = 16;
-/// Conflict limit of one SAT call of the global sweep.
-const SWEEP_CONFLICTS: u64 = 300;
+/// Conflict limit of one SAT call of the global sweep. Nearly all proofs and refutations of the
+/// sweep take far fewer conflicts; the rest stay undecided.
+const SWEEP_CONFLICTS: u64 = 100;
 /// SAT calls after which the incremental solver is rebuilt, so that its clause database stays
-/// proportional to the cones being compared.
-const SWEEP_RECYCLE: usize = 500;
+/// proportional to the cones being compared: every assumption propagates through the clauses of
+/// all cones encoded since the last rebuild.
+const SWEEP_RECYCLE: usize = 100;
 /// SAT calls of one global sweep.
 pub const SWEEP_MAX_CALLS: usize = 20_000;
 /// Patterns per counterexample: its free inputs take different random values.
@@ -141,6 +143,8 @@ struct Signatures {
     cex_inputs: Vec<u64>,
     cex_bits: u32,
     cex_col: Vec<u64>,
+    /// Simulation of the all-zero pattern, the value of `cex_col` without counterexamples.
+    zero_col: Vec<u64>,
 }
 
 impl Signatures {
@@ -153,13 +157,14 @@ impl Signatures {
             })
             .collect();
         let cex_inputs = vec![0u64; ni];
-        let cex_col = aig.simulate(&cex_inputs);
+        let zero_col = aig.simulate(&cex_inputs);
         Signatures {
             cols,
             keys: Vec::new(),
             cex_inputs,
             cex_bits: 0,
-            cex_col,
+            cex_col: zero_col.clone(),
+            zero_col,
         }
     }
 
@@ -310,10 +315,10 @@ impl Signatures {
             self.push(full);
             self.cex_inputs.fill(0);
             self.cex_bits = 0;
-            self.cex_col = aig.simulate(&self.cex_inputs);
+            self.cex_col.clone_from(&self.zero_col);
             true
         } else {
-            self.cex_col = aig.simulate(&self.cex_inputs);
+            aig.simulate_into(&self.cex_inputs, &mut self.cex_col);
             false
         }
     }

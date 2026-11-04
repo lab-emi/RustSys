@@ -492,7 +492,15 @@ impl Aig {
     /// Bit-parallel simulation of all nodes with 64 patterns per word; `input_words[i]` gives
     /// the patterns of input i.
     pub fn simulate(&self, input_words: &[u64]) -> Vec<u64> {
-        let mut v = vec![0u64; self.num_nodes()];
+        let mut v = Vec::new();
+        self.simulate_into(input_words, &mut v);
+        v
+    }
+
+    /// `simulate` into `v`, reusing its storage.
+    pub fn simulate_into(&self, input_words: &[u64], v: &mut Vec<u64>) {
+        v.clear();
+        v.resize(self.num_nodes(), 0);
         for n in 1..self.num_nodes() as u32 {
             v[n as usize] = if let Some(i) = self.input_of(n) {
                 input_words.get(i as usize).copied().unwrap_or(0)
@@ -503,7 +511,6 @@ impl Aig {
                 x & y
             };
         }
-        v
     }
 
     /// Value of a literal in a simulation vector.

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use rusteda_formats::liberty::Library;
 use rusteda_formats::verilog::write::NlRef;
-use rustsys::{Goal, Sources, SynthOptions, synthesize};
+use rustsys::{Effort, Goal, Report, Sources, SynthOptions, synthesize};
 use rustsys_fixtures::liberty::{Variant, library};
 
 fn lib(v: Variant) -> Library {
@@ -111,6 +111,41 @@ module cmp (input logic signed [4:0] a, b, output logic lt, ge, eq, output logic
 endmodule"#,
     ),
 ];
+
+// SYNTH-REQ-0412: without electrical options, high effort keeps medium effort's cover when that
+// one is better by the mapping objective, so high effort is never worse than medium effort.
+#[test]
+fn high_effort_is_never_worse_than_medium() {
+    for v in Variant::ALL {
+        let l = lib(v);
+        for goal in [Goal::Delay, Goal::Area] {
+            for (name, src) in DESIGNS {
+                let run = |effort| {
+                    synthesize(
+                        &Sources::Texts(vec![(format!("{name}.sv"), src.to_string())]),
+                        std::slice::from_ref(&l),
+                        &SynthOptions {
+                            goal,
+                            effort,
+                            ..SynthOptions::default()
+                        },
+                    )
+                    .unwrap_or_else(|e| panic!("{name} {v:?}: {:?}", e.messages))
+                    .report
+                };
+                let key = |r: &Report| match goal {
+                    Goal::Delay => (r.estimated_delay, r.area),
+                    Goal::Area => (r.area, r.estimated_delay),
+                };
+                let (medium, high) = (key(&run(Effort::Medium)), key(&run(Effort::High)));
+                assert!(
+                    high.0 < medium.0 || (high.0 == medium.0 && high.1 <= medium.1),
+                    "{name} {v:?} {goal:?}: high {high:?}, medium {medium:?}"
+                );
+            }
+        }
+    }
+}
 
 // SYNTH-REQ-0511: every library variant yields a netlist equal to the graph on all inputs.
 #[test]

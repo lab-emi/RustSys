@@ -141,7 +141,9 @@ shard for a short node batch and still commits every proposal in its original or
 **SYNTH-REQ-0412** The default (`--effort medium`) script is `sweep; mux_decode; merge; balance;
 rewrite; refactor; resub; rewrite; rewrite-zero; rewrite; balance; mux_merge; sweep`. `--effort low` runs `sweep` only; `--effort high`
 follows the default script with `merge; rewrite-zero; balance; refactor; resub; rewrite; refactor;
-balance`.
+balance`. Without electrical options, high effort also synthesizes the design at medium effort and
+returns the better of the two results by the mapping objective (estimated delay, then area; area
+first for `--goal area`), so it is never worse than medium effort by that objective.
 
 **SYNTH-REQ-0413** Determinism: identical inputs and options produce a byte-identical netlist,
 independent of the number of threads.

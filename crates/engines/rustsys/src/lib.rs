@@ -273,6 +273,51 @@ pub fn synthesize_with(
     opts: &SynthOptions,
     ctx: Ctx<'_>,
 ) -> Result<SynthOutput, JobError<SynthError>> {
+    let t0 = Instant::now();
+    let out = synthesize_effort(src, libs, opts, ctx)?;
+    // High effort runs further passes after those of medium effort, and their AIG does not
+    // always map to the better cover. Without electrical options (which rank their own
+    // alternatives, high effort among them), medium effort's cover is also built and the better
+    // one by the mapping objective is kept, so high effort is never worse than medium effort
+    // (SYNTH-REQ-0412).
+    if opts.effort == Effort::High && opts.electrical.is_none() {
+        let mut medium_opts = opts.clone();
+        medium_opts.effort = Effort::Medium;
+        match synthesize_effort(src, libs, &medium_opts, ctx.unobserved()) {
+            Ok(mut medium) if better_objective(&medium.report, &out.report, opts.goal) => {
+                for m in &medium.messages {
+                    if !out.messages.contains(m) {
+                        stream(ctx, m);
+                    }
+                }
+                medium.report.runtime_s = t0.elapsed().as_secs_f64();
+                return Ok(medium);
+            }
+            Err(JobError::Cancelled) => return Err(JobError::Cancelled),
+            _ => {}
+        }
+    }
+    Ok(out)
+}
+
+/// Whether report `a` is strictly better than `b` by the mapping objective of `goal`: estimated
+/// delay, then area (`Goal::Delay`), or the reverse (`Goal::Area`).
+fn better_objective(a: &Report, b: &Report, goal: Goal) -> bool {
+    let key = |r: &Report| match goal {
+        Goal::Delay => (r.estimated_delay, r.area),
+        Goal::Area => (r.area, r.estimated_delay),
+    };
+    let (x, y) = (key(a), key(b));
+    x.0 < y.0 || (x.0 == y.0 && x.1 < y.1)
+}
+
+/// `synthesize_with` at the effort of `opts`.
+fn synthesize_effort(
+    src: &Sources,
+    libs: &[Library],
+    opts: &SynthOptions,
+    ctx: Ctx<'_>,
+) -> Result<SynthOutput, JobError<SynthError>> {
     if opts.backend == map::MapBackend::Cpu {
         return run(src, libs, opts, None, ctx, Carry::Prefix, None);
     }

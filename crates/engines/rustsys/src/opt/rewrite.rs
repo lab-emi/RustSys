@@ -70,6 +70,9 @@ fn candidate(
     let mut cand: Vec<Cut> = Vec::new();
     for a in first {
         for b in second {
+            if !a.may_merge(b, K) {
+                continue;
+            }
             if let Some(c) = Cut::merge(a, f0, b, f1, K) {
                 if c.n >= 2 && !cand.iter().any(|x| x.leaves() == c.leaves()) {
                     cand.push(c);

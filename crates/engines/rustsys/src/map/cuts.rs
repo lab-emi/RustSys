@@ -99,8 +99,40 @@ impl Cut {
     }
 
     /// Merges two fanin cuts of an AND node with fanin literals `l0`, `l1`.
+    /// Whether the leaves of `self` and `other` may fit in `k`: false exactly when their
+    /// signatures already show more than `k` distinct leaves, the first test of `merge`. A
+    /// signature has at most as many bits as its cut has leaves, so two cuts with at most `k`
+    /// leaves together pass without counting. Cheap enough to call before `merge` on every pair
+    /// of fanin cuts, most of which fail it.
+    #[inline(always)]
+    pub fn may_merge(&self, other: &Cut, k: usize) -> bool {
+        self.n as usize + other.n as usize <= k
+            || ((self.sign | other.sign).count_ones() as usize) <= k
+    }
+
+    /// `may_merge` for cuts whose signatures have `pa` and `pb` bits: the union of the
+    /// signatures has `pa + pb` minus their common bits, so only the (few) common bits are
+    /// counted, and only as far as needed.
+    #[inline(always)]
+    pub fn signs_fit(sa: u64, pa: u32, sb: u64, pb: u32, k: u32) -> bool {
+        if pa + pb <= k {
+            return true;
+        }
+        let need = pa + pb - k;
+        let mut common = sa & sb;
+        let mut found = 0;
+        while common != 0 {
+            common &= common - 1;
+            found += 1;
+            if found >= need {
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn merge(a: &Cut, l0: Lit, b: &Cut, l1: Lit, k: usize) -> Option<Cut> {
-        if ((a.sign | b.sign).count_ones() as usize) > k {
+        if !a.may_merge(b, k) {
             return None;
         }
         let mut u = [0u32; 6];
@@ -230,5 +262,39 @@ mod tests {
         assert_eq!(d.leaves(), &[1, 3]);
         assert_eq!(d.tt & 0xF, 0b1000);
         assert!(Cut::merge(&c, Lit(2), &c, Lit(2), 2).is_none());
+    }
+
+    #[test]
+    fn signature_tests_agree_with_counting_the_union() {
+        // Signatures of up to six leaves, with shared and colliding bits.
+        let mut x = 0x1234_5678_9abc_def0u64;
+        let mut next = || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for _ in 0..20_000 {
+            let mut sign = || (0..next() % 7).fold(0u64, |s, _| s | 1 << (next() % 64));
+            let (sa, sb) = (sign(), sign());
+            let (pa, pb) = (sa.count_ones(), sb.count_ones());
+            for k in 0..=12u32 {
+                let union_fits = (sa | sb).count_ones() <= k;
+                assert_eq!(Cut::signs_fit(sa, pa, sb, pb, k), union_fits);
+                let a = Cut {
+                    leaves: [0; 6],
+                    n: pa as u8,
+                    tt: 0,
+                    sign: sa,
+                };
+                let b = Cut {
+                    leaves: [0; 6],
+                    n: pb as u8,
+                    tt: 0,
+                    sign: sb,
+                };
+                assert_eq!(a.may_merge(&b, k as usize), union_fits);
+            }
+        }
     }
 }

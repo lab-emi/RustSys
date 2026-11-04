@@ -612,8 +612,16 @@ impl<'a> Mapper<'a> {
             Err(())
         };
         let mut saturated = false;
+        // Most pairs of large cut sets have too many leaves: reject them by their signatures
+        // before merging, counting each signature's bits once.
+        let k = self.k as u32;
+        let bits1: Vec<u32> = cuts1.iter().map(|c| c.sign.count_ones()).collect();
         'pairs: for a in cuts0 {
-            for b in cuts1 {
+            let pa = a.sign.count_ones();
+            for (b, &pb) in cuts1.iter().zip(&bits1) {
+                if !Cut::signs_fit(a.sign, pa, b.sign, pb, k) {
+                    continue;
+                }
                 if let Some(c) = Cut::merge(a, f0, b, f1, self.k) {
                     if c.n == 0 {
                         continue;
@@ -669,11 +677,26 @@ impl<'a> Mapper<'a> {
                 cand.push((arr, af, *c));
             }
         }
-        // Stable sort: ties keep candidate order.
-        match rank {
-            Rank::Delay => cand.sort_by_key(|(arr, af, c)| (*arr, c.n, *af)),
-            Rank::Area => cand.sort_by_key(|(arr, af, c)| (*af, c.n, *arr)),
-        }
+        // Ranked with ties in candidate order (a stable sort), through packed keys that end
+        // with the candidate's index.
+        let mut keys: Vec<u128> = cand
+            .iter()
+            .enumerate()
+            .map(|(i, (arr, af, c))| {
+                // Order-preserving maps of the arrival (signed) and area flow to bits.
+                let arr = u128::from((*arr as u32) ^ 0x8000_0000);
+                let (first, third) = match rank {
+                    Rank::Delay => (arr, u128::from(*af)),
+                    Rank::Area => (u128::from(*af), arr),
+                };
+                first << 96 | u128::from(c.n) << 88 | third << 56 | i as u128
+            })
+            .collect();
+        keys.sort_unstable();
+        let cand: Vec<(i32, u32, Cut)> = keys
+            .iter()
+            .map(|key| cand[(key & 0xFFFF) as usize])
+            .collect();
         // Kept: the cut of the two fanins (so that every node remains mappable) and the previous
         // choices' cuts, then the best others up to `max_cuts`, in rank order.
         let mut two = [f0.node(), f1.node()];

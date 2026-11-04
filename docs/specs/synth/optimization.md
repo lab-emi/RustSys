@@ -123,7 +123,7 @@ equivalent nodes (other inputs random, compatible requests packed into one patte
 then rebuilt in topological order, each compared with the earlier nodes (inputs included) of its
 simulation class in the order they were added, and replaced by the first one proven equivalent
 whose AIG level is not above its own. Each proof is solved over the input cones of the compared
-nodes only, with at most 300 conflicts and random decision phases, in a solver rebuilt every 500
+nodes only, with at most 100 conflicts and random decision phases, in a solver rebuilt every 100
 proofs; at most 20,000 SAT calls are made. A refuted proof adds its counterexample, with eight
 random values of the inputs outside those cones, to the simulation, which separates every pair it
 distinguishes; `mux_merge` merges nested multiplexers (SYNTH-REQ-0406); `mux_decode` rewrites nested

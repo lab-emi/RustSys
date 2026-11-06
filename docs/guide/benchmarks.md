@@ -36,7 +36,7 @@ is measured outside the flow and published on the RustEDA benchmarks page.
 ## Synthesis head-to-head · 2026-11-05
 
 The [2026-11-05 host campaign](https://lab-emi.github.io/RustEDA/benchmarks/#ibex-host-campaign-2026-11-05)
-repeated the comparison below with RustSys [`1ee999f`](https://github.com/lab-emi/RustSys/commit/1ee999fc71bb2fa49215db2478864b4f1654e794) on another 4-vCPU host.
+repeated the comparison below with RustSys [`86e59d8`](https://github.com/lab-emi/RustSys/commit/86e59d816e6ded82333ccc502bb37961c3bb1a9f) on another 4-vCPU host.
 **RustSys was faster, used less memory and produced the smaller and shallower
 netlist:**
 

@@ -9,12 +9,13 @@ repository lockfile when reproducing a run.
 
 The RustEDA Ibex host campaign of 2026-11-05 reran the IHP SG13G2 / EZ130
 design with two real SRAMs on a 4-vCPU cloud host (a different and slower
-machine than on 2026-11-02), with RustSys built from commit [`1ee999f`](https://github.com/lab-emi/RustSys/commit/1ee999fc71bb2fa49215db2478864b4f1654e794) (executable SHA-256 `49afd8c8…`).
+machine than on 2026-11-02), with RustSys built from commit [`86e59d8`](https://github.com/lab-emi/RustSys/commit/86e59d816e6ded82333ccc502bb37961c3bb1a9f) (executable SHA-256 `49afd8c8…`).
 RustSys synthesized the design in the native flow, the flow's synthesis and
 final equivalence gates are `proven`, and the native layout passes every shared
 gate that gives a pass/fail verdict; the producer completed every step. The run is `unqualified` (the
 component-qualification evidence is not published), and LibreLane's layout
-fails the timing gate, so the receipt forms no end-to-end ratio.
+fails the timing gate, so the receipt keeps its ratio fields null; divided, the
+recorded times give RustEDA a 4.2× shorter end-to-end time.
 
 In the synthesis head-to-head on the same prepared RTL and Liberty, with Yosys +
 ABC running LibreLane's synthesis script, **RustSys was faster, used less

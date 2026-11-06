@@ -9,16 +9,28 @@ RustSys turns RTL into mapped netlists with bounded synthesis, technology mappin
   <img src="assets/rustsys-banner.gif" alt="Synthesis for the next design iteration." width="1200">
 </picture>
 
+## RustSys vs Yosys at a glance
+
+Ibex RTL-to-GDS on IHP SG13G2 with EZ130 cells and two SRAM macros, 2026-11-05: RustEDA and LibreLane 3.0.17 (OpenROAD, Yosys, KLayout, Magic, Netgen) ran one after the other on the same 4-vCPU host from the same prepared inputs, and the same signoff scripts checked both layouts.
+
+- **35.4× faster than Yosys + ABC** with LibreLane's synthesis script (3.81 s against 135.04 s, median of three interleaved runs; 44.4× in direct mode), with **6.6× less peak memory**.
+- **1.8 % less standard-cell area** (145,226.6 µm² against 147,866.9 µm²) and **logic depth 36 against 40**; the SS critical path arrives at 50.5 ns against 71.7 ns with ideal wires.
+- Equivalence of the mapped netlist to the RTL is **proven**; for the Yosys netlist it stays unverified.
+- In the full flow, synthesis takes 3.48 s against 132.63 s (**38.1× faster**), and the whole RustEDA flow finishes **4.2× sooner end to end** with a 5.2 % smaller layout.
+
+LibreLane's layout fails the shared timing gate (112 maximum-capacitance and fanout violations at TT and SS) and its equivalence check does not complete, so the receipt keeps its own ratio fields null under its publication rule; the multiples here divide the recorded times. Stages are paired by phase, not as identical tasks. RustEDA is not faster everywhere: its repair before global routing takes 1.18× LibreLane's two pre-route resizer steps alone, OpenRCX runs 1.36× longer on RustEDA's DEF, and the latch-up check 1.11× longer on its layout. [All stages, gates and losses](https://lab-emi.github.io/RustEDA/benchmarks/)
+
 ## Development update · 2026-11-05
 
 The RustEDA Ibex host campaign of 2026-11-05 reran the IHP SG13G2 / EZ130
 design with two real SRAMs on a 4-vCPU cloud host (a different and slower
-machine than on 2026-11-02), with RustSys built from commit [`1ee999f`](https://github.com/lab-emi/RustSys/commit/1ee999fc71bb2fa49215db2478864b4f1654e794).
+machine than on 2026-11-02), with RustSys built from commit [`86e59d8`](https://github.com/lab-emi/RustSys/commit/86e59d816e6ded82333ccc502bb37961c3bb1a9f).
 RustSys synthesized the design in the native flow, the flow's synthesis and
 final equivalence gates are `proven`, and the native layout passes every shared
 gate that gives a pass/fail verdict; the producer completed every step. The run is `unqualified` (the
 component-qualification evidence is not published), and LibreLane's layout
-fails the timing gate, so the receipt forms no end-to-end ratio.
+fails the timing gate, so the receipt keeps its ratio fields null; divided, the
+recorded times give RustEDA a 4.2× shorter end-to-end time.
 
 In the synthesis head-to-head on the same prepared RTL and Liberty, with Yosys +
 ABC running LibreLane's synthesis script, **RustSys was faster, used less

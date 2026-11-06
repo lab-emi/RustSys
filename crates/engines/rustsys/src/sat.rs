@@ -6,8 +6,6 @@
 //! move-to-front decision queue, geometric restarts, and solving under assumptions; plus the
 //! Tseitin encoding of AIG cones [@tseitin1968complexity].
 
-use rustc_hash::FxHashMap;
-
 use crate::aig::{Aig, Lit};
 
 /// Solver literal: variable times two plus sign (1 = negative).
@@ -49,6 +47,11 @@ pub struct Sat {
     saved: Vec<bool>,
     mark: Vec<bool>,
     unsat: bool,
+    /// Variables that must be assigned for a model (`solve_within`); all when not restricted.
+    relevant: Vec<bool>,
+    restricted: bool,
+    /// Unassigned relevant variables while restricted.
+    relevant_left: usize,
 }
 
 const NIL: u32 = u32::MAX;
@@ -85,6 +88,9 @@ impl Sat {
             saved: Vec::new(),
             mark: Vec::new(),
             unsat: false,
+            relevant: Vec::new(),
+            restricted: false,
+            relevant_left: 0,
         }
     }
 
@@ -97,6 +103,7 @@ impl Sat {
         self.watches.push(Vec::new());
         self.saved.push(false);
         self.mark.push(false);
+        self.relevant.push(false);
         self.stamp.push(0);
         // Insert at the front of the queue.
         self.prev.push(NIL);
@@ -121,6 +128,9 @@ impl Sat {
 
     fn assign(&mut self, l: SLit, reason: u32) {
         let v = var(l);
+        if self.restricted && self.relevant[v] {
+            self.relevant_left -= 1;
+        }
         self.val[v] = if l & 1 == 0 { 1 } else { 2 };
         self.level[v] = self.lim.len() as u32;
         self.reason[v] = reason;
@@ -177,21 +187,23 @@ impl Sat {
         cref
     }
 
-    /// Propagates; returns a conflicting clause or `NIL`.
+    /// Propagates; returns a conflicting clause or `NIL`. Each visited watch list is compacted
+    /// in place (kept watches move to its front in their order), without allocating.
     fn propagate(&mut self) -> u32 {
         while self.head < self.trail.len() {
             let p = self.trail[self.head];
             self.head += 1;
             let f = neg(p);
-            let ws = std::mem::take(&mut self.watches[f as usize]);
-            let mut keep: Vec<Watch> = Vec::with_capacity(ws.len());
+            // `f` is false, so no watch moves to its own list while it is taken.
+            let mut ws = std::mem::take(&mut self.watches[f as usize]);
             let mut conflict = NIL;
-            let mut i = 0;
+            let (mut i, mut j) = (0, 0);
             while i < ws.len() {
                 let w = ws[i];
                 i += 1;
                 if self.lit_val(w.blocker) == 1 {
-                    keep.push(w);
+                    ws[j] = w;
+                    j += 1;
                     continue;
                 }
                 let base = w.clause as usize + 1;
@@ -201,10 +213,11 @@ impl Sat {
                 }
                 let other = self.arena[base];
                 if other != w.blocker && self.lit_val(other) == 1 {
-                    keep.push(Watch {
+                    ws[j] = Watch {
                         clause: w.clause,
                         blocker: other,
-                    });
+                    };
+                    j += 1;
                     continue;
                 }
                 let mut moved = false;
@@ -223,15 +236,21 @@ impl Sat {
                 if moved {
                     continue;
                 }
-                keep.push(w);
+                ws[j] = w;
+                j += 1;
                 if self.lit_val(other) == 2 {
                     conflict = w.clause;
-                    keep.extend_from_slice(&ws[i..]);
+                    while i < ws.len() {
+                        ws[j] = ws[i];
+                        i += 1;
+                        j += 1;
+                    }
                     break;
                 }
                 self.assign(other, w.clause);
             }
-            self.watches[f as usize] = keep;
+            ws.truncate(j);
+            self.watches[f as usize] = ws;
             if conflict != NIL {
                 return conflict;
             }
@@ -246,6 +265,9 @@ impl Sat {
         let to = self.lim[lvl];
         for i in (to..self.trail.len()).rev() {
             let v = var(self.trail[i]);
+            if self.restricted && self.relevant[v] {
+                self.relevant_left += 1;
+            }
             self.saved[v] = self.val[v] == 1;
             self.val[v] = 0;
             self.reason[v] = NIL;
@@ -353,9 +375,12 @@ impl Sat {
     /// Next decision: the first unassigned variable in queue order. Variables before
     /// `search_from` are assigned (it is reset to the front on backtracking).
     fn decide(&mut self) -> Option<SLit> {
+        if self.restricted && self.relevant_left == 0 {
+            return None;
+        }
         let mut cur = self.search_from;
         while cur != NIL {
-            if self.val[cur as usize] == 0 {
+            if self.val[cur as usize] == 0 && (!self.restricted || self.relevant[cur as usize]) {
                 self.search_from = cur;
                 return Some((cur << 1) | u32::from(!self.saved[cur as usize]));
             }
@@ -432,6 +457,35 @@ impl Sat {
         }
     }
 
+    /// `solve` where a model needs to assign only `vars`: the caller guarantees that every
+    /// assignment of `vars` that satisfies the clauses over them extends to the other variables
+    /// (as for the input cone of a Tseitin-encoded circuit, whose other gates follow from their
+    /// inputs). In a model, the other variables may be unassigned.
+    pub fn solve_within(&mut self, assumptions: &[SLit], limit: u64, vars: &[u32]) -> Option<bool> {
+        self.backtrack(0);
+        for &v in vars {
+            self.relevant[v as usize] = true;
+        }
+        self.relevant_left = vars.iter().filter(|&&v| self.val[v as usize] == 0).count();
+        self.restricted = true;
+        let r = self.solve(assumptions, limit);
+        self.restricted = false;
+        for &v in vars {
+            self.relevant[v as usize] = false;
+        }
+        r
+    }
+
+    /// Whether a variable is assigned (after `solve`, in the model).
+    pub fn assigned(&self, v: u32) -> bool {
+        self.val[v as usize] != 0
+    }
+
+    /// Sets the saved phase that the next decision on `v` uses.
+    pub fn set_phase(&mut self, v: u32, value: bool) {
+        self.saved[v as usize] = value;
+    }
+
     /// Value of a variable in the last model.
     pub fn value(&self, v: u32) -> bool {
         self.val[v as usize] == 1
@@ -442,13 +496,28 @@ impl Sat {
 #[derive(Debug, Default)]
 pub struct AigCnf {
     pub sat: Sat,
-    map: FxHashMap<u32, u32>,
+    /// Solver variable of each encoded AIG node, indexed by node; `NIL` when not encoded.
+    map: Vec<u32>,
     t: Option<u32>,
+    /// Cone marks of `solve_cone`: a node is marked when its stamp equals `epoch`.
+    stamp: Vec<u32>,
+    epoch: u32,
 }
 
 impl AigCnf {
     pub fn new() -> AigCnf {
         AigCnf::default()
+    }
+
+    fn var_of(&self, n: u32) -> Option<u32> {
+        self.map.get(n as usize).copied().filter(|&v| v != NIL)
+    }
+
+    fn set_var(&mut self, n: u32, v: u32) {
+        if n as usize >= self.map.len() {
+            self.map.resize(n as usize + 1, NIL);
+        }
+        self.map[n as usize] = v;
     }
 
     fn true_var(&mut self) -> u32 {
@@ -469,13 +538,13 @@ impl AigCnf {
         }
         let mut stack = vec![l.node()];
         while let Some(n) = stack.pop() {
-            if self.map.contains_key(&n) {
+            if self.var_of(n).is_some() {
                 continue;
             }
             if aig.is_and(n) {
                 let (a, b) = aig.fanins(n);
-                let ma = self.map.get(&a.node()).copied();
-                let mb = self.map.get(&b.node()).copied();
+                let ma = self.var_of(a.node());
+                let mb = self.var_of(b.node());
                 if ma.is_none() && !a.is_const() || mb.is_none() && !b.is_const() {
                     stack.push(n);
                     if ma.is_none() && !a.is_const() {
@@ -493,13 +562,65 @@ impl AigCnf {
                 self.sat.add(&[o ^ 1, x]);
                 self.sat.add(&[o ^ 1, y]);
                 self.sat.add(&[o, x ^ 1, y ^ 1]);
-                self.map.insert(n, v);
+                self.set_var(n, v);
             } else {
                 let v = self.sat.new_var();
-                self.map.insert(n, v);
+                self.set_var(n, v);
             }
         }
         self.lit_of(l)
+    }
+
+    /// Solves the conjunction of `lits` over their input cones only (`Sat::solve_within`).
+    pub fn solve_cone(&mut self, aig: &Aig, lits: &[Lit], limit: u64) -> Option<bool> {
+        let assumptions: Vec<SLit> = lits.iter().map(|&l| self.lit(aig, l)).collect();
+        let mut vars = Vec::new();
+        if self.stamp.len() < self.map.len() {
+            self.stamp.resize(self.map.len(), 0);
+        }
+        self.epoch = self.epoch.wrapping_add(1);
+        if self.epoch == 0 {
+            self.stamp.fill(0);
+            self.epoch = 1;
+        }
+        let mut stack: Vec<u32> = lits
+            .iter()
+            .filter(|l| !l.is_const())
+            .map(|l| l.node())
+            .collect();
+        while let Some(n) = stack.pop() {
+            if self.stamp[n as usize] == self.epoch {
+                continue;
+            }
+            self.stamp[n as usize] = self.epoch;
+            vars.push(self.map[n as usize]);
+            if aig.is_and(n) {
+                let (a, b) = aig.fanins(n);
+                for x in [a, b] {
+                    if !x.is_const() {
+                        stack.push(x.node());
+                    }
+                }
+            }
+        }
+        if let Some(t) = self.t {
+            vars.push(t);
+        }
+        self.sat.solve_within(&assumptions, limit, &vars)
+    }
+
+    /// Value of AIG node `n` in the last model, when its variable is encoded and assigned.
+    pub fn model_value(&self, n: u32) -> Option<bool> {
+        self.var_of(n)
+            .filter(|&v| self.sat.assigned(v))
+            .map(|v| self.sat.value(v))
+    }
+
+    /// Sets the decision phase of AIG node `n`'s variable, when it is encoded.
+    pub fn set_phase(&mut self, n: u32, value: bool) {
+        if let Some(v) = self.var_of(n) {
+            self.sat.set_phase(v, value);
+        }
     }
 
     fn lit_of(&mut self, l: Lit) -> SLit {
@@ -507,7 +628,7 @@ impl AigCnf {
             let t = self.true_var();
             return (t << 1) | u32::from(l == Lit::FALSE);
         }
-        (self.map[&l.node()] << 1) | u32::from(l.is_compl())
+        (self.map[l.node() as usize] << 1) | u32::from(l.is_compl())
     }
 }
 
@@ -587,6 +708,53 @@ mod tests {
                         .iter()
                         .all(|c| c.iter().any(|l| s.value(l >> 1) == (l & 1 == 0)))
                 );
+            }
+        }
+    }
+
+    // A model of `solve_cone` assigns the input cones of the assumptions consistently, even when
+    // the solver also holds unrelated cones, and agrees with plain solving on satisfiability.
+    #[test]
+    fn cone_restricted_models() {
+        let mut seed = 0x51ce_7a3d_9e01_44b2u64;
+        let mut rnd = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            seed
+        };
+        for _ in 0..200 {
+            let mut g = Aig::new();
+            let mut lits: Vec<Lit> = (0..6).map(|_| g.input()).collect();
+            for _ in 0..40 {
+                let a = lits[(rnd() % lits.len() as u64) as usize].xor(rnd() & 1 == 1);
+                let b = lits[(rnd() % lits.len() as u64) as usize].xor(rnd() & 1 == 1);
+                lits.push(g.and(a, b));
+            }
+            let mut cnf = AigCnf::new();
+            // Encode unrelated cones first, so the solver holds more than the asked cones.
+            for &l in lits.iter().rev().take(8) {
+                cnf.lit(&g, l);
+            }
+            let x = lits[(rnd() % lits.len() as u64) as usize].xor(rnd() & 1 == 1);
+            let y = lits[(rnd() % lits.len() as u64) as usize].xor(rnd() & 1 == 1);
+            let r = cnf.solve_cone(&g, &[x, y], 10_000);
+            let brute = (0..64u64).any(|m| {
+                let words: Vec<u64> = (0..6)
+                    .map(|i| if (m >> i) & 1 == 1 { 1 } else { 0 })
+                    .collect();
+                let sim = g.simulate(&words);
+                Aig::lit_value(&sim, x) & Aig::lit_value(&sim, y) & 1 == 1
+            });
+            assert_eq!(r, Some(brute));
+            if brute {
+                let words: Vec<u64> = g
+                    .inputs()
+                    .iter()
+                    .map(|&i| u64::from(cnf.model_value(i).unwrap_or(false)))
+                    .collect();
+                let sim = g.simulate(&words);
+                assert_eq!(Aig::lit_value(&sim, x) & Aig::lit_value(&sim, y) & 1, 1);
             }
         }
     }

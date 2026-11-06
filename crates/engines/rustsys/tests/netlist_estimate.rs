@@ -73,7 +73,7 @@ fn estimate_of_synthesized_netlists_against_the_report() {
 
 #[test]
 fn default_cleanup_keeps_mapping_proxy_and_reports_final_netlist_statistics() {
-    let d = CORPUS.iter().find(|d| d.name == "counter").unwrap();
+    let d = CORPUS.iter().find(|d| d.name == "pwm").unwrap();
     let lib = rusteda_formats::liberty::read_text(&library(Variant::Full), "full.lib").unwrap();
     let cells = CellLib::build(std::slice::from_ref(&lib), &[]).unwrap();
     let source = Sources::Texts(

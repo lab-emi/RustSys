@@ -19,7 +19,9 @@ use crate::elab::Design;
 use crate::map::cuts::Cut;
 
 const K: usize = 4;
-const CUTS_PER_NODE: usize = 8;
+/// Cuts kept per node, smallest first. On the designs measured, nodes rarely have more distinct
+/// cuts of at most four leaves than this, so the larger replacements stay visible.
+const CUTS_PER_NODE: usize = 24;
 
 pub fn rewrite(d: &mut Design) {
     let _ = rewrite_with_limits(d, false, WorkLimits::default());
@@ -64,10 +66,13 @@ fn candidate(
     } else {
         &trivial1
     };
-    // At most 9*9 cut pairs, then exactly the old stable ranking/tie order.
+    // At most 25*25 cut pairs, then exactly the old stable ranking/tie order.
     let mut cand: Vec<Cut> = Vec::new();
     for a in first {
         for b in second {
+            if !a.may_merge(b, K) {
+                continue;
+            }
             if let Some(c) = Cut::merge(a, f0, b, f1, K) {
                 if c.n >= 2 && !cand.iter().any(|x| x.leaves() == c.leaves()) {
                     cand.push(c);
@@ -104,7 +109,7 @@ fn candidate(
     cand.push(Cut::trivial(id));
     Candidate {
         // Do not retain the capacity of the larger temporary candidate list
-        // at every graph node: stored cuts have at most nine entries.
+        // at every graph node: stored cuts have at most `CUTS_PER_NODE + 1` entries.
         cuts: cand.into_boxed_slice(),
         replacement: best.map(|(_, leaves, f)| (leaves, f)),
         bounded,

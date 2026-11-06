@@ -248,8 +248,24 @@ impl<'a> Elaborator<'a> {
                 let y = self.eval(scope, b, w, s)?;
                 self.add_sub(&x, &y, op == BinOp::Sub)
             }
-            BinOp::Mul
-            | BinOp::Div
+            BinOp::Mul => {
+                let x = self.eval(scope, a, w, s)?;
+                let y = self.eval(scope, b, w, s)?;
+                let (product, rows) = bits::mul_rows(&mut self.aig, &x, &y, s);
+                // A sum that reads the product adds its two carry-save rows instead, so that
+                // `a * b + c` needs one carry-propagate adder (SYNTH-REQ-0407).
+                if !product.iter().all(|l| l.is_const()) {
+                    self.sums.insert(
+                        product.clone(),
+                        std::rc::Rc::new(bits::Sum {
+                            rows: rows.into(),
+                            konst: vec![false; wu],
+                        }),
+                    );
+                }
+                product
+            }
+            BinOp::Div
             | BinOp::Mod
             | BinOp::BitAnd
             | BinOp::BitOr
@@ -259,8 +275,6 @@ impl<'a> Elaborator<'a> {
                 let y = self.eval(scope, b, w, s)?;
                 let g = &mut self.aig;
                 match op {
-                    BinOp::Mul if s => bits::mul_signed(g, &x, &y),
-                    BinOp::Mul => bits::mul(g, &x, &y),
                     BinOp::Div => bits::divmod(g, &x, &y, s).0,
                     BinOp::Mod => bits::divmod(g, &x, &y, s).1,
                     BinOp::BitAnd => bits::and(g, &x, &y),

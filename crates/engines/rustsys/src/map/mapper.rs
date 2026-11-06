@@ -13,7 +13,7 @@ use rustc_hash::FxHashSet;
 use rusteda_core::job::{Cancelled, Ctx, Event, JobError};
 
 pub use super::area::ExactLimits;
-use super::cuts::Cut;
+use super::cuts::{Cut, SignIndex};
 use super::library::{AF_MAX, ARR_INF, CellLib, DELAY_SCALE, Match};
 use crate::aig::{Aig, Lit};
 
@@ -289,6 +289,16 @@ pub(super) fn pass_step(ctx: Ctx<'_>, step: &'static str, i: usize, n: usize) {
     });
 }
 
+/// Buffers of `Mapper::node_pass`, reused across the nodes of a pass.
+#[derive(Debug, Default)]
+pub(super) struct NodeScratch {
+    cand: Vec<(i32, u32, Cut)>,
+    ranked: Vec<(i32, u32, Cut)>,
+    keys: Vec<u128>,
+    bits: Vec<u32>,
+    index: SignIndex,
+}
+
 /// The delay bound `target * (1 + relax)` in fixed-point units, rounded down (SYNTH-REQ-0512).
 pub(super) fn relaxed(target: i32, relax: f64) -> i32 {
     (f64::from(target) * (1.0 + relax))
@@ -497,6 +507,7 @@ impl<'a> Mapper<'a> {
             self.shared_af[i] = [af_share(b[0].af, fo2[i]), af_share(b[1].af, fo2[i])];
         }
         let single_thread = rayon::current_num_threads() == 1;
+        let mut scratch = NodeScratch::default();
         let levels = std::mem::take(&mut self.levels);
         let total = levels.len() as u64;
         for (li, level) in levels.iter().enumerate() {
@@ -506,7 +517,7 @@ impl<'a> Mapper<'a> {
             }
             if single_thread || level.len() < 16 {
                 for &id in level {
-                    let (c, b) = self.node_pass(id, rank, fo2, req, max_cuts);
+                    let (c, b) = self.node_pass(id, rank, fo2, req, max_cuts, &mut scratch);
                     self.cuts[id as usize] = c;
                     self.best[id as usize] = b;
                     self.shared_af[id as usize] = [
@@ -521,7 +532,9 @@ impl<'a> Mapper<'a> {
             let out: Vec<(Vec<Cut>, [Choice; 2])> = level
                 .par_iter()
                 .with_min_len(4)
-                .map(|&id| this.node_pass(id, rank, fo2, req, max_cuts))
+                .map_init(NodeScratch::default, |s, &id| {
+                    this.node_pass(id, rank, fo2, req, max_cuts, s)
+                })
                 .collect();
             for (&id, (c, b)) in level.iter().zip(out) {
                 self.cuts[id as usize] = c;
@@ -582,18 +595,20 @@ impl<'a> Mapper<'a> {
         fo2: &[u32],
         req: Option<&[[i32; 2]]>,
         max_cuts: usize,
+        scratch: &mut NodeScratch,
     ) -> (Vec<Cut>, [Choice; 2]) {
         let (f0, f1) = self.aig.fanins(id);
         let cuts0 = &self.cuts[f0.node() as usize];
         let cuts1 = &self.cuts[f1.node() as usize];
+        let NodeScratch {
+            cand,
+            ranked,
+            keys,
+            bits,
+            index,
+        } = scratch;
         // Candidates in pair order; the first of equal leaf sets is kept.
-        let mut cand: Vec<(i32, u32, Cut)> = Vec::with_capacity(
-            cuts0
-                .len()
-                .saturating_mul(cuts1.len())
-                .saturating_add(2)
-                .min(512),
-        );
+        cand.clear();
         let mut table = [u16::MAX; 512];
         let mut insert_unique = |c: &Cut, cand: &mut Vec<(i32, u32, Cut)>| -> Result<bool, ()> {
             let mut h = ((c.sign as usize).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 55) & 511;
@@ -612,22 +627,48 @@ impl<'a> Mapper<'a> {
             Err(())
         };
         let mut saturated = false;
-        'pairs: for a in cuts0 {
-            for b in cuts1 {
-                if let Some(c) = Cut::merge(a, f0, b, f1, self.k) {
-                    if c.n == 0 {
-                        continue;
+        // Most pairs of large cut sets have too many leaves: reject them by their signatures
+        // before merging, counting each signature's bits once.
+        let k = self.k as u32;
+        let mut pair = |a: &Cut, b: &Cut, cand: &mut Vec<(i32, u32, Cut)>| -> bool {
+            if let Some(c) = Cut::merge(a, f0, b, f1, self.k)
+                && c.n != 0
+            {
+                match insert_unique(&c, cand) {
+                    Ok(false) => {}
+                    Err(()) => {
+                        saturated = true;
+                        return false;
                     }
-                    match insert_unique(&c, &mut cand) {
-                        Ok(false) => continue,
-                        Err(()) => {
-                            saturated = true;
-                            break 'pairs;
-                        }
-                        Ok(true) => {}
+                    Ok(true) => {
+                        let (arr, af) = self.cut_costs(&c, fo2);
+                        cand.push((arr, af, c));
                     }
-                    let (arr, af) = self.cut_costs(&c, fo2);
-                    cand.push((arr, af, c));
+                }
+            }
+            true
+        };
+        // Large sets: the fitting members of `cuts1` of each cut of `cuts0` at once.
+        if cuts0.len() * cuts1.len() >= 256 && index.rebuild(cuts1) {
+            'indexed: for a in cuts0 {
+                let mut go = true;
+                index.for_each_fit(a.sign, k, |j| {
+                    go = pair(a, &cuts1[j], cand);
+                    go
+                });
+                if !go {
+                    break 'indexed;
+                }
+            }
+        } else {
+            bits.clear();
+            bits.extend(cuts1.iter().map(|c| c.sign.count_ones()));
+            'pairs: for a in cuts0 {
+                let pa = a.sign.count_ones();
+                for (b, &pb) in cuts1.iter().zip(bits.iter()) {
+                    if Cut::signs_fit(a.sign, pa, b.sign, pb, k) && !pair(a, b, cand) {
+                        break 'pairs;
+                    }
                 }
             }
         }
@@ -635,7 +676,7 @@ impl<'a> Mapper<'a> {
         // candidates, so that the previous cover stays available (SYNTH-REQ-0515).
         let prev = self.previous_cuts(id, req);
         for c in prev.iter().flatten().take(if saturated { 0 } else { 2 }) {
-            match insert_unique(c, &mut cand) {
+            match insert_unique(c, cand) {
                 Ok(false) => continue,
                 Err(()) => {
                     saturated = true;
@@ -669,11 +710,22 @@ impl<'a> Mapper<'a> {
                 cand.push((arr, af, *c));
             }
         }
-        // Stable sort: ties keep candidate order.
-        match rank {
-            Rank::Delay => cand.sort_by_key(|(arr, af, c)| (*arr, c.n, *af)),
-            Rank::Area => cand.sort_by_key(|(arr, af, c)| (*af, c.n, *arr)),
-        }
+        // Ranked with ties in candidate order (a stable sort), through packed keys that end
+        // with the candidate's index.
+        keys.clear();
+        keys.extend(cand.iter().enumerate().map(|(i, (arr, af, c))| {
+            // Order-preserving maps of the arrival (signed) and area flow to bits.
+            let arr = u128::from((*arr as u32) ^ 0x8000_0000);
+            let (first, third) = match rank {
+                Rank::Delay => (arr, u128::from(*af)),
+                Rank::Area => (u128::from(*af), arr),
+            };
+            first << 96 | u128::from(c.n) << 88 | third << 56 | i as u128
+        }));
+        keys.sort_unstable();
+        ranked.clear();
+        ranked.extend(keys.iter().map(|key| cand[(key & 0xFFFF) as usize]));
+        let cand: &[(i32, u32, Cut)] = ranked;
         // Kept: the cut of the two fanins (so that every node remains mappable) and the previous
         // choices' cuts, then the best others up to `max_cuts`, in rank order.
         let mut two = [f0.node(), f1.node()];

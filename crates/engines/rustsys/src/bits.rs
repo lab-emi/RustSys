@@ -414,12 +414,39 @@ pub fn shift(g: &mut Aig, a: &[Lit], amt: &[Lit], left: bool, fill: Lit) -> Bv {
 /// Low `a.len()` bits of `a * b` (equal widths) using carry-save reduction and a final
 /// ripple-carry adder [@wallace1964suggestion] (SYNTH-REQ-0404).
 pub fn mul(g: &mut Aig, a: &[Lit], b: &[Lit]) -> Bv {
-    let product = mul_plain(g, a, b);
-    g.note_multiplier(a, b, &product, false);
-    product
+    mul_rows(g, a, b, false).0
 }
 
-fn mul_plain(g: &mut Aig, a: &[Lit], b: &[Lit]) -> Bv {
+/// The product of `mul` (or of `mul_signed` when `signed`) and two carry-save rows whose sum
+/// modulo `2^a.len()` is the product (SYNTH-REQ-0404, SYNTH-REQ-0407). A sum that reads the
+/// product can add the rows instead and share one carry-propagate adder; unused rows are swept.
+pub fn mul_rows(g: &mut Aig, a: &[Lit], b: &[Lit], signed: bool) -> (Bv, [Bv; 2]) {
+    let w = a.len();
+    let (n, m) = (sign_width(a), sign_width(b));
+    if signed && (n < w || m < w) {
+        let wp = w.min(n + m);
+        let cols = signed_columns(g, a, b, n, m, wp);
+        let (x, y) = csa_rows(g, cols);
+        let product = resize(&add(g, &x, &y, Lit::FALSE).0, w, true);
+        g.note_multiplier(a, b, &product, true);
+        if wp == w {
+            return (product, [x, y]);
+        }
+        // The rows of the full width: the same partial products and carry-save cells (shared
+        // by structural hashing) with the sign extension as constants.
+        let cols = signed_columns(g, a, b, n, m, w);
+        let (x, y) = csa_rows(g, cols);
+        return (product, [x, y]);
+    }
+    let cols = plain_columns(g, a, b);
+    let (x, y) = csa_rows(g, cols);
+    let product = add(g, &x, &y, Lit::FALSE).0;
+    g.note_multiplier(a, b, &product, signed);
+    (product, [x, y])
+}
+
+/// Partial products of the low `a.len()` bits of `a * b`, by weight.
+fn plain_columns(g: &mut Aig, a: &[Lit], b: &[Lit]) -> Vec<Vec<Lit>> {
     let w = a.len();
     let mut cols: Vec<Vec<Lit>> = vec![Vec::new(); w];
     for (i, &bi) in b.iter().enumerate().take(w) {
@@ -433,7 +460,7 @@ fn mul_plain(g: &mut Aig, a: &[Lit], b: &[Lit]) -> Bv {
             }
         }
     }
-    reduce_columns(g, cols)
+    cols
 }
 
 /// Significant width of a sign-extended vector: the smallest `n >= 1` such that every bit at or
@@ -451,14 +478,20 @@ pub fn sign_width(v: &[Lit]) -> usize {
 /// [@baugh1973twos] and the constants `2^(n-1) + 2^(m-1) + 2^(n+m-1)` give the `n + m`-bit product,
 /// which is sign-extended. Operands without extension use the unsigned structure.
 pub fn mul_signed(g: &mut Aig, a: &[Lit], b: &[Lit]) -> Bv {
-    let w = a.len();
-    let (n, m) = (sign_width(a), sign_width(b));
-    if n == w && m == w {
-        let product = mul_plain(g, a, b);
-        g.note_multiplier(a, b, &product, true);
-        return product;
-    }
-    let wp = w.min(n + m);
+    mul_rows(g, a, b, true).0
+}
+
+/// Baugh–Wooley partial products and constants of the low `wp` bits of the signed product of
+/// operands with significant widths `n` and `m` (`mul_signed`); their sum modulo `2^wp` is the
+/// product for any `wp`.
+fn signed_columns(
+    g: &mut Aig,
+    a: &[Lit],
+    b: &[Lit],
+    n: usize,
+    m: usize,
+    wp: usize,
+) -> Vec<Vec<Lit>> {
     let mut cols: Vec<Vec<Lit>> = vec![Vec::new(); wp];
     for (k, col) in cols.iter_mut().enumerate() {
         for i in 0..m.min(k + 1) {
@@ -473,19 +506,20 @@ pub fn mul_signed(g: &mut Aig, a: &[Lit], b: &[Lit]) -> Bv {
             }
         }
     }
-    for c in [n - 1, m - 1, n + m - 1] {
+    // `-2^(n+m-1)` modulo `2^wp`: one bit at `n + m - 1`, or every bit from there up to the
+    // width, which sign-extends the `n + m`-bit product.
+    for c in [n - 1, m - 1].into_iter().chain(n + m - 1..wp.max(n + m)) {
         if c < wp {
             cols[c].push(Lit::TRUE);
         }
     }
-    let product = resize(&reduce_columns(g, cols), w, true);
-    g.note_multiplier(a, b, &product, true);
-    product
+    cols
 }
 
-/// Sum of weighted bit columns: carry-save rounds over groups of three bits, then a
-/// ripple-carry adder of the two remaining rows (SYNTH-REQ-0404).
-fn reduce_columns(g: &mut Aig, mut cols: Vec<Vec<Lit>>) -> Bv {
+/// Carry-save rounds over groups of three bits of weighted columns until every column holds at
+/// most two bits; the first and the second bits of the columns form two rows whose sum is that
+/// of the columns (SYNTH-REQ-0404).
+fn csa_rows(g: &mut Aig, mut cols: Vec<Vec<Lit>>) -> (Bv, Bv) {
     let w = cols.len();
     loop {
         if cols.iter().all(|c| c.len() <= 2) {
@@ -515,7 +549,7 @@ fn reduce_columns(g: &mut Aig, mut cols: Vec<Vec<Lit>>) -> Bv {
         .iter()
         .map(|c| c.get(1).copied().unwrap_or(Lit::FALSE))
         .collect();
-    add(g, &x, &y, Lit::FALSE).0
+    (x, y)
 }
 
 /// Unsigned restoring division of equal-width vectors: (quotient, remainder). Division by zero

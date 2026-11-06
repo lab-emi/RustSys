@@ -91,6 +91,36 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
     summary without `drv_status` (RCLI-REQ-0023).
 
 ### Changed
+- Synthesis quality at the default medium effort without a timing period: additions of eight or
+  more bits choose adaptive parallel-prefix carry blocks and wide comparisons use grouped
+  carry-transfer reductions (SYNTH-REQ-0405); a product read by a sum contributes its carry-save
+  rows, so `a * b + c` has one carry-propagate adder (SYNTH-REQ-0407); `merge` is a
+  counterexample-refined SAT sweep that never deepens a node and now runs at medium effort after
+  `mux_decode` (SYNTH-REQ-0411, SYNTH-REQ-0412); untimed mapping adds a per-stage delay term,
+  keeps every complemented-leaf variant of a cell and, at medium effort, 100 priority cuts
+  (SYNTH-REQ-0510, SYNTH-REQ-0511, SYNTH-REQ-0513); `rewrite` keeps up to 24 cuts per node and the
+  medium script adds `rewrite_zero; rewrite` after its second `rewrite` (SYNTH-REQ-0411,
+  SYNTH-REQ-0412); without a timing period medium effort runs five exact-local-area passes
+  instead of six (SYNTH-REQ-0510). On the Ibex SRAM benchmark (EZ130 TT) the standard-cell area
+  goes from 151,095.8 to 145,226.6 um2 and the longest combinational path from 57 to 36 cells,
+  still proven by the shared synthesis gate. Over the 38 designs of the fixture set (EZ130 TT,
+  default options) the total area goes from 252,232.2 to 242,185.9 um2 (-4.0 %); six of them are
+  larger (regfile +5.8 %, uart_tx +6.7 %, debounce +3.5 %, pipeline +2.9 % with one more cell of
+  depth, seq_det +1.7 %, skid +1.0 %). The per-stage term makes the `estimated_delay` of untimed
+  reports incomparable with earlier versions (Ibex 37.45 -> 53.22 ns while its longest path
+  shrank from 57 to 36 cells).
+- Synthesis runtime, with unchanged results: the mapper rejects pairs of fanin cuts by their leaf
+  signatures through a bit-sliced index before merging them, ranks candidates by packed keys and
+  reuses its buffers across nodes; the library match table complements cell inputs by
+  truth-table flips; `refactor`'s cover recursion visits only the words of each cofactor;
+  `rewrite` memoizes its dry runs in a short list; the SAT sweep rebuilds its solver every 100
+  proofs and stops a proof after 100 conflicts (SYNTH-REQ-0411). A single-thread Ibex synthesis
+  executes 29.0 G instructions instead of the 47.6 G of the quality changes above (callgrind;
+  the previous release: 22.0 G).
+- `--effort high` without electrical options also synthesizes the design at medium effort and
+  returns the better result by the mapping objective (estimated delay, then area; area first
+  with `--goal area`), so it is never worse than medium effort by that objective
+  (SYNTH-REQ-0412).
 - The README now leads with CLI and agent workflows, recorded runs, structured output, and
   revision-aware workspaces while retaining the measured RustSys / Yosys comparison tables.
 - `rustsys check synth`: a proof or search that stops at its budget (the conflict budget of an

@@ -48,6 +48,102 @@ pub fn depends(t: u64, i: usize) -> bool {
     ((t >> s) ^ t) & !var_mask(i) != 0
 }
 
+/// The signature bits of a list of cuts as bit sets over the list, so that `Cut::signs_fit`
+/// is decided for every member at once: per member, its common bits with a given signature
+/// are counted by bit-sliced addition of the sets of that signature's bits.
+#[derive(Debug, Default)]
+pub struct SignIndex {
+    words: usize,
+    /// Per signature bit, the members that have it (`words` words each).
+    by_bit: Vec<u64>,
+    /// Per number of signature bits (0 to 7), the members with that many.
+    by_count: Vec<u64>,
+}
+
+impl SignIndex {
+    /// The index of `cuts`, or `None` when a member has more than seven signature bits.
+    pub fn new(cuts: &[Cut]) -> Option<SignIndex> {
+        let mut index = SignIndex::default();
+        index.rebuild(cuts).then_some(index)
+    }
+
+    /// Makes this the index of `cuts`, reusing its storage; false (and an unusable index) when
+    /// a member has more than seven signature bits.
+    pub fn rebuild(&mut self, cuts: &[Cut]) -> bool {
+        let words = cuts.len().div_ceil(64);
+        self.words = words;
+        self.by_bit.clear();
+        self.by_bit.resize(64 * words, 0);
+        self.by_count.clear();
+        self.by_count.resize(8 * words, 0);
+        for (j, c) in cuts.iter().enumerate() {
+            let (w, bit) = (j / 64, 1u64 << (j % 64));
+            let count = c.sign.count_ones() as usize;
+            if count > 7 {
+                return false;
+            }
+            self.by_count[count * words + w] |= bit;
+            let mut s = c.sign;
+            while s != 0 {
+                self.by_bit[s.trailing_zeros() as usize * words + w] |= bit;
+                s &= s - 1;
+            }
+        }
+        true
+    }
+
+    /// Calls `f` with the index of every member that `Cut::signs_fit` a cut with signature
+    /// `sign` within `k` leaves, in increasing order.
+    #[inline]
+    pub fn for_each_fit(&self, sign: u64, k: u32, mut f: impl FnMut(usize) -> bool) {
+        let pa = sign.count_ones();
+        for w in 0..self.words {
+            // Per member, its number of common bits with `sign` (at most 7) in three bit planes.
+            let (mut c0, mut c1, mut c2) = (0u64, 0u64, 0u64);
+            let mut s = sign;
+            while s != 0 {
+                let m = self.by_bit[s.trailing_zeros() as usize * self.words + w];
+                s &= s - 1;
+                let t0 = c0 & m;
+                c0 ^= m;
+                let t1 = c1 & t0;
+                c1 ^= t0;
+                c2 ^= t1;
+            }
+            let mut fit = 0u64;
+            for pb in 0..8u32 {
+                let members = self.by_count[pb as usize * self.words + w];
+                if members == 0 {
+                    continue;
+                }
+                // The union of the signatures has `pa + pb` minus the common bits.
+                fit |= if pa + pb <= k {
+                    members
+                } else {
+                    members
+                        & match pa + pb - k {
+                            1 => c0 | c1 | c2,
+                            2 => c1 | c2,
+                            3 => c2 | (c1 & c0),
+                            4 => c2,
+                            5 => c2 & (c1 | c0),
+                            6 => c2 & c1,
+                            7 => c2 & c1 & c0,
+                            _ => 0,
+                        }
+                };
+            }
+            while fit != 0 {
+                let j = w * 64 + fit.trailing_zeros() as usize;
+                fit &= fit - 1;
+                if !f(j) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
 /// A cut: sorted leaf node ids and the root function over them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Cut {
@@ -98,9 +194,41 @@ impl Cut {
         t
     }
 
+    /// Whether the leaves of `self` and `other` may fit in `k`: false exactly when their
+    /// signatures already show more than `k` distinct leaves, the first test of `merge`. A
+    /// signature has at most as many bits as its cut has leaves, so two cuts with at most `k`
+    /// leaves together pass without counting. Cheap enough to call before `merge` on every pair
+    /// of fanin cuts, most of which fail it.
+    #[inline(always)]
+    pub fn may_merge(&self, other: &Cut, k: usize) -> bool {
+        self.n as usize + other.n as usize <= k
+            || ((self.sign | other.sign).count_ones() as usize) <= k
+    }
+
+    /// `may_merge` for cuts whose signatures have `pa` and `pb` bits: the union of the
+    /// signatures has `pa + pb` minus their common bits, so only the (few) common bits are
+    /// counted, and only as far as needed.
+    #[inline(always)]
+    pub fn signs_fit(sa: u64, pa: u32, sb: u64, pb: u32, k: u32) -> bool {
+        if pa + pb <= k {
+            return true;
+        }
+        let need = pa + pb - k;
+        let mut common = sa & sb;
+        let mut found = 0;
+        while common != 0 {
+            common &= common - 1;
+            found += 1;
+            if found >= need {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Merges two fanin cuts of an AND node with fanin literals `l0`, `l1`.
     pub fn merge(a: &Cut, l0: Lit, b: &Cut, l1: Lit, k: usize) -> Option<Cut> {
-        if ((a.sign | b.sign).count_ones() as usize) > k {
+        if !a.may_merge(b, k) {
             return None;
         }
         let mut u = [0u32; 6];
@@ -230,5 +358,86 @@ mod tests {
         assert_eq!(d.leaves(), &[1, 3]);
         assert_eq!(d.tt & 0xF, 0b1000);
         assert!(Cut::merge(&c, Lit(2), &c, Lit(2), 2).is_none());
+    }
+
+    #[test]
+    fn sign_index_finds_exactly_the_fitting_members() {
+        let mut x = 0x0fed_cba9_8765_4321u64;
+        let mut next = || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for round in 0..300 {
+            let len = (next() % 150) as usize;
+            let members: Vec<Cut> = (0..len)
+                .map(|_| {
+                    let mut sign = 0u64;
+                    for _ in 0..next() % 8 {
+                        // Few distinct bits, so that common bits are frequent.
+                        sign |= 1 << (next() % if round % 2 == 0 { 64 } else { 9 });
+                    }
+                    Cut {
+                        leaves: [0; 6],
+                        n: sign.count_ones() as u8,
+                        tt: 0,
+                        sign,
+                    }
+                })
+                .collect();
+            let index = SignIndex::new(&members).unwrap();
+            for _ in 0..20 {
+                let mut sa = 0u64;
+                for _ in 0..next() % 8 {
+                    sa |= 1 << (next() % if round % 2 == 0 { 64 } else { 9 });
+                }
+                for k in 0..=8u32 {
+                    let mut found = Vec::new();
+                    index.for_each_fit(sa, k, |j| {
+                        found.push(j);
+                        true
+                    });
+                    let expected: Vec<usize> = (0..len)
+                        .filter(|&j| (sa | members[j].sign).count_ones() <= k)
+                        .collect();
+                    assert_eq!(found, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn signature_tests_agree_with_counting_the_union() {
+        // Signatures of up to six leaves, with shared and colliding bits.
+        let mut x = 0x1234_5678_9abc_def0u64;
+        let mut next = || {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            x
+        };
+        for _ in 0..20_000 {
+            let mut sign = || (0..next() % 7).fold(0u64, |s, _| s | 1 << (next() % 64));
+            let (sa, sb) = (sign(), sign());
+            let (pa, pb) = (sa.count_ones(), sb.count_ones());
+            for k in 0..=12u32 {
+                let union_fits = (sa | sb).count_ones() <= k;
+                assert_eq!(Cut::signs_fit(sa, pa, sb, pb, k), union_fits);
+                let a = Cut {
+                    leaves: [0; 6],
+                    n: pa as u8,
+                    tt: 0,
+                    sign: sa,
+                };
+                let b = Cut {
+                    leaves: [0; 6],
+                    n: pb as u8,
+                    tt: 0,
+                    sign: sb,
+                };
+                assert_eq!(a.may_merge(&b, k as usize), union_fits);
+            }
+        }
     }
 }

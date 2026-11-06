@@ -236,6 +236,51 @@ fn refactor_window_budget_preserves_design() {
     assert_eq!(format!("{base:?}"), format!("{d:?}"));
 }
 
+// SYNTH-REQ-0411: the global sweep merges differently built equivalent logic (here two
+// structures of the same 16-bit comparison and a rarely true decode that is never true), keeps the
+// function, never deepens a node by merging it into a deeper representative, and builds the
+// same graph whatever the thread count.
+#[test]
+fn sat_sweep_merges_equivalent_structures() {
+    let base = common::design(
+        r#"
+module m(input [15:0] a, b, input [7:0] op, output y, z, w);
+  wire lt1 = a < b;
+  wire lt2 = (a - b) > a;
+  wire never = (op == 8'h5a) & (op[0] == 1'b1);
+  assign y = lt1 ^ lt2;
+  assign z = never;
+  assign w = lt1 & (op == 8'hc3);
+endmodule
+"#,
+    );
+    let mut swept = base.clone();
+    let stats = opt::merge::sat_sweep(&mut swept);
+    same("sat_sweep", "merge", &base, &swept);
+    assert!(stats.merged >= 2, "{stats:?}");
+    assert!(swept.aig.num_ands() < base.aig.num_ands());
+    // y = lt1 ^ lt2 is constant 0 and z is constant 0 after the sweep.
+    let roots = opt::design_roots(&swept);
+    assert!(roots[0].is_const() && roots[1].is_const(), "{roots:?}");
+    let level = |d: &Design| {
+        opt::design_roots(d)
+            .iter()
+            .map(|r| d.aig.levels()[r.node() as usize])
+            .max()
+            .unwrap()
+    };
+    assert!(level(&swept) <= level(&base));
+    for threads in [1, 3] {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .build()
+            .unwrap();
+        let mut d = base.clone();
+        pool.install(|| opt::merge::sat_sweep(&mut d));
+        assert_eq!(format!("{swept:?}"), format!("{d:?}"), "{threads} threads");
+    }
+}
+
 #[test]
 fn every_pass_keeps_every_root() {
     for d in CORPUS {

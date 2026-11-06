@@ -66,6 +66,10 @@ pub const ARR_INF: i32 = i32::MAX;
 /// Saturation value of area flows; also the area flow of an unmapped (node, phase).
 pub const AF_MAX: u32 = 1 << 30;
 
+/// Per-stage delay of untimed mapping, as a fraction of the smallest inverter's arc delay at the
+/// reference load (SYNTH-REQ-0513).
+pub const UNTIMED_STAGE_DELAY: f64 = 0.75;
+
 /// Delay in fixed-point units (at least one unit).
 pub fn quantize_delay(d: f64) -> i32 {
     (d * DELAY_SCALE).round().clamp(1.0, 1.0e9) as i32
@@ -244,8 +248,9 @@ impl CellLib {
             warnings,
             rejected: Vec::new(),
         };
-        // Untimed mapping retains the historical estimate. With electrical constraints,
-        // characterize at the supplied slew and a reproducible small-cell reference load.
+        // Untimed mapping uses the historical reference load, plus a per-stage term (below).
+        // With electrical constraints, characterize at the supplied slew and a reproducible
+        // small-cell reference load.
         let mut inv_caps = Vec::new();
         let mut small = None;
         for c in &cells {
@@ -310,6 +315,23 @@ impl CellLib {
             }
         }
         lib.inverter = inv.ok_or("the library has no usable inverter (SYNTH-REQ-0502)")?;
+        if slew_ns.is_none() {
+            // Without electrical options, each stage also pays a share of the smallest
+            // inverter's delay for its unknown wiring and load (SYNTH-REQ-0513).
+            let stage = UNTIMED_STAGE_DELAY
+                * lib.comb[lib.inverter]
+                    .delay
+                    .iter()
+                    .copied()
+                    .fold(0.0, f64::max);
+            for c in &mut lib.comb {
+                for d in &mut c.delay {
+                    *d += stage;
+                }
+                c.delay_q = c.delay.iter().map(|d| quantize_delay(*d)).collect();
+                c.delay_arr[..c.delay_q.len()].copy_from_slice(&c.delay_q);
+            }
+        }
         lib.build_table(phase_choices);
         Ok(lib)
     }
@@ -542,17 +564,24 @@ impl CellLib {
             let n = c.inputs.len();
             let perms = permutations(n);
             for p in &perms {
+                // The function of the leaves without complemented inputs: leaf assignment m
+                // gives cell input assignment y.
+                let mut base = 0u64;
+                for m in 0..(1u32 << n) {
+                    let mut y = 0u32;
+                    for (i, &leaf) in p.iter().enumerate() {
+                        y |= ((m >> leaf) & 1) << i;
+                    }
+                    if (c.tt >> y) & 1 == 1 {
+                        base |= 1 << m;
+                    }
+                }
                 for phase in 0..(1u32 << n) {
-                    let mut tt = 0u64;
-                    for m in 0..(1u32 << n) {
-                        // Leaf assignment m -> cell input assignment y.
-                        let mut y = 0u32;
-                        for (i, &leaf) in p.iter().enumerate() {
-                            let b = ((m >> leaf) & 1) ^ ((phase >> i) & 1);
-                            y |= b << i;
-                        }
-                        if (c.tt >> y) & 1 == 1 {
-                            tt |= 1 << m;
+                    // Complementing cell input i complements leaf p[i].
+                    let mut tt = base;
+                    for (i, &leaf) in p.iter().enumerate() {
+                        if (phase >> i) & 1 == 1 {
+                            tt = flip_variable(tt, leaf as usize);
                         }
                     }
                     let mut perm = [0u8; 6];
@@ -626,6 +655,13 @@ impl CellLib {
             .get(&(n as u8, tt & tt_mask(n)))
             .map_or(&[], Vec::as_slice)
     }
+}
+
+/// The truth table of `t` with variable `v` complemented: entry m becomes entry m ^ 2^v.
+fn flip_variable(t: u64, v: usize) -> u64 {
+    let mask = crate::map::cuts::var_mask(v);
+    let s = 1u32 << v;
+    ((t & mask) >> s) | ((t & !mask) << s)
 }
 
 /// All permutations of `0..n` (n ≤ 6).

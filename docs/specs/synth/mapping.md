@@ -33,14 +33,18 @@ combinational input to the cut's root passes through the set; k is the largest n
 a usable combinational cell. For every node, cuts are enumerated bottom-up and the best C cuts
 (priority cuts) are kept [@cong1999cut; @mishchenko2007combinational]. C and the number of
 area-flow and exact-local-area passes (SYNTH-REQ-0512) depend on the effort: 12, 2 and 2 for
-`low`; 40, 4 and 6 for `medium`; 100, 4 and 8 for `high`.
+`low`; 100, 4 and 5 for `medium` without electrical refinement and 40, 4 and 6 with it; 100, 4
+and 8 for `high`.
 
 **SYNTH-REQ-0511** A cell matches a cut when the cut function equals the cell function under some
 assignment of cut leaves to cell inputs, where each leaf may be used in true or complemented
 polarity. Every AIG node is mapped in both polarities; a complemented leaf uses the leaf's
 complemented implementation, and an inverter is added where a polarity is otherwise unavailable.
 Matching is exact: the library is expanded into all input permutations and polarities of each
-cell, keyed by truth table.
+cell, keyed by truth table. Per truth table, synthesis keeps for each cell one match per set of
+complemented leaves (the one with the fewest complemented cell inputs), so that covering can use
+whichever leaf polarities the cover already provides; a match is dropped only when an earlier one
+needs the same leaf polarities with no larger area and no slower pin.
 
 **SYNTH-REQ-0512** Mapping first minimizes the estimated arrival time of every combinational output,
 then recovers area with area-flow and exact-local-area passes [@chen2004daomap;
@@ -51,7 +55,10 @@ required time is the best achievable arrival times `(1 + r)`, with `r` set by `-
 **SYNTH-REQ-0513** The delay of a cell arc is estimated from the Liberty `cell_rise`/`cell_fall`
 tables (the larger of the two) at the middle input-transition index and at a load of four times the
 average input capacitance of the library's inverters. Arcs without tables use delay 1 in library
-time units.
+time units. Without electrical refinement every arc also includes a per-stage term of 0.75 times
+the largest arc delay of the smallest-area inverter so estimated; it stands for the wiring and
+load of each stage, which are unknown before placement, so that the delay-oriented cover and the
+reported estimate do not favour long chains of small fast cells over fewer complex ones.
 
 **SYNTH-REQ-0514** Mapping costs are integers: delays in units of `1e-5` library time units and
 areas in units of `1e-2` library area units, each rounded to the nearest unit when the library is

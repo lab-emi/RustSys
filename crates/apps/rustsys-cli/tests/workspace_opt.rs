@@ -438,7 +438,10 @@ fn revert(ws: &Workspace, to: &str) {
 fn opt_timing_on_a_timing_table_path() {
     let env = WsEnv::new("path");
     let ws = env.seed("pipeline", Some(SDC));
-    let (code, synth) = env.json(&["synth", "--base-rev", "rev3"]);
+    // Low effort: the deepest path of the medium-effort cover of this fixture consists of cells
+    // that already have no faster variant in the test library, which leaves opt-timing nothing to
+    // change on it; this test is about opt-timing on a timing-table path, not about that cover.
+    let (code, synth) = env.json(&["synth", "--base-rev", "rev3", "--effort", "low"]);
     assert_eq!(code, 0, "{synth}");
     let (table_rev, path1) = commit_table(&ws, |b, nl, lib| add_path(b, nl, lib, -0.25));
     assert_eq!(table_rev, "rev5");
@@ -533,6 +536,36 @@ fn opt_timing_on_a_timing_table_path() {
     assert_eq!(v["resized_cells"], n);
     let new_rev = v["new_rev"].as_str().unwrap().to_string();
     env.assert_equivalent(&new_rev);
+}
+
+// CLI-REQ-0204: opt-timing also improves a timing-table path of the default (medium-effort)
+// cover; the pipeline test above synthesizes at low effort.
+#[test]
+fn opt_timing_on_a_medium_effort_path() {
+    let env = WsEnv::new("medium");
+    let ws = env.seed("counter", Some(SDC));
+    let (code, synth) = env.json(&["synth", "--base-rev", "rev3"]);
+    assert_eq!(code, 0, "{synth}");
+    let (table_rev, path1) = commit_table(&ws, |b, nl, lib| add_path(b, nl, lib, -0.25));
+    assert_eq!(table_rev, "rev5");
+    let (code, v) = env.json(&[
+        "opt-timing",
+        "--base-rev",
+        "rev5",
+        "--target",
+        "path1",
+        "--stop-when",
+        "no-improvement",
+    ]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["new_rev"], "rev6");
+    assert_eq!(v["scope"]["target_instances"], path1.len());
+    let changed = assert_changes_within(&v, &ws, &path1);
+    assert!(changed > 0, "{v}");
+    let m = &v["metrics"];
+    assert!(m["estimated_slack_ns"].as_f64() >= m["estimated_slack_before_ns"].as_f64());
+    env.assert_equivalent("rev6");
 }
 
 // CLI-REQ-0207: path<N> and ep<N> need the timing table of the base revision: without it the

@@ -47,7 +47,13 @@ rows, with the third bit of the lowest column as its carry-in. A conditional ope
 operands are both such sums of the same width selects row-wise, since `c ? (t1 + t2) : (f1 + f2)
 = (c ? t1 : f1) + (c ? t2 : f2)`: rows common to both stay unselected, the other rows are paired
 in order (a missing row is zero) and selected bit by bit, and unequal constants are selected as
-one more row. Sums of more than 8192 row bits keep no terms. `$countones` and the counts of
+one more row. A product (SYNTH-REQ-0404) is itself such a sum: its terms are the two rows that
+precede its final addition, so `a * b + c` reduces the product's rows with `c` and needs one
+adder. For a signed product of `n + m < w` significant bits, these rows come from columns built
+over all `w` positions, with the constant 1 of column `n + m - 1` extended to every column from
+`n + m - 1` up to `w - 1` (the sign extension of `-2^(n+m-1)`); the partial products and the
+carry-save cells they share with the product are the same nodes. Sums of more than 8192 row bits
+keep no terms. `$countones` and the counts of
 `$onehot` and `$onehot0` reduce all their bits from the lowest column in the same way.
 
 **SYNTH-REQ-0402** The AIG boundary consists of combinational inputs (primary input bits and state
@@ -55,8 +61,8 @@ element outputs) and combinational outputs (primary output bits, state element d
 and asynchronous control functions).
 
 **SYNTH-REQ-0403** Word-level operators are lowered as follows: addition and subtraction by
-ripple-carry chains (or SYNTH-REQ-0405 under electrical constraints); comparison by magnitude
-chains or a balanced carry-transfer reduction; multiplication by partial
+carry chains whose structure SYNTH-REQ-0405 selects (ripple-carry chains below eight bits and in
+the ripple alternative); comparison by magnitude chains or a balanced carry-transfer reduction; multiplication by partial
 products reduced with carry-save adders [@wallace1964suggestion] and a final ripple-carry adder
 (SYNTH-REQ-0404); division and modulus by restoring division; variable shifts by logarithmic
 multiplexer stages; variable bit-selects and array reads by multiplexer trees, or, when it needs
@@ -95,7 +101,8 @@ output exactly for all input values (no don't-care exploitation in this version)
 depends on; `balance` rebuilds multi-input AND trees, and exclusive-OR trees of at least four
 operands through exclusive ORs that feed nothing else, by level to reduce depth, combining the two
 shallowest operands first and, among equally deep operands, those of equal polarity first; `rewrite` replaces a
-node's function over a cut of at most 4 leaves by a precomputed structure when building it adds
+node's function over a cut of at most 4 leaves (up to 24 cuts per node, from the merged cuts of
+its fanins, smallest first) by a precomputed structure when building it adds
 fewer nodes than the node's fanout-free cone frees, counting nodes that already exist outside that
 cone as free [@mishchenko2006dag]; the structure of a 4-variable function is the cheapest of its
 one-variable decompositions (AND, OR, exclusive OR with the variable, multiplexer on it), its
@@ -108,8 +115,18 @@ the function or its complement when that needs fewer new nodes than the fanout-f
 `resub` re-expresses a node, within a window of at most 8 leaves, as an existing node or its
 complement or as the AND or OR of two or three existing nodes, when that frees more nodes than it
 adds, with reference counts updated after every accepted change [@mishchenko2006scalable];
-`merge` merges nodes proven functionally equivalent by random simulation followed by SAT
-[@kuehlmann2002robust]; `mux_merge` merges nested multiplexers (SYNTH-REQ-0406); `mux_decode` rewrites nested
+`merge` merges nodes proven functionally equivalent (or complementary, or constant) by
+simulation followed by SAT [@kuehlmann2002robust; @mishchenko2005fraigs]: 1024 random patterns,
+then up to four rounds of eight words of patterns that justify, backward from the node to the
+inputs, the other value of each apparently constant node and different values of apparently
+equivalent nodes (other inputs random, compatible requests packed into one pattern); the nodes are
+then rebuilt in topological order, each compared with the earlier nodes (inputs included) of its
+simulation class in the order they were added, and replaced by the first one proven equivalent
+whose AIG level is not above its own. Each proof is solved over the input cones of the compared
+nodes only, with at most 100 conflicts and random decision phases, in a solver rebuilt every 100
+proofs; at most 20,000 SAT calls are made. A refuted proof adds its counterexample, with eight
+random values of the inputs outside those cones, to the simulation, which separates every pair it
+distinguishes; `mux_merge` merges nested multiplexers (SYNTH-REQ-0406); `mux_decode` rewrites nested
 multiplexers with repeated selects as sums of products (SYNTH-REQ-0408). A pass whose
 result has more AND nodes than its input is discarded.
 
@@ -121,10 +138,12 @@ Memory or node-budget exhaustion leaves the input design unchanged. Internal mul
 probes retain their at most four structural readings inline. Resubstitution holds a scratch
 shard for a short node batch and still commits every proposal in its original order.
 
-**SYNTH-REQ-0412** The default (`--effort medium`) script is `sweep; mux_decode; balance; rewrite;
-refactor; resub; rewrite; balance; mux_merge; sweep`. `--effort low` runs `sweep` only; `--effort high`
+**SYNTH-REQ-0412** The default (`--effort medium`) script is `sweep; mux_decode; merge; balance;
+rewrite; refactor; resub; rewrite; rewrite-zero; rewrite; balance; mux_merge; sweep`. `--effort low` runs `sweep` only; `--effort high`
 follows the default script with `merge; rewrite-zero; balance; refactor; resub; rewrite; refactor;
-balance`.
+balance`. Without electrical options, high effort also synthesizes the design at medium effort and
+returns the better of the two results by the mapping objective (estimated delay, then area; area
+first for `--goal area`), so it is never worse than medium effort by that objective.
 
 **SYNTH-REQ-0413** Determinism: identical inputs and options produce a byte-identical netlist,
 independent of the number of threads.
@@ -140,10 +159,15 @@ enqueue so reconvergent fanin and feedback through state cannot materialize dupl
 copy in increasing topological node order and retain original state/input order. Check node
 and planning-storage limits before mutation, returning the unchanged design on exhaustion.
 
-## Carry depth under electrical constraints
+## Carry depth
 
-**SYNTH-REQ-0405** When electrical refinement is requested, addition and subtraction of at
-least eight bits use groups of at most four local carry steps. A group is represented by
+**SYNTH-REQ-0405** Addition and subtraction of at least eight bits use parallel-prefix carries.
+Without electrical refinement, each such addition chooses its local block width independently
+as in SYNTH-REQ-0557 with area weight 0.025: the candidate with the smallest largest AIG arrival
+level plus 0.025 times its new reachable AND nodes, so that an addition whose operands arrive
+late gets a short carry path and an early one stays compact. When electrical refinement is
+requested, addition and subtraction of at least eight bits use groups of at most four local
+carry steps, and the alternatives of SYNTH-REQ-0554 choose other structures. A group is represented by
 `(G, P)`, meaning `c_out = G | (P & c_in)`. The associative composition of adjacent low and
 high groups is `(G_high | P_high & G_low, P_high & P_low)`. Pairwise reduction followed by
 expansion computes all group prefixes with linear work and logarithmic depth, using the

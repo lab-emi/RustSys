@@ -9,6 +9,48 @@ RustSys turns RTL into mapped netlists with bounded synthesis, technology mappin
   <img src="assets/rustsys-banner.gif" alt="Synthesis for the next design iteration." width="1200">
 </picture>
 
+## Development update · 2026-11-05
+
+The RustEDA Ibex host campaign of 2026-11-05 reran the IHP SG13G2 / EZ130
+design with two real SRAMs on a 4-vCPU cloud host (a different and slower
+machine than on 2026-11-02), with RustSys built from commit [`1ee999f`](https://github.com/lab-emi/RustSys/commit/1ee999fc71bb2fa49215db2478864b4f1654e794).
+RustSys synthesized the design in the native flow, the flow's synthesis and
+final equivalence gates are `proven`, and the native layout passes every shared
+gate that gives a pass/fail verdict; the producer completed every step. The run is `unqualified` (the
+component-qualification evidence is not published), and LibreLane's layout
+fails the timing gate, so the receipt forms no end-to-end ratio.
+
+In the synthesis head-to-head on the same prepared RTL and Liberty, with Yosys +
+ABC running LibreLane's synthesis script, **RustSys was faster, used less
+memory and produced the smaller and shallower netlist** (three measured runs per
+contender on this task and host):
+
+| | RustSys | Yosys 0.70 + ABC, LibreLane script |
+| --- | ---: | ---: |
+| Median wall, workspace sequence (fastest) | 3.81 s (3.62 s) | 135.04 s (126.82 s) |
+| Median wall, direct mode (fastest) | 3.04 s (2.75 s) | — |
+| Worst peak RSS, sequence / direct | 116,200 / 115,052 KiB | 766,036 KiB |
+| Standard-cell area (`yosys stat -liberty`) | 145,226.592 µm² | 147,866.947 µm² |
+| Logic depth in cells, excluding buffers | 36 (36) | 40 (40) |
+| Cells: total / sequential / buffer and inverter | 11,433 / 1,998 / 950 | 12,605 / 1,905 / 186 |
+
+Yosys took 35.4× RustSys's median wall time for the workspace sequence and
+44.4× for the direct mode. RustSys's netlist has 1.79 % less standard-cell area
+than Yosys's and 36 against 40 logic levels; on 2026-11-02 it was 2.18 % larger
+and 55 levels deep. RustSys itself is slower than on 2026-11-02 (3.81 s against
+2.12 s for the sequence), more than the host change explains (Yosys: 135.04 s
+against 102.83 s): its quality changes cost work (the changelog records 29.0 G
+instead of 22.0 G instructions for a single-thread Ibex synthesis). The
+equivalence verdicts come from the flows' synthesis gates: the native flow's
+RustSys netlist is `proven`, and LibreLane's synthesis netlist, the same bytes
+as the head-to-head Yosys netlist, is `unverified` (433 registers lack a unique
+named RTL counterpart for the checker), which is not evidence of
+non-equivalence. The head-to-head RustSys netlist differs in bytes from the
+flow's and was not checked separately.
+
+[Synthesis head-to-head](https://lab-emi.github.io/RustEDA/benchmarks/#rustsys-vs-yosys-2026-11-05) ·
+[Host campaign evidence](https://lab-emi.github.io/RustEDA/benchmarks/#ibex-host-campaign-2026-11-05)
+
 ## Development update · 2026-11-02
 
 The RustEDA Ibex host campaign reran the IHP SG13G2 / EZ130 design with two

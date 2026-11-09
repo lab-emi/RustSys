@@ -36,6 +36,8 @@ pub fn elab(srcs: &[&str], top: Option<&str>) -> Result<Design, String> {
             .join("\n"));
     }
     let opts = ElabOptions {
+        opaque_cells: Vec::new(),
+        opaque_limits: Default::default(),
         prefer_narrow_muxes: false,
         parallel_carry: false,
         carry_cost_weight: None,

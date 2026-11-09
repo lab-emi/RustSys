@@ -79,6 +79,8 @@ pub struct SynthOptions {
     pub delay_relax: f64,
     /// Where the mapper's cut passes run (SYNTH-REQ-0516).
     pub backend: map::MapBackend,
+    /// Hard limits for opaque macro interface expansion.
+    pub opaque_limits: elab::OpaqueLimits,
     /// Optional load-aware buffering and sizing after compact Boolean covering.
     pub electrical: Option<electrical::Options>,
     /// Optional area-capped cleanup when no timing constraints were supplied.
@@ -110,6 +112,7 @@ impl Default for SynthOptions {
             goal: Goal::Delay,
             delay_relax: 0.1,
             backend: map::MapBackend::Cpu,
+            opaque_limits: elab::OpaqueLimits::default(),
             electrical: None,
             default_quality: Some(Default::default()),
             electrical_corners: Vec::new(),
@@ -132,6 +135,9 @@ pub struct Report {
     pub cells: std::collections::BTreeMap<String, usize>,
     pub area: f64,
     pub sequential_cells: usize,
+    /// Opaque hard macros retained with their original interfaces.
+    #[serde(default)]
+    pub macro_cells: usize,
     pub combinational_cells: usize,
     pub inverters: usize,
     pub logic_depth: u32,
@@ -434,6 +440,13 @@ fn run(
         }
     }
     let eopts = elab::ElabOptions {
+        opaque_cells: libs
+            .iter()
+            .flat_map(|lib| &lib.cells)
+            .filter(|cell| cell.is_macro_cell)
+            .map(|cell| cell.name.clone())
+            .collect(),
+        opaque_limits: opts.opaque_limits,
         prefer_narrow_muxes: map::library::prefer_narrow_muxes(libs, &opts.dont_use),
         parallel_carry: opts.electrical.is_some() && carry != Carry::Ripple,
         carry_cost_weight: carry.area_weight(),
@@ -484,6 +497,127 @@ fn run(
             .count();
         (design, w)
     };
+    for instance in &mut design.opaque_instances {
+        let cell = libs
+            .iter()
+            .flat_map(|l| &l.cells)
+            .find(|c| c.name == instance.cell)
+            .ok_or_else(|| {
+                fail(
+                    ctx,
+                    vec![format!(
+                        "error[S0134]: no Liberty interface for opaque cell {}",
+                        instance.cell
+                    )],
+                    false,
+                )
+            })?;
+        let pins: rustc_hash::FxHashMap<_, _> = cell
+            .pins
+            .iter()
+            .map(|pin| (pin.name.as_str(), pin))
+            .collect();
+        for other in libs
+            .iter()
+            .flat_map(|l| &l.cells)
+            .filter(|c| c.name == instance.cell)
+        {
+            let same_pins = other.pins.len() == pins.len()
+                && other.pins.iter().all(|pin| {
+                    pins.get(pin.name.as_str())
+                        .is_some_and(|p| p.direction == pin.direction)
+                });
+            if !other.is_macro_cell
+                || !other.problems.is_empty()
+                || !same_pins
+                || other.area != cell.area
+            {
+                return Err(fail(
+                    ctx,
+                    vec![format!(
+                        "error[S0134]: conflicting opaque macro interfaces for {} in supplied libraries",
+                        cell.name
+                    )],
+                    false,
+                ));
+            }
+        }
+        if !cell.problems.is_empty() {
+            return Err(fail(
+                ctx,
+                vec![format!(
+                    "error[S0134]: invalid Liberty interface for {}: {:?}",
+                    cell.name, cell.problems
+                )],
+                false,
+            ));
+        }
+        let mut count = 0usize;
+        for opaque in &instance.ports {
+            let port = design
+                .ports
+                .iter()
+                .find(|p| p.name == opaque.cut)
+                .expect("opaque cut");
+            for bit in 0..port.width {
+                let name = opaque.range.map_or_else(
+                    || opaque.name.clone(),
+                    |range| {
+                        let index = if range.left >= range.right {
+                            range.right + i64::from(bit)
+                        } else {
+                            range.right - i64::from(bit)
+                        };
+                        format!("{}[{index}]", opaque.name)
+                    },
+                );
+                let pin = pins.get(name.as_str()).ok_or_else(|| {
+                    fail(
+                        ctx,
+                        vec![format!(
+                            "error[S0134]: {}.{} absent from Liberty",
+                            instance.cell, name
+                        )],
+                        false,
+                    )
+                })?;
+                let direction = if port.input {
+                    rusteda_formats::liberty::Direction::Output
+                } else {
+                    rusteda_formats::liberty::Direction::Input
+                };
+                if pin.direction != direction {
+                    return Err(fail(
+                        ctx,
+                        vec![format!(
+                            "error[S0134]: direction mismatch for {}.{}",
+                            instance.cell, name
+                        )],
+                        false,
+                    ));
+                }
+                count += 1;
+            }
+        }
+        if count != cell.pins.len() || !cell.area.is_finite() || cell.area <= 0.0 {
+            return Err(fail(
+                ctx,
+                vec![format!(
+                    "error[S0134]: incomplete interface or missing area for {}",
+                    instance.cell
+                )],
+                false,
+            ));
+        }
+        instance.area = cell.area;
+    }
+    if !design.opaque_instances.is_empty() && opts.electrical.is_some() {
+        return Err(fail(ctx, vec!["error[S0134]: synthesis electrical optimization does not yet model opaque macro buses; use physical timing closure after macro-preserving synthesis".into()], false));
+    }
+    if !design.opaque_instances.is_empty() {
+        messages.push("warning[S0134]: mapping delay and depth stop at opaque macro boundaries; SRAM internal delay and setup/hold require macro-aware static timing analysis".into());
+        warnings += 1;
+    }
     // Elaboration ends after its messages, and only when it succeeded.
     lap("elaborate", Some("optimize"), &mut phase_s);
     let has_parallel_arithmetic = design.aig.has_parallel_arithmetic;
@@ -934,8 +1068,9 @@ fn run(
     } else {
         None
     };
-    let default_quality = if let Some(limits) =
-        opts.default_quality.filter(|_| electrical.is_none())
+    let default_quality = if let Some(limits) = opts
+        .default_quality
+        .filter(|_| electrical.is_none() && design.opaque_instances.is_empty())
     {
         let mut aliases = Vec::new();
         if netlist.instances.len() <= limits.max_gates {
@@ -980,6 +1115,10 @@ fn run(
         }
         Some(Box::new(quality))
     } else {
+        if !design.opaque_instances.is_empty() && opts.default_quality.is_some() {
+            messages.push("warning[S0134]: unconstrained quality cleanup skipped for opaque macro buses; no timing closure is claimed".into());
+            warnings += 1;
+        }
         None
     };
     let text = write::write_netlist(&netlist);
@@ -1004,6 +1143,7 @@ fn run(
         cells: stats.cells.iter().map(|(k, v)| (k.clone(), *v)).collect(),
         area: stats.area,
         sequential_cells: stats.sequential,
+        macro_cells: design.opaque_instances.len(),
         combinational_cells: stats.combinational,
         inverters: stats.inverters,
         logic_depth: electrical.as_ref().map_or_else(

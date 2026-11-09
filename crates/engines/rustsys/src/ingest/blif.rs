@@ -425,6 +425,7 @@ fn lower_inner(net: &Network, libs: &[Library], mode: InitialValues) -> Result<L
         aig,
         ports: design_ports,
         states,
+        opaque_instances: Vec::new(),
     };
     check_states(&design)?;
     let mut messages = Vec::new();

@@ -255,6 +255,7 @@ fn stage_ws_synth(
         default_quality: Some(Default::default()),
         electrical_corners: extra_libs,
         backend,
+        opaque_limits: Default::default(),
         gate_libs: Vec::new(),
         gate_netlist: false,
         initial_values: initial_values.engine(),

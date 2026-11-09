@@ -86,6 +86,8 @@ impl<'a> Elaborator<'a> {
         units: &'a [ast::SourceUnit],
         opts: &'a ElabOptions,
     ) -> EResult<()> {
+        self.opaque_cells.extend(opts.opaque_cells.iter().cloned());
+        self.opaque_limits = opts.opaque_limits;
         for u in units {
             for it in &u.items {
                 match it {
@@ -111,6 +113,13 @@ impl<'a> Elaborator<'a> {
         }
         let top = self.choose_top(opts.top.as_deref())?;
         let m: &'a ast::Module = self.modules[&top];
+        if self.opaque_cells.contains(&m.name.name) {
+            return Err(self.err(
+                "S0134",
+                m.name.span,
+                "an opaque macro cannot be the synthesis top; instantiate it in a wrapper",
+            ));
+        }
         if m.kind != ast::UnitKind::Module {
             return Err(self.err("S0103", m.name.span, "the top unit must be a module"));
         }
@@ -354,7 +363,9 @@ impl<'a> Elaborator<'a> {
                 });
             }
         }
-        self.items_behavior(scope, &flat)?;
+        if !self.opaque_cells.contains(&m.name.name) {
+            self.items_behavior(scope, &flat)?;
+        }
         Ok(ports)
     }
 

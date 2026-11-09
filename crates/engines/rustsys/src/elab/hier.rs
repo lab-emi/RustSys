@@ -245,6 +245,83 @@ impl<'a> Elaborator<'a> {
             let ports = self.elab_module(child, m, ovr);
             self.inst_depth -= 1;
             let ports = ports?;
+            if !self.opaque_cells.contains(&m.name.name)
+                && ports.iter().any(|p| p.dir == Direction::Output)
+                && ports
+                    .iter()
+                    .filter(|p| p.dir == Direction::Output)
+                    .all(|p| {
+                        self.signals[p.sig as usize]
+                            .drivers
+                            .iter()
+                            .all(Option::is_none)
+                    })
+                && m.items.iter().all(|item| {
+                    matches!(
+                        item,
+                        ModuleItem::PortDecl(_)
+                            | ModuleItem::Data(_)
+                            | ModuleItem::Param(_)
+                            | ModuleItem::Typedef(_)
+                            | ModuleItem::Import(_)
+                    )
+                })
+            {
+                return Err(self.err("S0134", i.span, format!(
+                    "module '{}' has only an interface; supply its opaque macro Liberty cell instead of synthesizing undriven outputs", m.name.name)));
+            }
+            if self.opaque_cells.contains(&m.name.name) {
+                if !inst.params.is_empty() || !m.params.is_empty() {
+                    return Err(self.err(
+                        "S0134",
+                        i.span,
+                        "parameterized opaque macros require a specialized fixed interface",
+                    ));
+                }
+                let added = ports.iter().try_fold(0usize, |total, p| {
+                    total.checked_add(self.signals[p.sig as usize].ph.len())
+                });
+                let total = added.and_then(|n| self.opaque_pin_bits.checked_add(n));
+                if self.opaque_instances.len() >= self.opaque_limits.max_instances
+                    || total.is_none_or(|n| n > self.opaque_limits.max_pin_bits)
+                {
+                    return Err(self.err(
+                        "S0134",
+                        i.span,
+                        format!(
+                            "opaque macro budget exceeded ({} instances / {} bits)",
+                            self.opaque_limits.max_instances, self.opaque_limits.max_pin_bits
+                        ),
+                    ));
+                }
+                for p in &ports {
+                    let s = &self.signals[p.sig as usize];
+                    let simple = matches!(s.ty, Ty::Bit { .. })
+                        || matches!(&s.ty, Ty::Vector { elem, .. } if matches!(elem.as_ref(), Ty::Bit { .. }));
+                    if !simple || !matches!(p.dir, Direction::Input | Direction::Output) {
+                        return Err(self.err(
+                            "S0134",
+                            p.span,
+                            "opaque macro ports must be scalar or one-dimensional packed input or output signals",
+                        ));
+                    }
+                    if p.dir == Direction::Output {
+                        let width = s.ph.len();
+                        let proc = self.new_proc("opaque macro output", p.span);
+                        for bit in 0..width {
+                            let lit = self.aig.input();
+                            self.top_input_nodes.insert(lit.node());
+                            self.drive(p.sig, bit as u32, lit, proc, p.span)?;
+                        }
+                    }
+                }
+                self.opaque_pin_bits = total.expect("checked opaque pin budget");
+                self.opaque_instances.push((
+                    self.scopes[child].path.clone(),
+                    m.name.name.clone(),
+                    ports.clone(),
+                ));
+            }
             self.connect(scope, child, &ports, &i.conns, i.span)?;
         }
         Ok(())

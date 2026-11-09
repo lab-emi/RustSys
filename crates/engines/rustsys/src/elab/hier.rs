@@ -4,6 +4,7 @@
 //! Generate constructs and module instances (SYNTH-REQ-0122, SYNTH-REQ-0123, SYNTH-REQ-0140).
 
 use std::rc::Rc;
+use std::time::Instant;
 
 use rusteda_formats::verilog::Span;
 use rusteda_formats::verilog::ast::{
@@ -35,16 +36,32 @@ impl<'a> Elaborator<'a> {
         };
         let seg = match suffix {
             Some(i) => format!("{base}[{i}]"),
-            None => base,
+            None => base.clone(),
         };
         let path = self.hier_name(scope, &seg);
+        let started = Instant::now();
+        self.trace(format!(
+            "enter generate block {path} ({} items)",
+            b.items.len()
+        ));
         let inner = self.new_scope(scope, path);
+        if suffix.is_none() {
+            // Named generate blocks and unnamed `genblk<n>` scopes are hierarchy objects:
+            // `block.signal` must resolve from outside the block (SYNTH-REQ-0123).
+            let span = b.label.as_ref().map_or(b.span, |label| label.span);
+            self.declare(scope, &base, Symbol::Scope(inner), span)?;
+        }
         let mut flat = Vec::new();
         flatten_items(&b.items, &mut flat);
         for it in &flat {
             self.decl_item(inner, it, false)?;
         }
         self.items_behavior(inner, &flat)?;
+        self.trace(format!(
+            "leave generate block {} in {:.3} s",
+            self.scopes[inner].path,
+            started.elapsed().as_secs_f64()
+        ));
         Ok(inner)
     }
 
@@ -73,6 +90,13 @@ impl<'a> Elaborator<'a> {
                 format!("'{}' is not a genvar", g.genvar.name),
             ));
         }
+        let started = Instant::now();
+        let base = match &g.body.label {
+            Some(label) => label.name.clone(),
+            None => format!("genblk{n}"),
+        };
+        let container = self.new_scope(scope, self.hier_name(scope, &base));
+        self.declare(scope, &base, Symbol::Scope(container), g.span)?;
         let mut value = self.eval_const_int(scope, &g.init)?;
         let mut iters = 0i64;
         loop {
@@ -91,7 +115,7 @@ impl<'a> Elaborator<'a> {
             if iters > MAX_GENERATE_ITERATIONS {
                 return Err(self.err("S0123", g.span, "generate loop exceeds the iteration limit"));
             }
-            self.elab_gen_block_with(scope, &g.body, n, value, &g.genvar)?;
+            self.elab_gen_block_with(scope, container, &base, &g.body, n, value, &g.genvar)?;
             // Next value from the step statement.
             value = match &g.step.kind {
                 StmtKind::IncDec { inc, .. } => value + if *inc { 1 } else { -1 },
@@ -117,23 +141,28 @@ impl<'a> Elaborator<'a> {
                 _ => return Err(self.err("S0123", g.step.span, "unsupported generate loop step")),
             };
         }
+        if self.trace {
+            self.trace(format!(
+                "generate loop {base}: {iters} iterations in {:.3} s",
+                started.elapsed().as_secs_f64()
+            ));
+        }
         Ok(())
     }
 
     pub(crate) fn elab_gen_block_with(
         &mut self,
         scope: ScopeId,
+        container: ScopeId,
+        base: &str,
         b: &'a GenBlock,
-        n: u32,
+        _n: u32,
         value: i64,
         gv: &ast::Ident,
     ) -> EResult<ScopeId> {
-        let base = match &b.label {
-            Some(l) => l.name.clone(),
-            None => format!("genblk{n}"),
-        };
         let path = self.hier_name(scope, &format!("{base}[{value}]"));
-        let inner = self.new_scope(scope, path);
+        let inner = self.new_scope(container, path);
+        self.scopes[container].iterations.insert(value, inner);
         let cv = TVal::Packed(bits::constant(value as u64, 32), Ty::int());
         self.declare(inner, &gv.name, Symbol::Const(Rc::new(cv)), gv.span)?;
         let mut flat = Vec::new();
@@ -235,16 +264,27 @@ impl<'a> Elaborator<'a> {
                 ));
             }
             let path = self.hier_name(scope, &i.name.name);
-            let child = self.new_scope(self.unit_scope, path);
+            let child = self.new_scope(self.unit_scope, path.clone());
             self.declare(scope, &i.name.name, Symbol::Scope(child), i.name.span)?;
             let ovr: Vec<(String, Ovr<'a>)> = ovr_vals
                 .iter()
                 .map(|(n, v)| (n.clone(), Ovr::Val(v.clone())))
                 .collect();
             self.inst_depth += 1;
+            let started = Instant::now();
+            self.trace(format!("enter instance {path} ({})", m.name.name));
             let ports = self.elab_module(child, m, ovr);
+            let elapsed = started.elapsed().as_secs_f64();
             self.inst_depth -= 1;
             let ports = ports?;
+            if self.trace {
+                self.trace(format!(
+                    "leave instance {path} ({}): {elapsed:.3} s, {} signals, {} AIG nodes",
+                    m.name.name,
+                    self.signals.len(),
+                    self.aig.num_ands()
+                ));
+            }
             if !self.opaque_cells.contains(&m.name.name)
                 && ports.iter().any(|p| p.dir == Direction::Output)
                 && ports

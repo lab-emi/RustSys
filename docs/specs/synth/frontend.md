@@ -72,7 +72,10 @@ REQ-0213); unconnected outputs are left open. Arrays of instances are rejected i
 
 **SYNTH-REQ-0123** Generate constructs are unrolled during elaboration. Names declared inside a
 generate block are scoped by the block label (or by `genblk<n>` numbering per the standard,
-clause 27.6, for unnamed blocks), and loop iterations append `[<i>]` with the genvar value.
+clause 27.6, for unnamed blocks), and loop iterations append `[<i>]` with the genvar value. A
+named generate block is a hierarchy scope: `block.signal`, `block[i].signal` with a constant
+genvar, nested `block.inner.signal` and `block.instance.port` resolve from an enclosing scope,
+and a reference may start with the top or the current module name.
 
 **SYNTH-REQ-0124** Elaboration-time system tasks `$error`, `$fatal` reached during generate
 elaboration fail the run with the given message; `$warning` and `$info` issue diagnostics.

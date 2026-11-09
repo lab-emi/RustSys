@@ -357,7 +357,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0120 | docs/specs/synth/frontend.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/elab/drive.rs<br>crates/engines/rustsys/src/elab/module.rs |
 | SYNTH-REQ-0121 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/mod.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/stmt.rs<br>crates/engines/rustsys/tests/rejected_statements.rs |
 | SYNTH-REQ-0122 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/hier.rs<br>crates/engines/rustsys/src/elab/module.rs |
-| SYNTH-REQ-0123 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/hier.rs<br>crates/engines/rustsys/src/elab/mod.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/tests/elab_semantics.rs |
+| SYNTH-REQ-0123 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/hier.rs<br>crates/engines/rustsys/src/elab/mod.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/select.rs<br>crates/engines/rustsys/tests/elab_semantics.rs |
 | SYNTH-REQ-0124 | docs/specs/synth/frontend.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/elab/module.rs |
 | SYNTH-REQ-0125 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/module.rs |
 | SYNTH-REQ-0130 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/stmt.rs |

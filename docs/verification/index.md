@@ -1,6 +1,6 @@
 # Verification evidence and limits
 
-The published benchmark is the RustEDA whole-flow Ibex run with two real IHP SRAMs on IHP SG13G2 / EZ130 8T, on the [RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/). Its synthesis and final CEC gates prove the synthesized and final netlists equivalent to the original RTL; the [benchmark page](../guide/benchmarks.md) describes RustSys's part and the proof scope.
+The primary RTL-to-GDS benchmark is the RustEDA whole-flow Ibex run with two real IHP SRAMs on IHP SG13G2 / EZ130 8T, on the [RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/). Its synthesis and final CEC gates prove the synthesized and final netlists equivalent to the original RTL; the [benchmark page](../guide/benchmarks.md) describes RustSys's part and the proof scope.
 
 The retained synthesis-only [common campaign](https://github.com/lab-emi/RustSys/blob/main/verification/benchmarks/open-hardware/results/2026-10-21-default-multicore/README.md), whose archive is mainly historical timing and quality receipts, binds each measured implementation to its original RTL, Liberty library and exact exported Verilog bytes. Performance sampling, logical equivalence and timing analysis are separate operations with separate receipts.
 

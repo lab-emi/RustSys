@@ -6,6 +6,13 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
 ## [Unreleased]
 
 ### Added
+- Opt-in `RUSTSYS_ELAB_TRACE` diagnostics: per-module-instance and
+  per-generate-block elaboration time, signal count and AIG node count on
+  standard error, for locating elaboration hot spots.
+- Hierarchical references to named generate blocks: `block.signal`, nested `block.inner.signal`,
+  `block.instance.port` and top-qualified `top.block.signal`. This covers the generate-scope shape
+  emitted by sv2v 0.0.13 when it inlines an interface-bearing module
+  (`docs/specs/synth/frontend.md`, SYNTH-REQ-0123).
 - Task-based documentation site with installation, synthesis, agent automation, proof scope,
   command/report references, search, and a validated GitHub Pages publishing workflow.
 - RustEDA Signal Forge visual identity, RustSys vector marks, and a reproducible animated

@@ -6,6 +6,8 @@ lassign $argv netlist part output
 file mkdir $output
 set_param general.maxThreads 2
 create_project -in_memory -part $part
+# UG835 link_design requires a gate-level source fileset for third-party netlists.
+set_property DESIGN_MODE GateLvl [current_fileset]
 read_verilog $netlist
 link_design -top ibex_top -part $part -mode out_of_context
 if {[llength [get_cells -hierarchical -filter {IS_BLACKBOX == 1}]] != 0} {

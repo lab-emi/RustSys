@@ -5,6 +5,7 @@
 //! generate constructs are in `hier`, continuous assignments and gates in `drive`.
 
 use std::rc::Rc;
+use std::time::Instant;
 
 use rustc_hash::FxHashSet;
 use rusteda_formats::verilog::Span;
@@ -88,14 +89,33 @@ impl<'a> Elaborator<'a> {
     ) -> EResult<()> {
         self.opaque_cells.extend(opts.opaque_cells.iter().cloned());
         self.opaque_limits = opts.opaque_limits;
+        let start = Instant::now();
+        self.trace("starting top-level units");
         for u in units {
             for it in &u.items {
                 match it {
-                    Item::Package(p) => self.elab_package(p)?,
+                    Item::Package(p) => {
+                        let t = Instant::now();
+                        self.elab_package(p)?;
+                        if self.trace {
+                            self.trace(format!(
+                                "package {} in {:.3} s",
+                                p.name.name,
+                                t.elapsed().as_secs_f64()
+                            ));
+                        }
+                    }
                     Item::Decl(d) => {
                         let scope = self.unit_scope;
+                        let t = Instant::now();
                         self.decl_item(scope, d, false)?;
                         self.behavior_item(scope, d)?;
+                        if self.trace {
+                            self.trace(format!(
+                                "unit declaration in {:.3} s",
+                                t.elapsed().as_secs_f64()
+                            ));
+                        }
                     }
                     Item::Unsupported { what, span } => {
                         return Err(self.err(
@@ -111,8 +131,15 @@ impl<'a> Elaborator<'a> {
                 }
             }
         }
+        self.trace(format!(
+            "top-level units processed in {:.3} s: {} modules, {} packages",
+            start.elapsed().as_secs_f64(),
+            self.modules.len(),
+            self.package_scopes.len()
+        ));
         let top = self.choose_top(opts.top.as_deref())?;
         let m: &'a ast::Module = self.modules[&top];
+        self.trace(format!("top selected: {top}"));
         if self.opaque_cells.contains(&m.name.name) {
             return Err(self.err(
                 "S0134",
@@ -123,13 +150,15 @@ impl<'a> Elaborator<'a> {
         if m.kind != ast::UnitKind::Module {
             return Err(self.err("S0103", m.name.span, "the top unit must be a module"));
         }
-        self.top_name = top;
+        self.top_name = top.clone();
         let scope = self.new_scope(self.unit_scope, String::new());
+        self.top_scope = scope;
         let ovr: Vec<(String, Ovr<'a>)> = opts
             .params
             .iter()
             .map(|(n, e)| (n.clone(), Ovr::Expr(e)))
             .collect();
+        self.trace(format!("elaborating top module {top}"));
         let ports = self.elab_module(scope, m, ovr)?;
         for p in ports {
             let (packed, w) = {
@@ -166,6 +195,13 @@ impl<'a> Elaborator<'a> {
                 }
             }
         }
+        self.trace(format!(
+            "top {} elaborated in {:.3} s: {} signals, {} AIG nodes",
+            self.top_name,
+            start.elapsed().as_secs_f64(),
+            self.signals.len(),
+            self.aig.num_ands()
+        ));
         self.finish_var_inits()
     }
 
@@ -234,6 +270,7 @@ impl<'a> Elaborator<'a> {
         mut ovr: Vec<(String, Ovr<'a>)>,
     ) -> EResult<Vec<PortInfo<'a>>> {
         self.scopes[scope].nettype_none = m.default_nettype.as_deref() == Some("none");
+        self.scopes[scope].module = Some(m.name.name.clone());
         for i in &m.imports {
             self.scopes[scope].imports.push((
                 i.package.name.clone(),

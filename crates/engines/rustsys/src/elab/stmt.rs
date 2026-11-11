@@ -249,7 +249,10 @@ impl<'a> Elaborator<'a> {
                 (m, s)
             }
             Pos::Const(None) => return,
-            Pos::Dyn(off) => {
+            Pos::Dyn(off) => 'window: {
+                if let Some(windows) = self.aligned_windows(off, 1, w, ew) {
+                    break 'window windows.write(&mut self.aig, v, w, ew);
+                }
                 // Shift within a vector padded by `w` bits below to allow negative offsets.
                 let total = ew + 2 * w;
                 let mut vv = bits::resize(v, w, false);

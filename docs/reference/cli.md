@@ -41,6 +41,7 @@ Use `rustsys --help`, `rustsys <command> --help`, and `rusteda <command> --help`
 | `--goal delay\|area` | Mapping objective; default `delay`. |
 | `--effort low\|medium\|high` | Search effort; default `medium`. |
 | `--delay-relax R` | Allowed relative delay growth during area recovery; default 0.1. |
+| `--aligned-selects` | Decode dynamic reads and writes whose windows cannot overlap. SystemVerilog only, off by default. |
 | `--backend cpu\|gpu\|cuda` | Mapping backend; default `cpu`. |
 | `--out FILE`, `--report FILE` | Netlist and JSON report paths. |
 | `--timing-period NS` | Enable load-aware ideal-clock refinement. |

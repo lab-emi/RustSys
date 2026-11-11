@@ -45,7 +45,6 @@ fn part_selects_match_icarus_not_synthesis() {
             assume_parallel_case: false,
             params: vec![],
             observations: vec![],
-            blackbox: vec![],
         },
     )
     .unwrap();

@@ -240,6 +240,7 @@ fn stage_ws_synth(
         uninitialized_dont_care: args.fe.uninitialized_dont_care,
         assume_full_case: args.fe.assume_full_case,
         assume_parallel_case: args.fe.assume_parallel_case,
+        aligned_selects: args.aligned_selects,
         dont_use: args.dont_use.clone(),
         effort: match args.effort {
             EffortArg::Low => synth_engine::Effort::Low,

@@ -6,6 +6,9 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
 ## [Unreleased]
 
 ### Added
+- Opt-in `--aligned-selects` decodes dynamic reads and writes with
+  non-overlapping windows. It preserves the logic function and the
+  default arbitrary-initial-state contract (SYNTH-REQ-0419).
 - Opt-in `RUSTSYS_ELAB_TRACE` diagnostics: per-module-instance and
   per-generate-block elaboration time, signal count and AIG node count on
   standard error, for locating elaboration hot spots.

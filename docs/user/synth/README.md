@@ -21,6 +21,7 @@ rustsys synth --top counter --lib cells.lib --out counter_mapped.v --report coun
 | `--effort low\|medium\|high` | optimization and mapping effort (default `medium`); `high` adds SAT-based node merging, zero-gain rewriting and a larger cut search, and runs several times longer |
 | `--goal delay\|area` | mapping objective |
 | `--delay-relax R` | allowed delay increase during area recovery (default 0.1) |
+| `--aligned-selects` | decode disjoint dynamic windows such as `v[i * W +: W]` while preserving the logic function |
 | `--backend cpu\|gpu\|cuda` | where the mapper's cut passes run (default `cpu`); the netlist is the same for every backend |
 | `--out FILE` | output netlist |
 | `--report FILE` | JSON report: cell counts, area, depth, estimated delay, runtime |

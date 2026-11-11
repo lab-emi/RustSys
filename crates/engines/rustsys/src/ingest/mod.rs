@@ -124,6 +124,7 @@ pub(crate) fn check_options(opts: &SynthOptions, format: SourceFormat) -> Result
         (!opts.params.is_empty(), "parameter overrides (-P)"),
         (opts.assume_full_case, "--assume-full-case"),
         (opts.assume_parallel_case, "--assume-parallel-case"),
+        (opts.aligned_selects, "--aligned-selects"),
     ]
     .into_iter()
     .filter_map(|(on, what)| on.then_some(what))

@@ -183,6 +183,9 @@ pub fn canonical_args(job: &Job, placement: &Placement, threads: usize) -> Vec<S
             opt(&mut a, "--effort", j.effort.name().into());
             opt(&mut a, "--goal", j.goal.name().into());
             opt(&mut a, "--delay-relax", num(j.delay_relax));
+            if j.aligned_selects {
+                a.push("--aligned-selects".into());
+            }
             for p in &j.electrical_corners {
                 opt(&mut a, "--electrical-corner", path(p));
             }

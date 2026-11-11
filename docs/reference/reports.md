@@ -30,6 +30,7 @@ RustSys exposes product reports for direct jobs and a workspace envelope for rev
 | Field | Interpretation |
 |---|---|
 | `cells` | Map from cell name to instance count; sum counts for total cells. |
+| `aligned_selects` | `true` when `--aligned-selects` was given. Absent otherwise. |
 | `cell_area`, `area` | Library cell areas and total area in library area units. |
 | `logic_depth`, `estimated_delay` | Mapping quality estimates; delay uses the library time unit reported by `time_unit_ns`. |
 | `aig_nodes_before`, `aig_nodes_after` | Logic size before/after optimization. |

@@ -37,6 +37,7 @@ option_defs! {
     EFFORT = ("--effort", "Optimization and mapping effort: low, medium or high");
     GOAL = ("--goal", "What mapping minimizes first: delay or area");
     DELAY_RELAX = ("--delay-relax", "Allowed relative delay increase during area recovery, finite and not negative");
+    ALIGNED_SELECTS = ("--aligned-selects", "Decode dynamic selects and writes whose windows cannot overlap, preserving the logic function");
     ELECTRICAL_CORNER = ("--electrical-corner", "Additional same-cell Liberty corner for capacitance and transition repair (repeatable; requires timing period)");
     TIMING_PERIOD = ("--timing-period", "Enable load-aware refinement for this positive ideal-clock period in ns");
     AREA_LIMIT = ("--area-limit", "Target maximum total cell area in library units; feasibility is reported");

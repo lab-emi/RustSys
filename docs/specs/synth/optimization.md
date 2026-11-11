@@ -185,6 +185,28 @@ followed by `merge_local; rewrite_zero; balance; refactor; resub; rewrite; refac
 equal-area structural alternatives expose further factoring opportunities before cell covering.
 Absent electrical constraints, the original effort scripts are unchanged.
 
+**SYNTH-REQ-0419** Aligned dynamic selects (`--aligned-selects`; off by default). A dynamic
+indexed part-select, or a write at a dynamic position (a bit, a packed element, a part-select), has
+a signed bit offset that elaboration builds as logic. By default the select shifts by that offset
+(SYNTH-REQ-0403). With the option, the offset is first tabulated: the AND nodes between the offset
+and the graph inputs it depends on (signals, state outputs) are evaluated for every value of those
+inputs, the index bits. This needs at most 10 index bits, at most 16,384 AND nodes and an offset
+of at most 64 bits; the table is the offset's own function, whatever expression wrote it. Each
+index value then has a window of the select's width at its offset; windows with no bit inside the
+vector are none. If any two different windows share a bit, or the windows of all index values
+together exceed 4,194,304 bits, or a budget above is exceeded, the select keeps the shifter. Otherwise
+it is decoded from the index bits. A read is the multiplexer or decoded selection of SYNTH-REQ-0403
+over the windows by index value when every window belongs to one index value, and otherwise the
+OR, over the different windows, of the window ANDed with the condition that the index selects
+it. A write replaces, in each window, the bits by the written value under that condition; bits
+of no window keep their value. Bits of a window outside the vector read 0 and are not written
+(SYNTH-REQ-0206). The function is that of the shifted select for every value of the index bits,
+reachable or not; the option changes structure only, and no assumption is added to the contract
+of the netlist. Validation: the Icarus Verilog truth table of `part_selects.v` for both
+lowerings, random-vector equality of both lowerings including next-state functions, and the
+independent checker on netlists of the fixture library, `sky130_fd_sc_hd` and
+`gf180mcu_fd_sc_mcu7t5v0`, where every replaced cell of a sample is reported.
+
 
 **SYNTH-REQ-0414** Local equivalence merging uses bounded cone abstractions. Shared nodes and
 window boundaries become independent inputs; proving equality in this stronger abstraction is

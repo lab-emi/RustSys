@@ -285,6 +285,8 @@ pub struct SynthArgs {
     pub goal: GoalArg,
     #[arg(long, default_value = "0.1", value_parser = delay_relax, help = o::DELAY_RELAX.help)]
     pub delay_relax: f64,
+    #[arg(long, help = o::ALIGNED_SELECTS.help)]
+    pub aligned_selects: bool,
     #[arg(long, value_parser = positive, help = o::TIMING_PERIOD.help)]
     pub timing_period: Option<f64>,
     #[arg(long = "electrical-corner", requires = "timing_period", help = o::ELECTRICAL_CORNER.help)]
@@ -343,6 +345,7 @@ impl SynthArgs {
                 GoalArg::Area => Goal::Area,
             },
             delay_relax: self.delay_relax,
+            aligned_selects: self.aligned_selects,
             electrical_corners: self.electrical_corners.clone(),
             electrical: self
                 .timing_period

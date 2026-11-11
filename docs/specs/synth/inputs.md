@@ -26,9 +26,11 @@ SYNTH-REQ-0910).
 
 **SYNTH-REQ-0901** Macro definitions, parameter overrides and the case assumptions (`-D`, `-P`,
 `--assume-full-case`, `--assume-parallel-case`) apply to SystemVerilog only: with another format the
-engine rejects them with an error `S0911`. Include directories and `--no-predefined-macros` have no
-meaning for other formats and are not read; the command line rejects all six options with other
-formats (CLI-REQ-0220). `--after-reset` and `--uninitialized-dont-care` apply to every format
+engine rejects them with error `S0911`. The engine also rejects `--aligned-selects`
+for non-SystemVerilog inputs (SYNTH-REQ-0419). Include directories and
+`--no-predefined-macros` have no meaning for other formats and are not read.
+The command line rejects SystemVerilog frontend options with other formats
+(CLI-REQ-0220). `--after-reset` and `--uninitialized-dont-care` apply to every format
 (SYNTH-REQ-0309, 0311).
 
 **SYNTH-REQ-0902** Module name. BLIF: the top model (`--top`, else the first model of the first

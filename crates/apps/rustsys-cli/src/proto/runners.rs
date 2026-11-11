@@ -191,6 +191,7 @@ pub(crate) fn run_synth(j: &SynthJob, dir: Option<&Path>, ctx: Ctx<'_>) -> Produ
         uninitialized_dont_care: j.fe.uninitialized_dont_care,
         assume_full_case: j.fe.assume_full_case,
         assume_parallel_case: j.fe.assume_parallel_case,
+        aligned_selects: j.aligned_selects,
         dont_use: j.dont_use.clone(),
         effort: j.effort.engine(),
         goal: j.goal.engine(),

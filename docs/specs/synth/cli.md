@@ -20,6 +20,7 @@ rustsys [--threads <N>] synth [OPTIONS] --lib <LIBERTY>... --out <NETLIST> <SOUR
 | `--effort <low\|medium\|high>` | optimization script (SYNTH-REQ-0412), default `medium` |
 | `--goal <delay\|area>` | mapping goal (SYNTH-REQ-0512), default `delay` |
 | `--delay-relax <R>` | relative arrival slack for area recovery, default 0.1 |
+| `--aligned-selects` | decode dynamic selects whose windows cannot overlap (SYNTH-REQ-0419) |
 | `--backend <cpu\|gpu\|cuda>` | where the mapper's cut passes run (SYNTH-REQ-0516), default `cpu` |
 | `--out <FILE>` | output netlist |
 | `--report <FILE>` | JSON report (SYNTH-REQ-0703) |

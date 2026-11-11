@@ -222,6 +222,7 @@ fn design_cases(
         opaque_cells: Vec::new(),
         opaque_limits: Default::default(),
         prefer_narrow_muxes: false,
+        aligned_selects: false,
         parallel_carry: false,
         carry_cost_weight: None,
         xor_carry: false,

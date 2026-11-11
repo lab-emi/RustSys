@@ -78,6 +78,8 @@ pub struct SynthOptions {
     pub assume_full_case: bool,
     /// Case statements marked parallel merge their items without priority (SYNTH-REQ-0225).
     pub assume_parallel_case: bool,
+    /// Decode dynamic part-selects whose windows cannot overlap (SYNTH-REQ-0419).
+    pub aligned_selects: bool,
     pub dont_use: Vec<String>,
     pub effort: Effort,
     pub goal: Goal,
@@ -112,6 +114,7 @@ impl Default for SynthOptions {
             uninitialized_dont_care: false,
             assume_full_case: false,
             assume_parallel_case: false,
+            aligned_selects: false,
             dont_use: Vec::new(),
             effort: Effort::Medium,
             goal: Goal::Delay,
@@ -168,6 +171,9 @@ pub struct Report {
     /// The parallel-case assumption was enabled (SYNTH-REQ-0225).
     #[serde(default)]
     pub assume_parallel_case: bool,
+    /// The aligned-select optimization was enabled (SYNTH-REQ-0419).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub aligned_selects: bool,
     #[serde(default)]
     pub constant_states: Vec<opt::reset::ConstantState>,
     #[serde(default)]
@@ -504,6 +510,7 @@ fn run(
             .collect(),
         opaque_limits: opts.opaque_limits,
         prefer_narrow_muxes: map::library::prefer_narrow_muxes(libs, &opts.dont_use),
+        aligned_selects: opts.aligned_selects,
         // Parallel-prefix carries and grouped comparisons, except in the ripple alternative.
         // Without a timing period, each addition chooses its own carry blocks from its operand
         // arrival levels (SYNTH-REQ-0405), so that only additions on deep paths pay for them.
@@ -1141,6 +1148,7 @@ fn run(
         uninitialized_dont_care: opts.uninitialized_dont_care,
         assume_full_case: opts.assume_full_case,
         assume_parallel_case: opts.assume_parallel_case,
+        aligned_selects: opts.aligned_selects,
         constant_states,
         merged_states,
         latches,

@@ -6,6 +6,7 @@
 use rusteda_formats::verilog::Span;
 use rusteda_formats::verilog::ast::{Expr, ExprKind, SliceKind};
 
+use super::aligned::{self, Windows};
 use super::types::{Range, Ty};
 use super::{EResult, Elaborator, ScopeId, Symbol, TVal, VarRef};
 use crate::aig::{Aig, Lit};
@@ -479,6 +480,21 @@ impl<'a> Elaborator<'a> {
         Pos::Const(Some(off as u32))
     }
 
+    /// The windows of `width` bits at bit offset `off * scale` within `len` bits, if they are
+    /// to be decoded (SYNTH-REQ-0419).
+    pub(crate) fn aligned_windows(
+        &self,
+        off: &[Lit],
+        scale: usize,
+        width: usize,
+        len: usize,
+    ) -> Option<Windows> {
+        if !self.aligned_selects {
+            return None;
+        }
+        aligned::windows(&self.aig, off, scale, width, len)
+    }
+
     /// Extracts `count` elements of width `ew` starting at element offset `lo`, filling
     /// out-of-range bits with zeros.
     pub(crate) fn slice_bits(&mut self, v: &[Lit], ew: usize, lo: &Pos, count: u32) -> Bv {
@@ -489,6 +505,12 @@ impl<'a> Elaborator<'a> {
                 .collect(),
             Pos::Const(None) => vec![Lit::FALSE; n],
             Pos::Dyn(off) => {
+                if let Some(windows) = self.aligned_windows(off, ew, n, v.len()) {
+                    return match windows.chunks(v, n) {
+                        Some(chunks) => self.select_chunk(&chunks, &Pos::Dyn(windows.index)),
+                        None => windows.read(&mut self.aig, v, n),
+                    };
+                }
                 // Shift right by off*ew with n zero bits padded below, so that negative
                 // offsets down to -count elements are representable.
                 let mut padded = vec![Lit::FALSE; n];

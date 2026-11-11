@@ -289,6 +289,9 @@ pub struct SynthJob {
     pub effort: Effort,
     pub goal: Goal,
     pub delay_relax: f64,
+    /// Decode dynamic part-selects whose windows cannot overlap (SYNTH-REQ-0419).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub aligned_selects: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub electrical: Option<synth::ElectricalOptions>,
     #[serde(default)]
@@ -306,6 +309,7 @@ impl Default for SynthJob {
             effort: Effort::Medium,
             goal: Goal::Delay,
             delay_relax: 0.1,
+            aligned_selects: false,
             electrical: None,
             electrical_corners: Vec::new(),
             backend: Backend::Cpu,

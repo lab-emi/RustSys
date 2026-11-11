@@ -165,6 +165,9 @@ The format follows the "Keep a Changelog" convention; versions follow semantic v
   `RUSTEDA_RC_ORACLE_WORKSPACE` and `RUSTEDA_RC_WIRE_WORKSPACE`.
 
 ### Fixed
+- Correct wide dynamic indexed part-selects whose offset calculation
+  could wrap into its sign (SYNTH-REQ-0206). Reused the independent Icarus
+  truth-table controls for synthesis and the checker's RTL model.
 - The README, the user guide, the synthesis specification (SYNTH-REQ-0516), the roadmap and ADRs
   0002 and 0004 described a `metal` GPU runtime (`--backend metal`, marked done in `WP2`) and a
   `rusteda session` command; neither exists. They now describe the `cpu` and `cuda` runtimes

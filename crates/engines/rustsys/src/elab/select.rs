@@ -493,7 +493,16 @@ impl<'a> Elaborator<'a> {
                 // offsets down to -count elements are representable.
                 let mut padded = vec![Lit::FALSE; n];
                 padded.extend_from_slice(v);
-                let w = off.len() + bits_for(ew as u64) + 1;
+                let mut w = off.len() + bits_for(ew as u64) + 1;
+                // A select wider than the range of its offset: the amount `off * ew + n`
+                // needs the bits of `n` as well, or it wraps into the sign.
+                let top = (1u128 << off.len().saturating_sub(1).min(64))
+                    .saturating_sub(1)
+                    .saturating_mul(ew as u128)
+                    .saturating_add(n as u128);
+                while w < 127 && top >> (w - 1) != 0 {
+                    w += 1;
+                }
                 let offw = bits::resize(off, w, true);
                 let ewc = bits::constant(ew as u64, w);
                 let shift_bits = bits::mul(&mut self.aig, &offw, &ewc);

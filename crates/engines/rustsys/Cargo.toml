@@ -17,7 +17,6 @@ rustc-hash.workspace = true
 rayon.workspace = true
 smallvec.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 
 [features]
 # CUDA backend of the mapper's cut passes (SYNTH-REQ-0516).
@@ -25,6 +24,8 @@ cuda = ["rusteda-compute/cuda"]
 
 [dev-dependencies]
 rustsys-fixtures.workspace = true
+# JSON reports read back by tests and examples.
+serde_json.workspace = true
 
 [lints]
 workspace = true

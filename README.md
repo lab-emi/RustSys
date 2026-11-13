@@ -122,7 +122,7 @@ SHA-256 `49afd8c8…`).
 
 ## Quick start
 
-Install [Rust with rustup](https://rustup.rs) and Git. The repository pins Rust 1.97.1.
+Install [Rust with rustup](https://rustup.rs) and Git. The repository pins Rust 1.100.0.
 The CPU flow needs no GPU or CUDA toolkit. Run these commands in one POSIX shell:
 
 ```sh

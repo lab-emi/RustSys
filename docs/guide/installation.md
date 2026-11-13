@@ -1,6 +1,6 @@
 # Install RustSys
 
-RustSys 0.1.0 is unreleased and is not published on crates.io. Install from this repository with Rust **1.97.1** and Cargo. The CPU workflow needs no external synthesis program, Python runtime or GPU toolkit.
+RustSys 0.1.0 is unreleased and is not published on crates.io. Install from this repository with Rust **1.100.0** and Cargo. The CPU workflow needs no external synthesis program, Python runtime or GPU toolkit.
 
 ## Build from source
 

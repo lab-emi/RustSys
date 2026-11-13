@@ -377,7 +377,7 @@ endmodule"#,
                     assert_eq!(e.out("y"), want, "op {op} a {a} b {b}");
                     let f = (0..4)
                         .find(|i| (m >> i) & 1 == 1 && (a >> i) & 1 == 1)
-                        .map_or(7, |i| i);
+                        .unwrap_or(7);
                     assert_eq!(e.out("first"), f);
                     let mut z = 0u64;
                     for i in 0..4 {

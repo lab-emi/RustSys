@@ -699,7 +699,7 @@ impl Mapper<'_> {
                     let size = ov.changed.len() * size_of::<Read>();
                     if size > 0
                         && used_bytes
-                            .fetch_update(
+                            .try_update(
                                 std::sync::atomic::Ordering::Relaxed,
                                 std::sync::atomic::Ordering::Relaxed,
                                 |old| {

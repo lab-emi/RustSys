@@ -12,15 +12,15 @@ authors = ["RustSys contributors"]
 repository = "https://github.com/lab-emi/RustSys"
 
 [workspace.dependencies]
-rusteda-core = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "002f8f69f6adcec4c75973dbdccb42f04cdd7a37" }
-rusteda-workspace = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "002f8f69f6adcec4c75973dbdccb42f04cdd7a37" }
-rusteda-compute = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "002f8f69f6adcec4c75973dbdccb42f04cdd7a37" }
-rusteda-formats = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "002f8f69f6adcec4c75973dbdccb42f04cdd7a37" }
+rusteda-core = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "3aaf6cd38948c58b33ab0d14466c8f301292ca5e" }
+rusteda-workspace = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "3aaf6cd38948c58b33ab0d14466c8f301292ca5e" }
+rusteda-compute = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "3aaf6cd38948c58b33ab0d14466c8f301292ca5e" }
+rusteda-formats = { git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "3aaf6cd38948c58b33ab0d14466c8f301292ca5e" }
 rustsys = { path = "crates/engines/rustsys" }
 rustsys-check = { path = "crates/verify/rustsys-check" }
 rustsys-fixtures = { path = "crates/verify/rustsys-fixtures" }
 rustsys-defects = { path = "crates/verify/rustsys-defects" }
-rusteda-cli-shared = { package = "rusteda-cli-common", git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "002f8f69f6adcec4c75973dbdccb42f04cdd7a37" }
+rusteda-cli-shared = { package = "rusteda-cli-common", git = "https://github.com/lab-emi/RustEDA-Common.git", rev = "3aaf6cd38948c58b33ab0d14466c8f301292ca5e" }
 clap = { version = "=4.6.7", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions"] }
 clap_complete = { version = "=4.6.11", default-features = false }
 # Terminal size for the progress line of the command line. `windows`: crossterm does not compile

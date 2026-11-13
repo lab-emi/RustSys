@@ -6,7 +6,7 @@ native RustEDA flow and compared with LibreLane. Its result is on the
 [RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/). This
 page describes how RustSys synthesis is run, measured and checked inside that
 benchmark, and points to the RustSys-vs-Yosys module head-to-heads that the same
-page publishes for the 2026-11-02 and 2026-11-05 host campaigns.
+page publishes for the 2026-11-02, 2026-11-05 and 2026-11-13 host campaigns.
 
 ## Synthesis inside the flow
 
@@ -32,6 +32,34 @@ namely the sv2v preparation of the RTL, the producer run, which stopped at the
 states that scope. The benchmark reports whole-flow time, and this
 documentation does not copy synthesis times. The synthesis head-to-head below
 is measured outside the flow and published on the RustEDA benchmarks page.
+
+## Synthesis head-to-head · 2026-11-13
+
+The [2026-11-13 host campaign](https://lab-emi.github.io/RustEDA/benchmarks/#ibex-host-campaign-2026-11-13)
+repeated the comparison below on another 4-vCPU host, with the same task and
+tools and RustSys [`86187e6`](https://github.com/lab-emi/RustSys/commit/86187e69c3111ad79ae4b651ad53d652b7609867)
+built with Rust 1.100.0.
+**RustSys was faster, used less memory and produced the smaller and shallower
+netlist:**
+
+| | RustSys | Yosys 0.70 + ABC, LibreLane script |
+| --- | ---: | ---: |
+| Median wall, workspace sequence (fastest) | 3.07 s (3.06 s) | 103.91 s (102.47 s) |
+| Median wall, direct mode (fastest) | 2.19 s (2.05 s) | — |
+| Worst peak RSS, sequence / direct | 116,264 / 112,660 KiB | 765,624 KiB |
+| Standard-cell area (`yosys stat -liberty`) | 145,226.592 µm² (-1.79 %) | 147,866.947 µm² |
+| Area including both SRAM macros | 425,591.9808 µm² | 428,232.336 µm² |
+| Logic depth in cells (excluding buffers) | 36 (36) | 40 (40) |
+| Cells: total / sequential / buffer and inverter / other / macro | 11,433 / 1,998 / 950 / 8,483 / 2 | 12,605 / 1,905 / 186 / 10,512 / 2 |
+
+Yosys took 33.8× RustSys's median wall time (sequence) and 47.4× (direct). The
+native flow's RustSys netlist is `proven` by the flow's synthesis gate;
+LibreLane's synthesis netlist is `unverified`. The flow's synthesis netlist is
+byte-identical to 2026-11-05's and the head-to-head QoR is unchanged; the times
+differ from 2026-11-05's (sequence 3.07 s against 3.81 s, Yosys 103.91 s against
+135.04 s) on a different host, on which every LibreLane stage also took less
+time (floorplan level), so the comparison is history, not a speedup.
+[RustSys vs Yosys · 2026-11-13](https://lab-emi.github.io/RustEDA/benchmarks/#rustsys-vs-yosys-2026-11-13)
 
 ## Synthesis head-to-head · 2026-11-05
 

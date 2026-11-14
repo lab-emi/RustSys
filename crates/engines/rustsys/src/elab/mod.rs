@@ -23,7 +23,7 @@ mod wildcards;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
-use rusteda_formats::verilog::ast::{self, Expr, FunctionDecl, Item, TaskDecl};
+use rusteda_formats::verilog::ast::{self, Expr, ExprKind, FunctionDecl, Item, TaskDecl};
 use rusteda_formats::verilog::{Diagnostic, SourceMap, Span};
 
 use crate::aig::{Aig, Lit};
@@ -91,9 +91,13 @@ pub struct Scope<'a> {
     pub path: String,
     /// Number of generate constructs seen, for `genblk<n>` names (SYNTH-REQ-0123).
     pub gen_count: u32,
+    /// Generate-loop iteration scopes by genvar value.
+    pub iterations: FxHashMap<i64, ScopeId>,
     pub nettype_none: bool,
     /// Package name for package scopes.
     pub package: Option<String>,
+    /// Module name for an elaborated module-instance scope.
+    pub module: Option<String>,
 }
 
 /// A net or variable of the flattened design.
@@ -267,6 +271,8 @@ pub struct Elaborator<'a> {
     /// Top-level ports in order: name, signal, is input.
     pub top_ports: Vec<(String, SigId, bool)>,
     pub top_name: String,
+    /// Scope of the top module (for absolute hierarchical references).
+    pub(crate) top_scope: ScopeId,
     /// Kinds of ignored constructs already reported (SYNTH-REQ-0121).
     noted: Vec<&'static str>,
     /// Nesting depth of operands where `x`/`z` literal bits are wildcards (SYNTH-REQ-0201).
@@ -286,6 +292,8 @@ pub struct Elaborator<'a> {
     pub(crate) port_data_names: rustc_hash::FxHashSet<String>,
     /// Graph nodes of primary input bits.
     pub(crate) top_input_nodes: rustc_hash::FxHashSet<u32>,
+    /// Opt-in phase/timing trace on standard error (`RUSTSYS_ELAB_TRACE`).
+    pub(crate) trace: bool,
     /// Terms of the sums built so far, by result bits (SYNTH-REQ-0407).
     pub(crate) sums: FxHashMap<Bv, Rc<crate::bits::Sum>>,
 }
@@ -324,6 +332,7 @@ impl<'a> Elaborator<'a> {
             inst_depth: 0,
             top_ports: Vec::new(),
             top_name: String::new(),
+            top_scope: 0,
             noted: Vec::new(),
             wildcard: 0,
             assume_full_case: false,
@@ -335,6 +344,7 @@ impl<'a> Elaborator<'a> {
             ret_scopes: Vec::new(),
             port_data_names: rustc_hash::FxHashSet::default(),
             top_input_nodes: rustc_hash::FxHashSet::default(),
+            trace: std::env::var_os("RUSTSYS_ELAB_TRACE").is_some(),
         };
         for u in units {
             for it in &u.items {
@@ -470,6 +480,134 @@ impl<'a> Elaborator<'a> {
                 )
             }),
         }
+    }
+
+    /// Writes an opt-in elaboration trace line when `RUSTSYS_ELAB_TRACE` is set.
+    pub(crate) fn trace(&self, message: impl std::fmt::Display) {
+        if self.trace {
+            eprintln!("elab: {message}");
+        }
+    }
+
+    /// Finds the nearest enclosing module scope whose module has `name`.
+    fn module_scope_named(&self, scope: ScopeId, name: &str) -> Option<ScopeId> {
+        let mut current = Some(scope);
+        while let Some(id) = current {
+            if self.scopes[id].module.as_deref() == Some(name) {
+                return Some(id);
+            }
+            current = self.scopes[id].parent;
+        }
+        None
+    }
+
+    /// True when `e` is a hierarchical reference such as `g.sig`, `g[i].sig`
+    /// or `top.u.port`. Returns `None` for ordinary expressions and for
+    /// struct-member selects.
+    pub(crate) fn hier_signal(&mut self, scope: ScopeId, e: &Expr) -> Option<EResult<SigId>> {
+        enum Segment<'e> {
+            Name(&'e ast::Ident),
+            Index(&'e Expr),
+        }
+        fn path<'e>(e: &'e Expr, out: &mut Vec<Segment<'e>>) -> bool {
+            match &e.kind {
+                ExprKind::Ident(p) if p.scope.is_none() => {
+                    out.push(Segment::Name(&p.name));
+                    true
+                }
+                ExprKind::Member(base, field) => {
+                    path(base, out) && {
+                        out.push(Segment::Name(field));
+                        true
+                    }
+                }
+                ExprKind::Index(base, index) => {
+                    path(base, out) && {
+                        out.push(Segment::Index(index));
+                        true
+                    }
+                }
+                _ => false,
+            }
+        }
+        let mut segments = Vec::new();
+        if !path(e, &mut segments) || segments.len() < 2 {
+            return None;
+        }
+        let first = match &segments[0] {
+            Segment::Name(name) => name.name.as_str(),
+            Segment::Index(_) => return None,
+        };
+        let mut current = if first == self.top_name {
+            self.top_scope
+        } else if let Some(module_scope) = self.module_scope_named(scope, first) {
+            // sv2v also emits absolute references that start with the current
+            // module name rather than the synthesis top.
+            module_scope
+        } else {
+            match self.lookup(scope, first) {
+                Some(Symbol::Scope(s)) => s,
+                _ => return None,
+            }
+        };
+        for (index, segment) in segments[1..].iter().enumerate() {
+            let last = index + 2 == segments.len();
+            match segment {
+                Segment::Name(name) => {
+                    match self.scopes[current].names.get(&name.name) {
+                        Some(Symbol::Scope(s)) if !last => current = *s,
+                        Some(Symbol::Signal(sig)) if last => return Some(Ok(*sig)),
+                        Some(Symbol::Scope(_)) if last => {
+                            return Some(Err(self.err(
+                                "S0105",
+                                name.span,
+                                format!("'{}' is a scope, not a value", name.name),
+                            )));
+                        }
+                        // A signal in the middle of the path means this is a
+                        // struct-member or array select, not a hierarchy name.
+                        Some(Symbol::Signal(_)) => return None,
+                        _ => {
+                            return Some(Err(self.err(
+                                "S0105",
+                                name.span,
+                                format!("'{}' is not declared in the selected scope", name.name),
+                            )));
+                        }
+                    }
+                }
+                Segment::Index(expr) => {
+                    if last {
+                        return Some(Err(self.err(
+                            "S0105",
+                            expr.span,
+                            "a generate scope cannot be used as a value",
+                        )));
+                    }
+                    let value = match self.eval_const_int(scope, expr) {
+                        Ok(value) => value,
+                        Err(_) => {
+                            return Some(Err(self.err(
+                                "S0105",
+                                expr.span,
+                                "a generate-scope index must be constant",
+                            )));
+                        }
+                    };
+                    match self.scopes[current].iterations.get(&value) {
+                        Some(inner) => current = *inner,
+                        None => {
+                            return Some(Err(self.err(
+                                "S0105",
+                                expr.span,
+                                format!("generate scope has no iteration {value}"),
+                            )));
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// Hierarchical name of a declaration in a scope.
@@ -666,6 +804,7 @@ fn elaborate_impl<'a>(
     e.aig.carry_plan = opts.carry_plan.clone();
     e.assume_full_case = opts.assume_full_case;
     e.assume_parallel_case = opts.assume_parallel_case;
+    e.trace("entering run");
     let r = e.run(units, opts);
     match r {
         Ok(()) if !e.diags.iter().any(Diagnostic::is_error) => match e.resolve() {

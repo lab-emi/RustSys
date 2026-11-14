@@ -284,6 +284,9 @@ impl<'a> Elaborator<'a> {
                 self.slice_value(scope, b, *kind, left, right, e.span)
             }
             ExprKind::Member(b, f) => {
+                if let Some(result) = self.hier_signal(scope, e) {
+                    return Ok(self.read_whole(VarRef::Sig(result?)));
+                }
                 let base = self.eval_typed(scope, b)?;
                 match base {
                     TVal::Packed(v, t) => {
@@ -601,6 +604,9 @@ impl<'a> Elaborator<'a> {
                 })
             }
             ExprKind::Member(b, f) => {
+                if let Some(result) = self.hier_signal(scope, e) {
+                    return Ok(self.signals[result? as usize].ty.clone());
+                }
                 let bt = self.expr_ty(scope, b)?;
                 bt.field(&f.name)
                     .map(|fl| fl.ty.clone())
@@ -628,6 +634,21 @@ impl<'a> Elaborator<'a> {
     }
 
     fn lv_piece(&mut self, scope: ScopeId, e: &Expr) -> EResult<LvPiece> {
+        if let Some(result) = self.hier_signal(scope, e) {
+            let sig = result?;
+            let var = VarRef::Sig(sig);
+            let ty = self.var_ty(var).clone();
+            let width = if ty.is_packed() { ty.width() } else { 0 };
+            let len = ty.element_count();
+            return Ok(LvPiece {
+                var,
+                elem: ElemSel::Static { base: 0, len },
+                lo: Pos::Const(Some(0)),
+                width,
+                ty,
+                span: e.span,
+            });
+        }
         match &e.kind {
             ExprKind::Ident(p) => {
                 let var = match self.lookup_path(scope, p)? {

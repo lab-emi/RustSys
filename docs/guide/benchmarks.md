@@ -1,12 +1,48 @@
 # Understand the benchmarks
 
-The published benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
+The primary RTL-to-GDS benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
 SG13G2 with the ETH EZ130 8T standard-cell library, run end to end through the
 native RustEDA flow and compared with LibreLane. Its result is on the
 [RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/). This
 page describes how RustSys synthesis is run, measured and checked inside that
 benchmark, and points to the RustSys-vs-Yosys module head-to-heads that the same
 page publishes for the 2026-11-02, 2026-11-05 and 2026-11-13 host campaigns.
+
+## PULPissimo synthesis · 2026-11-06
+
+A second design benchmark uses the Ibex core extracted from the
+[PULPissimo SoC](https://github.com/pulp-platform/pulpissimo) at `bfc3d9a`,
+configured as `CORE_TYPE=1` with no FPU, XPULP or HWPE extensions. The
+benchmark passes the PULPissimo instance parameters `MHPMCounterNum=10`,
+`RegFile=2` and `DbgTriggerEn=1` to both producers. It is **synthesis-only** on
+SKY130A `sky130_fd_sc_hd`, TT 25 °C / 1.80 V, with three consecutive
+single-thread samples per producer on the same prepared Verilog; the table
+reports medians.
+
+| | RustSys | Yosys 0.70 + ABC, bounded mapping |
+| --- | ---: | ---: |
+| Wall time | **2.874 s** | 2.675 s |
+| Peak process RSS | 234,264 KiB | **148,372 KiB** |
+| Standard cells | **15,041** | 22,235 |
+| Standard-cell area | **146,711.96 µm²** | 161,157.06 µm² |
+| Logic depth | 45 | not reported by this profile |
+
+RustSys is **1.07× slower** on this sample, but produces an **8.96%
+smaller-area, 32.35% smaller-cell-count** netlist, and uses **1.58× more peak
+memory**. The Yosys
+profile is explicitly bounded (four cuts per node, one area-flow round); its
+default ABC script did not finish within 600 s on this core. No equivalence
+proof was run for these samples. The full PULPissimo SoC passes hierarchy
+elaboration. On SKY130 with the behavioral L2 memory it exceeds a 2 h synthesis
+budget. On IHP SG13G2 / EZ130, with 80 official SRAM macros replacing the
+behavioral banks, one synthesis-only run completes in **426.343 s** and maps
+161,034 standard cells plus 80 macros; total area is 13,259,619.34 µm² (logic
+2,045,003.79 µm²) at logic depth 78. The merge pass is bounded, and there is no
+equivalence, timing-closure or physical result. This does not extend the Ibex
+RTL-to-GDS qualification.
+
+[PULPissimo benchmark and receipt](https://lab-emi.github.io/RustEDA/benchmarks/pulpissimo/) ·
+[IHP full-SoC test](https://lab-emi.github.io/RustEDA/benchmarks/pulpissimo-ihp/)
 
 ## Synthesis inside the flow
 

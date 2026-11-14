@@ -5,9 +5,18 @@ Performance comparisons need the same design, technology library, resource alloc
 Captured tool messages are part of those timed jobs. The raw invocations retain each tool's logging options, thread environment and CPU affinity alongside wall time, CPU seconds and memory receipts.
 
 This page describes that harness and the parallel design of the synthesis engine. It
-publishes no measured results; the published benchmark is the RustEDA
-whole-flow Ibex result and its module head-to-heads, described on the
-[benchmark page](benchmarks.md).
+publishes no measured results; the primary RTL-to-GDS benchmark is the RustEDA
+whole-flow Ibex result and its module head-to-heads, and the separate
+[PULPissimo synthesis benchmark](benchmarks.md)
+covers the PULPissimo Ibex core, both described on the benchmark page.
+
+## Elaboration tracing
+
+Set `RUSTSYS_ELAB_TRACE=1` to emit per-module-instance and per-generate-block
+elaboration times, signal counts and AIG node counts on standard error. The
+trace is off by default and does not change synthesis results. It is intended
+for locating a hot module or a behavioral memory that should have been an
+opaque macro; it is not a benchmark receipt.
 
 ## Mapping choices that affect quality and runtime
 

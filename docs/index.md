@@ -80,6 +80,12 @@ multiple is 33.8× against 35.4×; in the flows, synthesis took 3.10 s against
 [Losses and parity](https://lab-emi.github.io/RustEDA/benchmarks/#where-rusteda-still-loses-or-is-at-parity-2026-11-13) ·
 [Method and deviations](https://lab-emi.github.io/RustEDA/benchmarks/#host-campaign-method-and-deviations-2026-11-13)
 
+## PULPissimo synthesis · 2026-11-06
+
+A second design benchmark compares the PULPissimo Ibex core with a bounded Yosys 0.70/ABC reference on SKY130 HD. On the same prepared Verilog, RustSys is **1.07× slower**, uses **1.58× more peak memory**, and produces an **8.96% smaller-area, 32.35% smaller-cell-count** netlist (15,041 cells and 146,711.96 µm² against 22,235 cells and 161,157.06 µm²). The full PULPissimo SoC passes hierarchy elaboration. On SKY130 with the behavioral L2 memory it still exceeds a 2 h budget; an IHP SG13G2 / EZ130 synthesis-only test with 80 official SRAM macros completes in 426 s. Neither is a physical or equivalence result. This is synthesis-only and does not extend the Ibex RTL-to-GDS qualification.
+
+[PULPissimo benchmark](https://lab-emi.github.io/RustEDA/benchmarks/pulpissimo/) · [Receipt](https://lab-emi.github.io/RustEDA/benchmarks/pulpissimo-soc-20261106.json)
+
 ## Development update · 2026-11-05
 
 The RustEDA Ibex host campaign of 2026-11-05 reran the IHP SG13G2 / EZ130
@@ -168,7 +174,7 @@ IHP Ibex remains experimental; physical closure is a separate open gate.
 
 ## Benchmark
 
-The published benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
+The primary RTL-to-GDS benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
 SG13G2 with the ETH EZ130 8T library, run end to end through the native RustEDA
 flow and compared with LibreLane. RustSys synthesizes the Ibex + SRAM design in
 that flow; the flow's synthesis and final CEC gates prove the synthesized and

@@ -1,10 +1,10 @@
 # Development status
 
 Updated **2026-11-13**. The 2026-11-13 section reports the RustEDA host campaign
-of that date and the dated sections under it the earlier campaigns; the rest of
-this page describes the source published with the RustEDA development update.
-Use the superproject’s exact gitlinks and the repository lockfile when
-reproducing a run.
+of that date and the dated sections under it the earlier campaigns and
+development updates; the rest of this page describes the source published with
+the RustEDA development update. Use the superproject’s exact gitlinks and the
+repository lockfile when reproducing a run.
 
 ## Ibex host campaign · 2026-11-13
 
@@ -71,6 +71,30 @@ cell path.
 [Shared gates](https://lab-emi.github.io/RustEDA/benchmarks/#shared-gates-2026-11-13) ·
 [Losses and parity](https://lab-emi.github.io/RustEDA/benchmarks/#where-rusteda-still-loses-or-is-at-parity-2026-11-13) ·
 [Method and deviations](https://lab-emi.github.io/RustEDA/benchmarks/#host-campaign-method-and-deviations-2026-11-13)
+
+## Elaboration update · 2026-11-06
+
+Named generate blocks are now hierarchy scopes. Elaboration resolves
+`block.signal`, `block[i].signal`, nested `block.inner.signal`,
+`block.instance.port`, top-qualified `top.block.signal` and current-module
+absolute names such as `leaf.signal` inside `leaf`. Generate-loop containers
+retain their iteration scopes, so a constant genvar selects the right branch.
+`RUSTSYS_ELAB_TRACE=1` emits per-instance and per-generate timings for
+elaboration performance work. This covers the shape emitted by sv2v 0.0.13 when it inlines an
+interface-bearing module into a generate block. The specification is
+`docs/specs/synth/frontend.md` (SYNTH-REQ-0123) and the tests are in
+`crates/engines/rustsys/tests/elab_semantics.rs`.
+
+## PULPissimo IHP full-SoC synthesis · 2026-11-06
+
+A synthesis-only full-PULPissimo test maps the L2 banks to 80 official IHP
+`RM_IHPSG13_1P_1024x32_c2_bm_bist` macros and uses EZ130 8T TT cells. One
+16-thread run completes in **426.343 s** at 1,316,868 KiB peak RSS, producing
+161,034 standard cells plus 80 macros, 2,045,003.79 µm² of logic and
+11,214,615.55 µm² of macro area (13,259,619.34 µm² total) at logic depth 78.
+The merge pass is bounded; there is no equivalence, timing-closure, placement,
+routing or GDS result. The behavioral-memory SKY130 full SoC still exceeds 2 h.
+See the [IHP full-SoC test](https://lab-emi.github.io/RustEDA/benchmarks/pulpissimo-ihp/).
 
 ## Ibex host campaign · 2026-11-05
 
@@ -210,7 +234,7 @@ records feature details and compatibility limits.
 
 ## Benchmark and proof evidence
 
-The published benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
+The primary RTL-to-GDS benchmark is the Ibex RV32 core with two real IHP SRAMs on IHP
 SG13G2 with the ETH EZ130 8T library, run end to end through the native RustEDA
 flow and compared with LibreLane on the
 [RustEDA benchmarks page](https://lab-emi.github.io/RustEDA/benchmarks/).

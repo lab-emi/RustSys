@@ -286,6 +286,112 @@ endmodule"#,
     assert_eq!(outs[3..], seq[..4]);
 }
 
+// SYNTH-REQ-0123, SYNTH-REQ-0140: named generate blocks are hierarchy scopes.
+// sv2v 0.0.13 emits `block.signal` references after inlining an interface-
+// bearing module into a generate block; these must resolve like instances.
+#[test]
+fn generate_block_hierarchical_references() {
+    let d = design(
+        r#"
+module leaf(input logic a, output logic b);
+  assign b = ~a;
+endmodule
+module top(input logic a, b, output logic y, z, w);
+  generate
+    if (1) begin : outer
+      wire t;
+      wire u_out;
+      leaf u(.a(a), .b(u_out));
+      assign t = b;
+    end
+  endgenerate
+  assign y = outer.t;
+  assign z = outer.u_out;
+  assign w = top.outer.t;
+endmodule"#,
+    );
+    for a in 0..2u64 {
+        for b in 0..2u64 {
+            let e = Eval::new(&d, &[("a", a), ("b", b)], &[]);
+            assert_eq!(e.out("y"), b);
+            assert_eq!(e.out("z"), 1 - a);
+            assert_eq!(e.out("w"), b);
+        }
+    }
+}
+
+// Generate-loop scopes are selected by a constant genvar value.
+#[test]
+fn generate_loop_hierarchical_reference() {
+    let d = design(
+        r#"
+module leaf(input logic a, output logic b);
+  assign b = ~a;
+endmodule
+module top(input logic a, output logic y, z);
+  for (genvar i = 0; i < 2; i++) begin : g
+    wire t;
+    leaf u(.a(a), .b(t));
+  end
+  assign y = g[0].t;
+  assign z = g[1].u.b;
+endmodule"#,
+    );
+    for a in 0..2u64 {
+        let e = Eval::new(&d, &[("a", a)], &[]);
+        assert_eq!(e.out("y"), 1 - a);
+        assert_eq!(e.out("z"), 1 - a);
+    }
+}
+
+// A generate block nested inside another generate block keeps its own path.
+#[test]
+fn nested_generate_block_hierarchical_reference() {
+    let d = design(
+        r#"
+module top(input logic a, output logic y);
+  generate
+    if (1) begin : outer
+      if (1) begin : inner
+        wire t;
+        assign t = a;
+      end
+    end
+  endgenerate
+  assign y = outer.inner.t;
+endmodule"#,
+    );
+    for a in 0..2u64 {
+        assert_eq!(Eval::new(&d, &[("a", a)], &[]).out("y"), a);
+    }
+}
+
+// sv2v emits absolute references that start with the current module name.
+#[test]
+fn current_module_name_hierarchical_reference() {
+    let d = design(
+        r#"
+module leaf(input logic a, output logic y);
+  wire t;
+  assign t = a;
+  assign y = leaf.t;
+endmodule
+module top(input logic a, output logic y);
+  leaf u(.a(a), .y(y));
+endmodule"#,
+    );
+    for a in 0..2u64 {
+        assert_eq!(Eval::new(&d, &[("a", a)], &[]).out("y"), a);
+    }
+}
+
+// Undeclared hierarchical names remain errors rather than silently becoming nets.
+#[test]
+fn undefined_hierarchical_reference_is_rejected() {
+    let src = "module m(input a, output y); assign y = nope.x; endmodule";
+    assert!(elab(&[src], None).unwrap_err().contains("S0105"));
+}
+
 // SYNTH-REQ-0305
 #[test]
 fn latch_inference() {

@@ -97,6 +97,22 @@ module may contain (SYNTH-REQ-0120) plus `modport` declarations; its ports may o
 - Interface ports of the top module, arrays of interface instances, subroutine calls through an
   interface port, and modport expressions are rejected with a diagnostic.
 
+**SYNTH-REQ-0126** Opaque macros. A module whose name is a macro cell (`is_macro_cell: true`) of a
+supplied Liberty library is an opaque macro: its body's behaviour is not elaborated, each instance
+is one cell of the netlist, its outputs are free inputs of the surrounding logic, and the logic that
+drives its inputs is kept. Its interface must not be parameterized, its ports must be scalar or
+one-dimensional packed inputs and outputs, and its port bits must be exactly the pins of the
+Liberty cell, by name, bus index and direction; every violation is an error `S0134`.
+- An `inout` port of an opaque macro, such as a supply pin of a vendor model (`inout VDD`), is
+  accepted when the instance leaves it unconnected: it is not listed, it is connected empty
+  (`.VDD()`), or its ordered position is empty. It is then no pin of the netlist, of the Liberty
+  comparison or of the opaque pin budget; the physical flow takes supply pins from the macro's LEF.
+  `.*` still needs a signal for every port it covers (SYNTH-REQ-0122), so list unconnected supply
+  pins explicitly as `.VDD()`.
+- An `inout` port of an opaque macro that is connected (`.VDD(x)`, `.VDD`, an ordered expression,
+  or `.*` with a signal of that name) is an error `S0134` that names the port, the macro and the
+  instance: bidirectional logic through a macro is not supported.
+
 ## Statements and expressions
 
 **SYNTH-REQ-0130** Supported statements: blocking and nonblocking assignment, compound assignment

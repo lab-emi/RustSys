@@ -145,3 +145,75 @@ fn independent_macros_and_constant_pins_survive() {
             .all(|p| !p.name.starts_with("__rustsys_macro_cut_"))
     );
 }
+
+/// A macro model whose supply pins are inout, as vendor SRAM models declare them.
+const SUPPLIED: &str = "module RAM(input D,output Q,inout VDD,inout VSS); endmodule";
+
+/// SYNTH-REQ-0126: an inout port the instance leaves unconnected (not listed, `.VDD()`, an empty position) is
+/// no pin of the netlist and of the opaque pin budget; the Liberty interface has no such pin.
+#[test]
+fn unconnected_inout_supply_pins_of_a_macro_are_accepted() {
+    let tight = rustsys::elab::OpaqueLimits {
+        max_instances: 1,
+        max_pin_bits: 2,
+    };
+    for instance in [
+        "RAM ram(.D(a),.Q(q));",
+        "RAM ram(.D(a),.Q(q),.VDD(),.VSS());",
+        "RAM ram(a,q,,);",
+        "RAM ram(.VDD(),.VSS(),.*);",
+    ] {
+        let rtl = format!(
+            "{SUPPLIED} module top(input a,output y); wire q; wire D=a; wire Q; {instance} assign y=~q; endmodule"
+        );
+        // `.*` connects D and Q to the same-named wires; give it the signals it binds.
+        let rtl = if instance.contains(".*") {
+            rtl.replace("wire q; wire D=a; wire Q;", "wire D=a; wire Q; wire q=Q;")
+        } else {
+            rtl.replace(" wire D=a; wire Q;", "")
+        };
+        let out =
+            run_with(&rtl, RAM, tight).unwrap_or_else(|e| panic!("{instance}: {:?}", e.messages));
+        assert_eq!(out.report.macro_cells, 1, "{instance}");
+        let ram = out
+            .netlist
+            .instances
+            .iter()
+            .find(|i| i.cell == "RAM")
+            .unwrap();
+        let pins: Vec<&str> = ram.conns.iter().map(|(pin, _)| pin.as_str()).collect();
+        assert_eq!(pins.len(), 2, "{instance}: {pins:?}");
+        assert!(
+            pins.contains(&"D") && pins.contains(&"Q"),
+            "{instance}: {pins:?}"
+        );
+    }
+}
+
+/// SYNTH-REQ-0126: an inout port of a macro that is connected to a signal is refused with a coded error that
+/// names the port, the macro and the instance.
+#[test]
+fn connected_inout_pins_of_a_macro_are_refused() {
+    for (instance, how) in [
+        ("RAM ram(.D(a),.Q(q),.VDD(a));", "to an expression"),
+        ("RAM ram(a,q,a,);", "to an expression"),
+        ("RAM ram(.D(a),.Q(q),.VDD);", "to an expression"),
+        ("RAM ram(.D(a),.Q(q),.*);", "by .*"),
+    ] {
+        let rtl = format!(
+            "{SUPPLIED} module top(input a,output y); wire q; wire VDD=a; {instance} assign y=~q; endmodule"
+        );
+        let err = run(&rtl, RAM).unwrap_err().messages.join("\n");
+        assert!(err.contains("S0134"), "{instance}: {err}");
+        assert!(
+            err.contains(&format!(
+                "inout port 'VDD' of opaque macro 'RAM' (instance 'ram') is connected {how}"
+            )),
+            "{instance}: {err}"
+        );
+    }
+    // `.*` still needs a signal for every port it covers.
+    let rtl = format!("{SUPPLIED} module top(input D,output Q); RAM ram(.*); endmodule");
+    let err = run(&rtl, RAM).unwrap_err().messages.join("\n");
+    assert!(err.contains(".* found no signal named 'VDD'"), "{err}");
+}

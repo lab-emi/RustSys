@@ -153,7 +153,8 @@ The 2026-11-01 update preserves opaque SRAM interfaces through elaboration,
 mapping and netlist export. Port widths, bus indices and instance/pin identities
 are checked; unsupported or inconsistent interfaces produce diagnostics. The
 macro's behavior continues to come from its original vendor model for
-independent checking.
+independent checking. Unconnected `inout` supply pins of a macro model
+are accepted and left out of the netlist; a connected `inout` is refused.
 
 [Source, evidence and remaining limits](development-status.md) ·
 [Synthesis in the benchmark](guide/benchmarks.md) ·

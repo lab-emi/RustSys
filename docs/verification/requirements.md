@@ -357,9 +357,10 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0120 | docs/specs/synth/frontend.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/elab/drive.rs<br>crates/engines/rustsys/src/elab/module.rs |
 | SYNTH-REQ-0121 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/mod.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/stmt.rs<br>crates/engines/rustsys/tests/rejected_statements.rs |
 | SYNTH-REQ-0122 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/hier.rs<br>crates/engines/rustsys/src/elab/module.rs |
-| SYNTH-REQ-0123 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/hier.rs<br>crates/engines/rustsys/src/elab/mod.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/select.rs<br>crates/engines/rustsys/tests/elab_semantics.rs |
+| SYNTH-REQ-0123 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/hier.rs<br>crates/engines/rustsys/src/elab/mod.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/tests/elab_semantics.rs |
 | SYNTH-REQ-0124 | docs/specs/synth/frontend.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/elab/module.rs |
 | SYNTH-REQ-0125 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/module.rs |
+| SYNTH-REQ-0126 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/hier.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/tests/opaque_macro.rs |
 | SYNTH-REQ-0130 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/stmt.rs |
 | SYNTH-REQ-0131 | docs/specs/synth/frontend.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/pattern.rs |
 | SYNTH-REQ-0132 | docs/specs/synth/frontend.md | crates/engines/rustsys/src/elab/call.rs<br>crates/engines/rustsys/src/elab/mod.rs<br>crates/engines/rustsys/src/elab/module.rs<br>crates/engines/rustsys/src/elab/process.rs<br>crates/engines/rustsys/tests/elab_semantics.rs |
@@ -405,13 +406,13 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0402 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/elab/resolve.rs<br>crates/engines/rustsys/src/ingest/blif.rs |
 | SYNTH-REQ-0403 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/bits.rs<br>crates/engines/rustsys/src/bits/tests.rs<br>crates/engines/rustsys/tests/select_and_case.rs |
 | SYNTH-REQ-0404 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/bits.rs<br>crates/engines/rustsys/src/bits/tests.rs<br>crates/verify/rustsys-check/src/rtl/word.rs |
-| SYNTH-REQ-0405 | docs/specs/synth/optimization.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/bits.rs<br>crates/engines/rustsys/src/bits/tests.rs<br>crates/engines/rustsys/src/covers.rs |
+| SYNTH-REQ-0405 | docs/specs/synth/optimization.md | crates/apps/rustsys-cli/tests/synth_frontend.rs<br>crates/engines/rustsys/src/bits.rs<br>crates/engines/rustsys/src/bits/tests.rs<br>crates/engines/rustsys/src/covers.rs<br>crates/engines/rustsys/src/lib.rs |
 | SYNTH-REQ-0406 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/aig.rs<br>crates/engines/rustsys/src/opt/muxmerge.rs<br>crates/engines/rustsys/tests/passes.rs |
-| SYNTH-REQ-0407 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/bits.rs<br>crates/engines/rustsys/src/elab/expr.rs<br>crates/engines/rustsys/src/elab/mod.rs |
+| SYNTH-REQ-0407 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/bits.rs<br>crates/engines/rustsys/src/bits/tests.rs<br>crates/engines/rustsys/src/elab/expr.rs<br>crates/engines/rustsys/src/elab/mod.rs |
 | SYNTH-REQ-0408 | docs/specs/synth/optimization.md | crates/engines/rustsys/tests/passes.rs |
 | SYNTH-REQ-0410 | docs/specs/synth/optimization.md | crates/engines/rustsys/tests/passes.rs |
 | SYNTH-REQ-0411 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/balance.rs<br>crates/engines/rustsys/src/opt/factor.rs<br>crates/engines/rustsys/src/opt/lib4.rs<br>crates/engines/rustsys/src/opt/merge.rs<br>crates/engines/rustsys/src/opt/refactor.rs<br>crates/engines/rustsys/src/opt/resub.rs<br>crates/engines/rustsys/src/opt/rewrite.rs<br>crates/engines/rustsys/tests/balance.rs<br>crates/engines/rustsys/tests/passes.rs |
-| SYNTH-REQ-0412 | docs/specs/synth/optimization.md | crates/apps/rustsys-cli/src/proto/job.rs<br>crates/engines/rustsys/src/lib.rs |
+| SYNTH-REQ-0412 | docs/specs/synth/optimization.md | crates/apps/rustsys-cli/src/proto/job.rs<br>crates/engines/rustsys/src/lib.rs<br>crates/engines/rustsys/tests/map_consistency.rs |
 | SYNTH-REQ-0413 | docs/specs/synth/optimization.md | crates/apps/rustsys-cli/tests/synth_frontend.rs |
 | SYNTH-REQ-0414 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/muxdecode.rs<br>crates/engines/rustsys/tests/passes.rs |
 | SYNTH-REQ-0415 | docs/specs/synth/optimization.md | crates/engines/rustsys/src/opt/refactor.rs |
@@ -421,7 +422,7 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | SYNTH-REQ-0501 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/library.rs<br>crates/engines/rustsys/tests/map_consistency.rs<br>xtask/src/pdk/scan.rs |
 | SYNTH-REQ-0502 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/library.rs |
 | SYNTH-REQ-0510 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/covers.rs<br>crates/engines/rustsys/src/map/cuts.rs<br>crates/engines/rustsys/src/map/mapper.rs |
-| SYNTH-REQ-0511 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/map/mapper.rs<br>crates/engines/rustsys/tests/map_consistency.rs |
+| SYNTH-REQ-0511 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/lib.rs<br>crates/engines/rustsys/src/map/mapper.rs<br>crates/engines/rustsys/tests/map_consistency.rs |
 | SYNTH-REQ-0512 | docs/specs/synth/mapping.md | crates/apps/rustsys-cli/src/proto/job.rs<br>crates/engines/rustsys/src/lib.rs<br>crates/engines/rustsys/src/map/area.rs<br>crates/engines/rustsys/src/map/compute.rs<br>crates/engines/rustsys/src/map/mapper.rs<br>crates/engines/rustsys/src/map/tests.rs |
 | SYNTH-REQ-0513 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/estimate.rs<br>crates/engines/rustsys/src/map/library.rs<br>crates/engines/rustsys/src/map/mapper.rs<br>crates/engines/rustsys/tests/netlist_estimate.rs |
 | SYNTH-REQ-0514 | docs/specs/synth/mapping.md | crates/engines/rustsys/src/estimate.rs<br>crates/engines/rustsys/src/map/library.rs<br>crates/engines/rustsys/src/map/mapper.rs |
@@ -646,8 +647,8 @@ more than 200 IDs is not expanded: only its first number counts as cited.
 | PROTO | 22 | 0 |
 | RCLI | 30 | 0 |
 | SDC | 57 | 0 |
-| SYNTH | 158 | 0 |
+| SYNTH | 159 | 0 |
 | VERILOG | 28 | 0 |
 | WS | 100 | 0 |
 
-621 requirements, 0 without a citing test or source.
+622 requirements, 0 without a citing test or source.

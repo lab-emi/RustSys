@@ -14,7 +14,7 @@ RustSys implements a documented synthesizable subset of SystemVerilog. This page
 | Preprocessing | Includes, conditional compilation, object/function-like macros and explicit definitions. |
 | State | Flip-flops and latches, with supported clock/enable behavior and optional asynchronous clear or preset. |
 
-Examples of constructs outside this version's synthesis boundary include interfaces/modports, arrays of instances, `defparam`, tri-state logic, `inout`, asynchronous load, registers with two asynchronous controls, real numbers and dynamic data types. Unsupported semantic constructs produce diagnostics; do not expect a general event-driven SystemVerilog simulator.
+Examples of constructs outside this version's synthesis boundary include interfaces/modports, arrays of instances, `defparam`, tri-state logic, `inout` (except unconnected supply pins of an opaque macro, SYNTH-REQ-0126), asynchronous load, registers with two asynchronous controls, real numbers and dynamic data types. Unsupported semantic constructs produce diagnostics; do not expect a general event-driven SystemVerilog simulator.
 
 ## Two-valued interpretation
 

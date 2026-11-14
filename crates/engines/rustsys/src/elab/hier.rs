@@ -318,7 +318,47 @@ impl<'a> Elaborator<'a> {
                         "parameterized opaque macros require a specialized fixed interface",
                     ));
                 }
-                let added = ports.iter().try_fold(0usize, |total, p| {
+                // SYNTH-REQ-0126: the supply pins of a macro model (`inout VDD`) carry no logic.
+                // An inout port that the instance leaves unconnected (no connection, `.VDD()` or
+                // an empty position) is no pin of the netlist and of the pin budget; a connected
+                // one is refused, since bidirectional logic through a macro is not modelled.
+                let mut open_inouts = Vec::new();
+                if ports.iter().any(|p| p.dir == Direction::Inout) {
+                    let (assigned, wildcard) = self.port_assignments(&ports, &i.conns, i.span)?;
+                    for (k, p) in ports.iter().enumerate() {
+                        if p.dir != Direction::Inout {
+                            continue;
+                        }
+                        let connected = match &assigned[k] {
+                            Some(Some(e)) => Some(("to an expression", e.span)),
+                            Some(None) => None,
+                            None if wildcard && self.lookup(scope, &p.name).is_some() => {
+                                Some(("by .*", i.span))
+                            }
+                            None => None,
+                        };
+                        if let Some((how, span)) = connected {
+                            return Err(self.err(
+                                "S0134",
+                                span,
+                                format!(
+                                    "inout port '{}' of opaque macro '{}' (instance '{}') is connected {how}; \
+                                     bidirectional connections through a macro are not supported: leave the \
+                                     port unconnected (a supply pin is taken from the macro's LEF)",
+                                    p.name, m.name.name, i.name.name
+                                ),
+                            ));
+                        }
+                        open_inouts.push(k);
+                    }
+                }
+                let pins: Vec<PortInfo<'a>> = ports
+                    .iter()
+                    .enumerate()
+                    .filter(|(k, _)| !open_inouts.contains(k))
+                    .map(|(_, p)| p.clone())
+                    .collect();
+                let added = pins.iter().try_fold(0usize, |total, p| {
                     total.checked_add(self.signals[p.sig as usize].ph.len())
                 });
                 let total = added.and_then(|n| self.opaque_pin_bits.checked_add(n));
@@ -334,7 +374,7 @@ impl<'a> Elaborator<'a> {
                         ),
                     ));
                 }
-                for p in &ports {
+                for p in &pins {
                     let s = &self.signals[p.sig as usize];
                     let simple = matches!(s.ty, Ty::Bit { .. })
                         || matches!(&s.ty, Ty::Vector { elem, .. } if matches!(elem.as_ref(), Ty::Bit { .. }));
@@ -359,22 +399,25 @@ impl<'a> Elaborator<'a> {
                 self.opaque_instances.push((
                     self.scopes[child].path.clone(),
                     m.name.name.clone(),
-                    ports.clone(),
+                    pins,
                 ));
+                self.connect(scope, child, &ports, &i.conns, i.span, &open_inouts)?;
+            } else {
+                self.connect(scope, child, &ports, &i.conns, i.span, &[])?;
             }
-            self.connect(scope, child, &ports, &i.conns, i.span)?;
         }
         Ok(())
     }
 
-    pub(crate) fn connect(
-        &mut self,
-        parent: ScopeId,
-        child: ScopeId,
+    /// The connection of each port as the instance writes it: `Some(Some(e))` an expression
+    /// (also `.p`), `Some(None)` an empty connection (`.p()` or an empty position), `None` not
+    /// listed; and whether `.*` covers the ports that are not listed.
+    fn port_assignments(
+        &self,
         ports: &[PortInfo<'a>],
         conns: &'a [PortConn],
         span: Span,
-    ) -> EResult<()> {
+    ) -> EResult<(Vec<Option<Option<Expr>>>, bool)> {
         let mut assigned: Vec<Option<Option<Expr>>> = vec![None; ports.len()];
         let mut wildcard = false;
         let mut pos = 0usize;
@@ -399,6 +442,21 @@ impl<'a> Elaborator<'a> {
                 PortConn::Wildcard(_) => wildcard = true,
             }
         }
+        Ok((assigned, wildcard))
+    }
+
+    /// Drive the ports of an elaborated child from the instance's connections. `open` lists the
+    /// inout ports of an opaque macro that the instance leaves unconnected: they are skipped.
+    pub(crate) fn connect(
+        &mut self,
+        parent: ScopeId,
+        child: ScopeId,
+        ports: &[PortInfo<'a>],
+        conns: &'a [PortConn],
+        span: Span,
+        open: &[usize],
+    ) -> EResult<()> {
+        let (assigned, wildcard) = self.port_assignments(ports, conns, span)?;
         for (k, p) in ports.iter().enumerate() {
             let conn: Option<Expr> = match &assigned[k] {
                 Some(e) => e.clone(),
@@ -418,6 +476,9 @@ impl<'a> Elaborator<'a> {
                 }
                 None => None,
             };
+            if open.contains(&k) {
+                continue;
+            }
             let sig_ty = self.signals[p.sig as usize].ty.clone();
             let proc = self.new_proc("port connection", span);
             match p.dir {

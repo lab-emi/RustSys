@@ -198,6 +198,9 @@ Opaque SRAM interfaces are now preserved through elaboration, mapping and
 netlist export. Port widths, bus indices and instance/pin identities are checked;
 unsupported or inconsistent interfaces produce diagnostics. The macro's behavior
 continues to come from its original vendor model for independent checking.
+Supply pins that a vendor model declares as `inout` (the GF180MCU SRAM's
+`inout VDD, VSS`) are accepted when the instance leaves them unconnected, and are
+then not pins of the netlist; a connected `inout` is refused (SYNTH-REQ-0126).
 
 The retained R20/R21 development runs of 2026-11-01 use two real IHP SRAMs and
 prove both synthesis and final equivalence against the original RTL. They

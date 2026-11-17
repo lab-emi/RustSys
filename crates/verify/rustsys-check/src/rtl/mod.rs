@@ -101,7 +101,22 @@ pub struct RtlModel {
     pub states: Vec<RtlState>,
     /// Optional internal observations; they supplement the original interface.
     pub observations: Vec<(ObservationProbe, Vec<B>)>,
+    /// When requested: every signal bit that is a state value or its inversion under another
+    /// name. Names are hints, never premises.
+    pub state_aliases: Vec<StateAlias>,
     pub warnings: Vec<String>,
+}
+
+/// A signal bit that is the value of a state, or its inversion, under the signal's name.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StateAlias {
+    /// The bit name as states are named (SYNTH-REQ-0603): the bit's position in the vector.
+    pub name: String,
+    /// The bit name with the declared index, for a vector whose declared range does not
+    /// number its bits from 0 upwards.
+    pub declared: Option<String>,
+    pub state: usize,
+    pub inverted: bool,
 }
 
 /// A bounded packed-signal slice for external compositional verification.
@@ -124,6 +139,8 @@ pub struct RtlOptions {
     pub assume_parallel_case: bool,
     /// Additional observation outputs; never assumptions or trusted cut points.
     pub observations: Vec<ObservationProbe>,
+    /// Record `RtlModel::state_aliases` (name hints for state correspondence only).
+    pub state_aliases: bool,
 }
 
 pub(crate) type R<T> = Result<T, String>;

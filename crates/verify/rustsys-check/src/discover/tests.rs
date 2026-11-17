@@ -65,6 +65,7 @@ endmodule";
         pulse: &pulse,
         control_vars: &control_vars,
         uninitialized_dont_care: false,
+        initial_state_map: false,
     };
     let named = corr::by_name(&s).expect("names");
     assert!(!named.unused.is_empty() && named.unmatched.len() == 3);

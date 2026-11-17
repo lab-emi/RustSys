@@ -108,6 +108,7 @@ pub(crate) fn build(
             port_order,
             states,
             observations: Vec::new(),
+            state_aliases: Vec::new(),
             warnings: Vec::new(),
         },
         initial_values: Vec::new(),

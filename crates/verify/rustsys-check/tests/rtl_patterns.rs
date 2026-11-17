@@ -35,6 +35,7 @@ fn structured_wildcards_match_icarus_not_synthesis() {
         &units,
         &mut c,
         &RtlOptions {
+            state_aliases: false,
             top: Some("wildcard_structures".into()),
             assume_full_case: false,
             assume_parallel_case: false,
@@ -99,6 +100,7 @@ endmodule
         &units,
         &mut c,
         &RtlOptions {
+            state_aliases: false,
             assume_full_case: false,
             assume_parallel_case: false,
             top: Some("m".into()),

@@ -6,11 +6,13 @@
 #![forbid(unsafe_code)]
 
 mod aiger;
+mod alias;
 mod attempt;
 mod blif;
 pub mod circ;
 mod corr;
 mod discover;
+mod export_options;
 mod gateref;
 pub mod lfunc;
 pub mod liberty;
@@ -35,6 +37,7 @@ use serde::{Deserialize, Serialize};
 
 use circ::Circuit;
 use corr::Relation;
+pub use export_options::{EncodingHint, ExcludedRelation, ObligationExport, StateProposal};
 pub use sources::InitialValues;
 use sources::Kind;
 
@@ -43,51 +46,6 @@ use sources::Kind;
 pub enum Input {
     Files(Vec<PathBuf>),
     Texts(Vec<(String, String)>),
-}
-
-/// Bounded, combinational AIGER proof inputs for an external CEC executable.
-/// Export is not a proof and always leaves the native check undecided.
-#[derive(Debug, Clone, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct StateProposal {
-    pub rtl_state: String,
-    pub gate_instance: String,
-    pub inverted: bool,
-}
-
-/// Export options, including optional untrusted one-to-one matching hints.
-#[derive(Debug, Clone)]
-pub struct ObligationExport {
-    pub directory: PathBuf,
-    pub max_and_nodes: usize,
-    pub max_outputs: usize,
-    /// Budgets for untrusted one-to-one state proposals when names were removed.
-    pub max_discovery_definitions: usize,
-    pub max_discovery_candidates: usize,
-    pub max_discovery_support_entries: usize,
-    pub max_discovery_sketch_bytes: usize,
-    pub max_discovery_rounds: usize,
-    pub max_discovery_work: u64,
-    /// At most 8192 pairs / 8 MiB of names. These are never assumptions or proofs;
-    /// all original output, event and next-state obligations still require CEC.
-    pub state_proposals: Vec<StateProposal>,
-}
-
-impl ObligationExport {
-    pub fn new(directory: PathBuf) -> Self {
-        Self {
-            directory,
-            max_and_nodes: 64_000_000,
-            max_outputs: 8_000_000,
-            max_discovery_definitions: 64_000_000,
-            max_discovery_candidates: 4_194_304,
-            max_discovery_support_entries: 64_000_000,
-            max_discovery_sketch_bytes: 1024 * 1024 * 1024,
-            max_discovery_rounds: 32,
-            max_discovery_work: 16_000_000_000,
-            state_proposals: Vec::new(),
-        }
-    }
 }
 
 /// Checker options (CHECK-REQ-0001).
@@ -680,6 +638,10 @@ fn run(
                 assume_full_case: opts.assume_full_case,
                 assume_parallel_case: opts.assume_parallel_case,
                 observations: opts.observation_probes.clone(),
+                state_aliases: opts
+                    .obligation_export
+                    .as_ref()
+                    .is_some_and(|export| export.initial_state_map),
             },
             opts.model_budget,
         );
@@ -751,6 +713,10 @@ fn run(
         pulse: &pulse,
         control_vars: &control_vars,
         uninitialized_dont_care: opts.uninitialized_dont_care,
+        initial_state_map: opts
+            .obligation_export
+            .as_ref()
+            .is_some_and(|export| export.initial_state_map),
     };
     // State correspondence: names first (CHECK-REQ-0031), then discovery (CHECK-REQ-0032) when
     // an element has no named counterpart or a cut point refutes an obligation.
@@ -769,14 +735,29 @@ fn run(
             ));
         }
     }
+    // Candidate valid-code invariants (state map): added to the proof only when a refuted
+    // obligation needs one, and then proved.
+    let mut invariant_candidates: Vec<corr::Encoding> = Vec::new();
     if let Some(export) = &opts.obligation_export
         && !named.unused.is_empty()
     {
-        let proposed = discover::for_export(&setting, &named, opts.seed, export, ctx)?;
-        corr::apply(&setting, &mut named, &proposed);
+        let excluded = corr::excluded_relations(&setting, &export.excluded_relations)?;
+        let proposed = discover::for_export(&setting, &named, opts.seed, export, &excluded, ctx)?;
+        for &si in &proposed.released {
+            named.release(si);
+        }
+        for enc in &proposed.encodings {
+            named.unmatched.retain(|si| !enc.rtl.contains(si));
+            named.unused.retain(|ci| !enc.gate.contains(ci));
+        }
+        named.encodings = proposed.encodings;
+        invariant_candidates = proposed.invariants;
+        corr::apply(&setting, &mut named, &proposed.relations);
         phase(&format!(
-            "proposed {} one-to-one state bindings; external CEC still required",
-            named.discovered.len()
+            "proposed {} state relations and {} re-encoded registers ({} name matches released); external CEC still required",
+            named.discovered.len(),
+            named.encodings.len(),
+            proposed.released.len()
         ));
     }
     if let Some(export) = &opts.obligation_export
@@ -843,11 +824,13 @@ fn run(
         discovered = search(&excluded)?;
         searched = true;
     }
-    let models = attempt::Models {
+    let mut models = attempt::Models {
         model: &model,
         nm: &nm,
         pulse: &pulse,
+        invariant_candidates: Vec::new(),
     };
+    models.invariant_candidates = invariant_candidates;
     let mut retries = 0;
     // The repetition limit of discovery ends the check undecided, unless a port difference
     // already decides it (CHECK-REQ-0002, CHECK-REQ-0032).
@@ -864,9 +847,11 @@ fn run(
             nm.seq[ci].inst, nm.seq[ci].cell
         ))
     };
+    let mut invariants: Vec<corr::Encoding> = Vec::new();
     let (corr, proved) = loop {
         let mut corr = named.clone();
         corr::apply(&setting, &mut corr, &discovered);
+        corr.encodings.extend(invariants.iter().cloned());
         // An element still without a counterpart is an error, unless the proof may first reject
         // a discovered relation that simulation could not refute; the element is then cut free.
         let unused = corr.unused.first().copied();
@@ -894,6 +879,20 @@ fn run(
             attempt::Outcome::CutPoints => {
                 discovered = search(&excluded)?;
                 searched = true;
+            }
+            // Refuted obligations need valid-code invariants: they join the proof (and its
+            // obligations) and the attempt runs again; each round adds at least one.
+            attempt::Outcome::Invariants(needed) => {
+                let mut added = Vec::new();
+                for i in needed.into_iter().rev() {
+                    added.push(models.invariant_candidates.remove(i));
+                }
+                phase(&format!(
+                    "{} valid-code invariants needed by refuted obligations: {}",
+                    added.len(),
+                    added.iter().map(|e| e.variable.as_str()).collect::<Vec<_>>().join(", ")
+                ));
+                invariants.extend(added);
             }
             attempt::Outcome::Proved(p) => {
                 // A discovered relation that the proof rejects is excluded, and discovery and

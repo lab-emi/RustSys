@@ -64,6 +64,22 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(value) = config.get("export_discovery_work") {
             options.max_discovery_work = value.as_u64().ok_or("invalid export_discovery_work")?;
         }
+        if let Some(value) = config.get("export_initial_state_map") {
+            options.initial_state_map =
+                value.as_bool().ok_or("invalid export_initial_state_map")?;
+        }
+        if let Some(path) = config["export_excluded_relations_file"].as_str() {
+            if fs::metadata(path)?.len() > 16 * 1024 * 1024 {
+                return Err("excluded relation file byte budget exceeded".into());
+            }
+            options.excluded_relations = serde_json::from_reader(File::open(path)?)?;
+        }
+        if let Some(path) = config["export_encoding_hints_file"].as_str() {
+            if fs::metadata(path)?.len() > 16 * 1024 * 1024 {
+                return Err("encoding hint file byte budget exceeded".into());
+            }
+            options.encoding_hints = serde_json::from_reader(File::open(path)?)?;
+        }
         if let Some(value) = config.get("export_discovery_rounds") {
             options.max_discovery_rounds =
                 usize::try_from(value.as_u64().ok_or("invalid export_discovery_rounds")?)?;

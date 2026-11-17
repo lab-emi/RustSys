@@ -17,6 +17,7 @@ use crate::prove::{Proof, Rng};
 use crate::rtl::RtlModel;
 use crate::{CheckOptions, Mismatch, Stop, seqsim, sweep};
 
+mod encoded;
 mod export;
 
 /// One proof obligation: `a == b` whenever `assume`.
@@ -45,6 +46,9 @@ pub enum Outcome {
     /// cut free and discovery had not run yet (CHECK-REQ-0032); nothing was proved.
     CutPoints,
     Proved(Proved),
+    /// Under a state map, simulation refuted obligations in lanes where these candidate
+    /// valid-code invariants (indices, ascending) do not hold; nothing was exported.
+    Invariants(Vec<usize>),
 }
 
 /// Inputs of an attempt that do not change between attempts.
@@ -52,6 +56,8 @@ pub struct Models<'a> {
     pub model: &'a RtlModel,
     pub nm: &'a NetModel,
     pub pulse: &'a HashMap<u32, bool>,
+    /// Candidate valid-code invariants not yet in the correspondence (state map only).
+    pub invariant_candidates: Vec<crate::corr::Encoding>,
 }
 
 /// Runs one attempt on `c`, which it constrains with the correspondence. `mark` ends a phase and
@@ -115,6 +121,14 @@ pub fn prove(
     }
     // Obligations.
     let mut obs: Vec<Obligation> = Vec::new();
+    // Re-encoded registers (state map only): elements defined from the RTL register, with the
+    // valid-code invariant's base, step and element obligations.
+    if !corr.encodings.is_empty() && opts.obligation_export.is_none() {
+        return Err(Stop::Internal(
+            "re-encoded registers outside an obligation export".into(),
+        ));
+    }
+    let canonical = encoded::define(c, model, nm, corr, &mut obs)?;
     let mut outputs_checked = 0;
     for (name, bits, scalar) in &model.outputs {
         let Some(nb) = nm.outputs.get(name) else {
@@ -140,6 +154,10 @@ pub fn prove(
         }
     }
     let mut pairs = 0;
+    let state_map = opts
+        .obligation_export
+        .as_ref()
+        .is_some_and(|export| export.initial_state_map);
     for (si, st) in model.states.iter().enumerate() {
         if let Some(value) = corr.constants[si] {
             obs.push(Obligation {
@@ -153,6 +171,21 @@ pub fn prove(
                 b: B::from_bool(value),
                 assume: st.arst.map_or(B::T, |(r, _)| c.not(r)),
             });
+            // Without a reset pulse nothing establishes the constant: an asynchronous reset to
+            // the other value must never be active (CHECK-REQ-0048 under a state map).
+            if state_map {
+                if let Some((cond, reset_value)) = st.arst {
+                    if reset_value != value {
+                        obs.push(Obligation {
+                            kind: "constant-reset",
+                            name: st.name.clone(),
+                            a: cond,
+                            b: B::F,
+                            assume: B::T,
+                        });
+                    }
+                }
+            }
             continue;
         }
         let Some((ci, parity)) = corr.paired[si] else {
@@ -267,6 +300,12 @@ pub fn prove(
     for &ci in &corr.unused {
         names.insert(nm.seq[ci].iq, nm.seq[ci].inst.clone());
     }
+    // A register under a valid-code invariant is quantified through fresh inputs (`encoded`).
+    for (enc, inputs) in corr.encodings.iter().zip(&canonical) {
+        for (&si, &p) in enc.rtl.iter().zip(inputs) {
+            names.insert(p, format!("{} (canonical code input)", model.states[si].name));
+        }
+    }
     for v in &order {
         if c.is_free(*v) && !names.contains_key(v) {
             let net = nm
@@ -282,24 +321,34 @@ pub fn prove(
     }
     let mut frees: Vec<u32> = order.iter().copied().filter(|v| c.is_free(*v)).collect();
     if let Some(options) = &opts.obligation_export {
+        let owned = corr.owners.iter().filter(|o| o.is_some()).count();
+        let encoded: usize = corr.encodings.iter().map(|e| e.gate.len()).sum();
+        let constants = corr.constants.iter().filter(|o| o.is_some()).count();
+        let map_relations = constants + corr.equivalents.len();
         if !opts.after_reset.is_empty()
             || opts.uninitialized_dont_care
             || opts.assume_full_case
             || opts.assume_parallel_case
             || !corr.unused.is_empty()
-            || corr.constants.iter().any(Option::is_some)
-            || !corr.equivalents.is_empty()
-            || corr
-                .discovered
-                .iter()
-                .any(|(_, relation)| !matches!(relation, crate::corr::Relation::Cell(..)))
+            || (!state_map
+                && (map_relations > 0
+                    || !corr.encodings.is_empty()
+                    || corr.discovered.iter().any(|(_, relation)| {
+                        !matches!(relation, crate::corr::Relation::Cell(..))
+                    })))
             || !mismatches.is_empty()
-            || pairs != nm.seq.len()
+            || owned + encoded != nm.seq.len()
+            || pairs != owned + corr.equivalents.len()
         {
-            return Err(Stop::Undecided("obligation export requires a complete one-to-one state correspondence with no reset, initial-state choices, constants or sharing relations".into()));
+            return Err(Stop::Undecided(if state_map {
+                "obligation export requires every implementation element to own one RTL state or to be an element of a re-encoded register, with no reset, case or initial-value assumptions".into()
+            } else {
+                "obligation export requires a complete one-to-one state correspondence with no reset, initial-state choices, constants or sharing relations".into()
+            }));
         }
-        // Quantify even unused RTL inputs/state in the exported interface.
-        // Each implementation state has its own named RTL representative.
+        // Quantify even unused RTL inputs/state in the exported interface. Each
+        // implementation state has its own RTL representative; under a state map, the RTL
+        // bits that the map defines (shared and constant) are not inputs.
         frees.extend(
             model
                 .inputs
@@ -307,13 +356,41 @@ pub fn prove(
                 .flat_map(|(_, bits, _)| bits.iter())
                 .copied(),
         );
-        frees.extend(model.states.iter().map(|state| state.q));
+        let defined = model
+            .states
+            .iter()
+            .filter(|state| !c.is_free(state.q))
+            .count();
+        let canonical_bits: usize = canonical.iter().map(Vec::len).sum();
+        frees.extend(canonical.iter().flatten().copied());
+        if defined != map_relations + canonical_bits {
+            return Err(Stop::Internal(
+                "RTL states constrained other than by the exported state map".into(),
+            ));
+        }
+        frees.extend(
+            model
+                .states
+                .iter()
+                .map(|state| state.q)
+                .filter(|&q| c.is_free(q)),
+        );
         frees.sort_unstable();
         frees.dedup();
         if frees.iter().any(|&v| !c.is_free(v)) {
             return Err(Stop::Internal(
                 "export interface contains a constrained RTL input/state".into(),
             ));
+        }
+        if std::env::var_os("RUSTSYS_EXPORT_SELFCHECK").is_some() {
+            selfcheck(c, &obs, &order, &frees, &names, opts);
+        }
+        if !m.invariant_candidates.is_empty() {
+            let needed =
+                encoded::needed(c, &obs, &order, &frees, model, &m.invariant_candidates, opts.seed);
+            if !needed.is_empty() {
+                return Ok(Outcome::Invariants(needed));
+            }
         }
         export::write(
             c,
@@ -327,7 +404,11 @@ pub fn prove(
             model,
             nm,
             corr,
+            &canonical,
+            &names,
         )?;
+        // An export never decides: a state-map export may hold only from reset, which a
+        // native verdict would not say.
         return Err(Stop::Undecided(
             "all output/control/next-state obligations exported; external CEC has not been run"
                 .into(),
@@ -486,4 +567,82 @@ pub fn prove(
         sweep: sweep.as_ref().map(|s| s.stats).unwrap_or_default(),
         seq_sim,
     }))
+}
+
+/// Debug (`RUSTSYS_EXPORT_SELFCHECK`): random simulation of the exported obligations over their
+/// free variables, printing each failing obligation with the free values that refute it. Not a
+/// proof step: the external CEC decides; this only locates refuted relations faster.
+fn selfcheck(
+    c: &Circuit,
+    obs: &[Obligation],
+    order: &[u32],
+    frees: &[u32],
+    names: &HashMap<u32, String>,
+    opts: &CheckOptions,
+) {
+    let mut rng = Rng(opts.seed ^ 0x5e1f);
+    let mut failed = vec![false; obs.len()];
+    let mut vals = Vec::new();
+    for round in 0..256 {
+        let words: HashMap<u32, u64> = frees
+            .iter()
+            .map(|v| {
+                let (a, b, c) = (rng.next(), rng.next(), rng.next());
+                (*v, match round % 4 { 1 => a | b | c, 3 => a & b & c, _ => a })
+            })
+            .collect();
+        c.eval_dense(order, &|v| words.get(&v).copied().unwrap_or(0), &mut vals);
+        for (i, o) in obs.iter().enumerate() {
+            if failed[i] {
+                continue;
+            }
+            let bad = Circuit::value_dense(o.assume, &vals)
+                & (Circuit::value_dense(o.a, &vals) ^ Circuit::value_dense(o.b, &vals));
+            if bad != 0 {
+                failed[i] = true;
+                let k = bad.trailing_zeros();
+                // Sensitivity: the free variables whose single flip in this lane removes the
+                // mismatch (lane 0 keeps the failing values, lane j flips variable j).
+                let support: Vec<u32> = c
+                    .support(&[o.a, o.b, o.assume])
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter(|v| names.contains_key(v))
+                    .collect();
+                let base: HashMap<u32, u64> = frees
+                    .iter()
+                    .map(|v| (*v, if (words[v] >> k) & 1 == 1 { u64::MAX } else { 0 }))
+                    .collect();
+                let mut shown = Vec::new();
+                let mut lane_vals = Vec::new();
+                for chunk in support.chunks(63) {
+                    let mut w = base.clone();
+                    for (j, v) in chunk.iter().enumerate() {
+                        *w.get_mut(v).expect("free") ^= 1u64 << (j + 1);
+                    }
+                    c.eval_dense(order, &|v| w.get(&v).copied().unwrap_or(0), &mut lane_vals);
+                    let bad = Circuit::value_dense(o.assume, &lane_vals)
+                        & (Circuit::value_dense(o.a, &lane_vals) ^ Circuit::value_dense(o.b, &lane_vals));
+                    for (j, v) in chunk.iter().enumerate() {
+                        if (bad >> (j + 1)) & 1 == 0 {
+                            shown.push(format!("{}={}", names[v], base[v] & 1));
+                        }
+                    }
+                }
+                eprintln!(
+                    "selfcheck {} {}: gold {} gate {}; {}",
+                    o.kind,
+                    o.name,
+                    (Circuit::value_dense(o.a, &vals) >> k) & 1,
+                    (Circuit::value_dense(o.b, &vals) >> k) & 1,
+                    shown.join(" ")
+                );
+            }
+        }
+    }
+    eprintln!(
+        "selfcheck: {} of {} obligations refuted by simulation",
+        failed.iter().filter(|f| **f).count(),
+        obs.len()
+    );
 }

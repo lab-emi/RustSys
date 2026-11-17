@@ -54,6 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     eprintln!("Parsed RTL in {:.2} seconds", t.elapsed().as_secs_f64());
     let mut circuit = Circuit::new();
     let options = RtlOptions {
+        state_aliases: false,
         top: cfg["design"]["top"].as_str().map(String::from),
         ..RtlOptions::default()
     };

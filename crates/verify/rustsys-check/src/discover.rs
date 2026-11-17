@@ -7,7 +7,15 @@
 //! a relation whose obligation fails in some lane is dropped. Discovery only proposes relations:
 //! each is then validated and proved like a named one.
 
+mod encode;
+mod explore;
+mod export;
+mod propose;
 mod support;
+mod trace;
+
+pub(crate) use export::for_export;
+use export::seeded;
 
 use std::collections::{HashMap, HashSet};
 
@@ -15,7 +23,7 @@ use rusteda_core::job::Ctx;
 
 use crate::Stop;
 use crate::circ::{B, Circuit};
-use crate::corr::{Corr, Relation, Setting};
+use crate::corr::{Corr, Encoding, Relation, Setting};
 use crate::netlist;
 use crate::prove::Rng;
 use crate::reset;
@@ -89,6 +97,27 @@ struct Search<'a, 'b> {
     /// Normalize only proposal samples to each register's reset encoding.
     /// This is a heuristic environment, never a reset or proof premise.
     normalized_own: bool,
+    /// Reset-trace signatures of a state-map search; rank and filter proposals only.
+    traces: Option<trace::Traces>,
+    /// Re-encoded registers of a state-map search; refinement may add codes it observes.
+    encodings: Vec<Encoding>,
+    /// Refinement rounds whose lanes contradicted an encoding (a diagnostic; the export decides).
+    encoding_failures: Vec<u32>,
+    /// Propose only relations with equal changing reset traces (the seed of `explore`).
+    exact_only: bool,
+    /// Variables of hinted re-encoded registers, which exploration leaves as given.
+    hinted: HashSet<String>,
+    /// Elements that a name hint relates to an RTL state (kept out of exploration).
+    named_cells: HashSet<usize>,
+    /// Registers that exploration found in fewer codes than they have, without a re-encoding:
+    /// candidate valid-code invariants (`gate` empty).
+    invariants: Vec<Encoding>,
+    /// The netlist's names, for tie breaks between proposals simulation cannot tell apart.
+    names: Option<std::rc::Rc<crate::alias::Names>>,
+    /// State-map refinement: elements without any relation keep their reset value instead of a
+    /// random one, as a re-encoded register's element for a code not yet in its table does
+    /// while the register stays in its table (a filter only; the export proves everything).
+    optimistic: bool,
 }
 
 impl<'a, 'b> Search<'a, 'b> {
@@ -105,17 +134,24 @@ impl<'a, 'b> Search<'a, 'b> {
     ) -> Result<Self, String> {
         let (c, model, nm) = (s.c, s.model, s.nm);
         let flop = |si: usize| !s.restricted(si);
+        // Under an implementation state map the map chooses RTL initial values, so constants
+        // and shared elements need no reset base; the exported obligations still prove them.
+        let map = s.initial_state_map;
         let consts: Vec<usize> = needed
             .iter()
             .copied()
             .filter(|&si| {
                 flop(si)
-                    && (!s.pulse.is_empty() || s.uninitialized_dont_care)
-                    && (s.base(si).is_some()
-                        || (s.uninitialized_dont_care && model.states[si].arst.is_none()))
+                    && (map
+                        || ((!s.pulse.is_empty() || s.uninitialized_dont_care)
+                            && (s.base(si).is_some()
+                                || (s.uninitialized_dont_care
+                                    && model.states[si].arst.is_none()))))
             })
             .collect();
-        let sharers: Vec<usize> = if s.pulse.is_empty() {
+        let sharers: Vec<usize> = if map {
+            needed.iter().copied().filter(|&si| flop(si)).collect()
+        } else if s.pulse.is_empty() {
             Vec::new()
         } else {
             needed
@@ -129,7 +165,7 @@ impl<'a, 'b> Search<'a, 'b> {
             .iter()
             .flatten()
             .copied()
-            .filter(|&ri| flop(ri) && s.base(ri).is_some())
+            .filter(|&ri| flop(ri) && (map || s.base(ri).is_some()))
             .collect();
         let cell_base = nm
             .seq
@@ -152,6 +188,7 @@ impl<'a, 'b> Search<'a, 'b> {
             .iter()
             .chain(&corr.unmatched)
             .chain(&anchors)
+            .chain(corr.encodings.iter().flat_map(|e| e.rtl.iter()))
             .copied()
             .collect();
         rtl.sort_unstable();
@@ -187,6 +224,15 @@ impl<'a, 'b> Search<'a, 'b> {
             rank_supports: true,
             sketch_bytes: 0,
             normalized_own: false,
+            traces: None,
+            encodings: corr.encodings.clone(),
+            encoding_failures: vec![0; corr.encodings.len()],
+            exact_only: false,
+            hinted: HashSet::new(),
+            named_cells: HashSet::new(),
+            invariants: Vec::new(),
+            names: None,
+            optimistic: false,
         })
     }
 
@@ -250,6 +296,20 @@ impl<'a, 'b> Search<'a, 'b> {
         }
     }
 
+    /// Round `r` of a refinement under a state map: every fourth round sets free values to 1
+    /// with probability 7/8, every other fourth round with 1/8, so carries into high counter
+    /// bits and rare updates occur. Any distribution keeps refinement sound: a lane that
+    /// satisfies all relations and violates one after a step refutes that one.
+    fn randomize_round(&mut self, r: usize) {
+        if !self.optimistic || r.is_multiple_of(2) {
+            return self.randomize();
+        }
+        for &v in &self.frees {
+            let (a, b, c) = (self.rng.next(), self.rng.next(), self.rng.next());
+            self.fv[v as usize] = if r % 4 == 1 { a | b | c } else { a & b & c };
+        }
+    }
+
     /// Overwrites the values that the correspondence and the relations determine. `own` sets
     /// every state still without a relation (and every unused element) to that constant.
     fn derive(&mut self, hyp: &Hyp, own: Option<bool>) {
@@ -303,6 +363,32 @@ impl<'a, 'b> Search<'a, 'b> {
             if let Relation::Cell(ci, parity) = rel {
                 let (iq, q) = (self.iq(*ci), self.q(si));
                 self.fv[iq] = self.fv[q] ^ mask(*parity);
+            }
+        }
+        // Re-encoded registers take a random valid code per lane, the same on both sides, over
+        // any element relation of their bits and elements.
+        for e in 0..self.encodings.len() {
+            let n = self.encodings[e].codes.len() as u64;
+            let (mut rtl, mut gate) = (
+                vec![0u64; self.encodings[e].rtl.len()],
+                vec![0u64; self.encodings[e].gate.len()],
+            );
+            for lane in 0..64 {
+                let (rc, gc) = self.encodings[e].codes[(self.rng.next() % n) as usize];
+                for (b, w) in rtl.iter_mut().enumerate() {
+                    *w |= ((rc >> b) & 1) << lane;
+                }
+                for (i, w) in gate.iter_mut().enumerate() {
+                    *w |= ((gc >> i) & 1) << lane;
+                }
+            }
+            for (b, w) in rtl.into_iter().enumerate() {
+                let q = self.q(self.encodings[e].rtl[b]);
+                self.fv[q] = w;
+            }
+            for (i, w) in gate.into_iter().enumerate() {
+                let iq = self.iq(self.encodings[e].gate[i]);
+                self.fv[iq] = w;
             }
         }
     }
@@ -373,13 +459,39 @@ impl<'a, 'b> Search<'a, 'b> {
         match rel {
             Relation::Constant(k) => {
                 let active = !st.arst.map_or(0, |(cnd, _)| self.v(cnd));
-                (self.v(st.next) ^ mask(k)) & active == 0
+                // Under a state map no pulse establishes the constant: a reset to the other
+                // value must never be active.
+                let reset_ok = match st.arst {
+                    Some((cnd, v)) if self.s.initial_state_map && v != k => self.v(cnd) == 0,
+                    _ => true,
+                };
+                reset_ok && (self.v(st.next) ^ mask(k)) & active == 0
             }
             Relation::Shares(ri, inv) => match self.element(ri, hyp) {
                 Some((ci, parity)) => self.matches_cell(si, ci, parity ^ inv),
                 None => false,
             },
             Relation::Cell(ci, parity) => self.matches_cell(si, ci, parity),
+        }
+    }
+
+    /// Counts the refinement rounds whose lanes contradict a re-encoded register: clocks or
+    /// asynchronous controls, or, outside an asynchronous reset, a next element code that is
+    /// invalid or decodes to another RTL code (a diagnostic; the export's obligations decide).
+    fn check_encodings(&mut self) {
+        for e in 0..self.encodings.len() {
+            let enc = &self.encodings[e];
+            let v = |b: B| Circuit::value_dense(b, &self.vals);
+            let first = &self.s.model.states[enc.rtl[0]];
+            let active = !first.arst.map_or(0, |(cnd, _)| v(cnd));
+            let rtl_next: Vec<u64> = enc.rtl.iter().map(|&si| v(self.s.model.states[si].next)).collect();
+            let gate_next: Vec<u64> = enc.gate.iter().map(|&ci| v(self.s.nm.seq[ci].next)).collect();
+            let (rn, gn) = (encode::lane_codes(&rtl_next), encode::lane_codes(&gate_next));
+            let bad = !encode::async_ok(enc, self.s, &v)
+                || (0..64).any(|lane| (active >> lane) & 1 == 1 && enc.decode(gn[lane]) != Some(rn[lane]));
+            if bad {
+                self.encoding_failures[e] += 1;
+            }
         }
     }
 
@@ -392,12 +504,28 @@ impl<'a, 'b> Search<'a, 'b> {
         failures: &mut HashMap<(usize, Relation), u32>,
     ) -> Result<(), Stop> {
         'again: loop {
-            for _ in 0..ROUNDS {
+            for r in 0..ROUNDS {
                 if hyp.is_empty() {
                     return Ok(());
                 }
-                self.randomize();
+                self.randomize_round(r);
                 self.derive(hyp, None);
+                if self.optimistic {
+                    let claimed: HashSet<usize> = hyp
+                        .values()
+                        .filter_map(|r| match r {
+                            Relation::Cell(ci, _) => Some(*ci),
+                            _ => None,
+                        })
+                        .collect();
+                    for i in 0..self.unused.len() {
+                        let ci = self.unused[i];
+                        if !claimed.contains(&ci) {
+                            let iq = self.iq(ci);
+                            self.fv[iq] = mask(self.cell_phase(ci));
+                        }
+                    }
+                }
                 self.evaluate().map_err(|error| match error {
                     Stop::Undecided(message) => Stop::Undecided(format!(
                         "{message}; {} of {} state proposals remain",
@@ -406,20 +534,41 @@ impl<'a, 'b> Search<'a, 'b> {
                     )),
                     other => other,
                 })?;
+                self.check_encodings();
                 let bad: Vec<(usize, Relation)> = hyp
                     .iter()
                     .filter(|(si, rel)| !self.holds(**si, **rel, hyp))
                     .map(|(si, rel)| (*si, *rel))
                     .collect();
-                let Some(low) = bad.iter().map(|(_, r)| trust(*r)).min() else {
+                // Under a state map, constants come from short reset traces and are the
+                // weakest evidence: they go before shared states and elements.
+                let map = self.s.initial_state_map;
+                let rank = |r: Relation| match (map, r) {
+                    (true, Relation::Constant(_)) => 0,
+                    (true, other) => trust(other) + 1,
+                    (false, other) => trust(other),
+                };
+                let Some(low) = bad.iter().map(|(_, r)| rank(*r)).min() else {
                     continue;
                 };
-                for (si, rel) in bad.into_iter().filter(|(_, r)| trust(*r) == low) {
+                for (si, rel) in bad.into_iter().filter(|(_, r)| rank(*r) == low) {
+                    if std::env::var_os("RUSTSYS_DISCOVERY_REMOVALS").is_some() {
+                        eprintln!("removal {} {:?}", self.s.model.states[si].name, rel);
+                    }
+                    if let Ok(w) = std::env::var("RUSTSYS_DISCOVERY_WATCH") {
+                        if self.s.model.states[si].name.contains(w.as_str()) {
+                            self.explain_failure(si, rel, hyp);
+                        }
+                    }
                     hyp.remove(&si);
                     *failures.entry((si, rel)).or_default() += 1;
                     if let Relation::Constant(k) = rel {
                         let flip = (si, Relation::Constant(!k));
-                        if self.s.model.states[si].arst.is_none() && !failures.contains_key(&flip) {
+                        // A state map takes constants from reset traces only; no flip.
+                        if !self.s.initial_state_map
+                            && self.s.model.states[si].arst.is_none()
+                            && !failures.contains_key(&flip)
+                        {
                             hyp.insert(si, flip.1);
                         }
                     }
@@ -427,6 +576,150 @@ impl<'a, 'b> Search<'a, 'b> {
                 continue 'again;
             }
             return Ok(());
+        }
+    }
+
+    /// Debug: why `rel` of `si` failed in the current lanes: the unexplained RTL states and
+    /// elements its two next functions read, and paired reads whose values differ.
+    fn explain_failure(&self, si: usize, rel: Relation, hyp: &Hyp) {
+        let (model, nm) = (self.s.model, self.s.nm);
+        let st = &model.states[si];
+        let (ci, p) = match rel {
+            Relation::Cell(ci, p) => (ci, p),
+            Relation::Shares(ri, inv) => match self.element(ri, hyp) {
+                Some((ci, parity)) => {
+                    eprintln!("watch {}: shares {} (element {})", st.name, model.states[ri].name, nm.seq[ci].inst);
+                    (ci, parity ^ inv)
+                }
+                None => {
+                    eprintln!("watch {}: shares {} without element", st.name, model.states[ri].name);
+                    return;
+                }
+            },
+            Relation::Constant(_) => {
+                eprintln!("watch {}: {:?} failed", st.name, rel);
+                return;
+            }
+        };
+        let x = &nm.seq[ci];
+        let q_of: HashMap<u32, usize> = model.states.iter().enumerate().map(|(i, s)| (s.q, i)).collect();
+        let iq_of: HashMap<u32, usize> = nm.seq.iter().enumerate().map(|(i, e)| (e.iq, i)).collect();
+        let diff = (self.v(st.next) ^ self.v(x.next) ^ mask(p)) & !st.arst.map_or(0, |(c, _)| self.v(c));
+        let lane = diff.trailing_zeros();
+        let bitv = |w: u64| (w >> lane) & 1;
+        let claimed: HashMap<usize, usize> = hyp
+            .iter()
+            .filter_map(|(r, rl)| match rl {
+                Relation::Cell(c, _) => Some((*c, *r)),
+                _ => None,
+            })
+            .collect();
+        let mut out: Vec<String> = Vec::new();
+        for v in self.s.c.support(&[st.next]).unwrap_or_default() {
+            if let Some(&r) = q_of.get(&v) {
+                let explained = hyp.contains_key(&r)
+                    || self.corr.paired[r].is_some()
+                    || self.corr.constants[r].is_some()
+                    || self.encodings.iter().any(|e| e.rtl.contains(&r));
+                if !explained {
+                    out.push(format!("rtl:{}={}", model.states[r].name, bitv(self.fv[v as usize])));
+                }
+            }
+        }
+        for v in self.s.c.support(&[x.next]).unwrap_or_default() {
+            if let Some(&c) = iq_of.get(&v) {
+                let explained = claimed.contains_key(&c)
+                    || self.corr.owners[c].is_some()
+                    || self.encodings.iter().any(|e| e.gate.contains(&c));
+                if !explained {
+                    out.push(format!("gate:{}={}", nm.seq[c].inst, bitv(self.fv[v as usize])));
+                }
+            }
+        }
+        // Encodings the cones read, with the lane's RTL code.
+        for enc in &self.encodings {
+            let code = enc.rtl.iter().enumerate().fold(0u64, |a, (b, &r)| a | (bitv(self.fv[model.states[r].q as usize]) << b));
+            let gcode = enc.gate.iter().enumerate().fold(0u64, |a, (b, &c)| a | (bitv(self.fv[nm.seq[c].iq as usize]) << b));
+            let rn = enc.rtl.iter().enumerate().fold(0u64, |a, (b, &r)| a | (bitv(self.v(model.states[r].next)) << b));
+            let gn = enc.gate.iter().enumerate().fold(0u64, |a, (b, &c)| a | (bitv(self.v(nm.seq[c].next)) << b));
+            out.push(format!("enc:{}={code}/{gcode}->{rn}/{gn}", enc.variable.rsplit('.').next().unwrap_or("")));
+        }
+        // Relations of states this next reads that fail in the same lane.
+        for v in self.s.c.support(&[st.next]).unwrap_or_default() {
+            if let Some(&r) = q_of.get(&v) {
+                if let Some(rl) = hyp.get(&r) {
+                    if r != si && !self.holds(r, *rl, hyp) {
+                        out.push(format!("failing:{}", model.states[r].name));
+                    }
+                }
+            }
+        }
+        eprintln!(
+            "watch {} ~ {}: clk {} async {} next differs in {} lanes (lane {lane}: rtl {} gate {}); unexplained reads: {}",
+            st.name,
+            x.inst,
+            self.v(st.clk) == self.v(x.clk),
+            self.matches_cell(si, ci, p) || diff != 0,
+            diff.count_ones(),
+            bitv(self.v(st.next)),
+            bitv(self.v(x.next)),
+            out.join(" ")
+        );
+    }
+
+    /// Debug: RTL states without a relation, and the unexplained states their next reads.
+    fn blockers(&self, hyp: &Hyp) {
+        let model = self.s.model;
+        let q_of: HashMap<u32, usize> =
+            model.states.iter().enumerate().map(|(si, st)| (st.q, si)).collect();
+        let explained = |si: usize| {
+            hyp.contains_key(&si)
+                || self.corr.paired[si].is_some()
+                || self.corr.constants[si].is_some()
+                || self.encodings.iter().any(|e| e.rtl.contains(&si))
+                || self.corr.equivalents.iter().any(|e| e.0 == si)
+        };
+        let mut count: HashMap<usize, usize> = HashMap::new();
+        let mut text = String::new();
+        for &si in &self.unmatched {
+            if explained(si) {
+                continue;
+            }
+            let st = &model.states[si];
+            let sup = self.s.c.support(&[st.next]).unwrap_or_default();
+            let open: Vec<usize> = sup
+                .iter()
+                .filter_map(|v| q_of.get(v).copied())
+                .filter(|&x| x != si && !explained(x))
+                .collect();
+            for &x in &open {
+                *count.entry(x).or_default() += 1;
+            }
+            let tr = self.traces.as_ref().map(|t| trace::Traces::constant(&t.rtl[si]));
+            text.push_str(&format!(
+                "open {} trace-constant {:?} reads {} open: {}\n",
+                st.name,
+                tr,
+                open.len(),
+                open.iter().take(6).map(|x| model.states[*x].name.as_str()).collect::<Vec<_>>().join(" ")
+            ));
+        }
+        if let Ok(names) = std::env::var("RUSTSYS_DISCOVERY_ELEMENTS") {
+            for (si, rel) in hyp {
+                if let Relation::Cell(ci, p) = rel {
+                    if names.split(',').any(|n| n == self.s.nm.seq[*ci].inst) {
+                        text.push_str(&format!("element {} ~ {} parity {p}\n", self.s.nm.seq[*ci].inst, model.states[*si].name));
+                    }
+                }
+            }
+        }
+        let mut top: Vec<(usize, usize)> = count.into_iter().collect();
+        top.sort_by_key(|b| std::cmp::Reverse(b.1));
+        for (x, n) in top.iter().take(60) {
+            text.push_str(&format!("blocker {} read by {n}\n", model.states[*x].name));
+        }
+        if let Some(path) = std::env::var_os("RUSTSYS_DISCOVERY_BLOCKERS") {
+            let _ = std::fs::write(path, text);
         }
     }
 
@@ -458,253 +751,6 @@ impl<'a, 'b> Search<'a, 'b> {
         Ok(out)
     }
 
-    /// Proposes shared (b) and cell (c) relations for states without one.
-    fn propose(
-        &mut self,
-        hyp: &Hyp,
-        failures: &HashMap<(usize, Relation), u32>,
-    ) -> Result<Vec<(usize, Relation)>, Stop> {
-        let (model, nm) = (self.s.model, self.s.nm);
-        let free_sharers: Vec<usize> = self
-            .sharers
-            .iter()
-            .copied()
-            .filter(|si| !hyp.contains_key(si))
-            .collect();
-        let taken: HashSet<usize> = hyp
-            .values()
-            .filter_map(|r| match r {
-                Relation::Cell(ci, _) => Some(*ci),
-                _ => None,
-            })
-            .collect();
-        let free_cells: Vec<usize> = self
-            .unused
-            .iter()
-            .copied()
-            .filter(|ci| !taken.contains(ci))
-            .collect();
-        let free_rtl: Vec<usize> = self
-            .unmatched
-            .iter()
-            .copied()
-            .filter(|si| !matches!(hyp.get(si), Some(Relation::Shares(..) | Relation::Cell(..))))
-            .collect();
-        let mut anchors = self.anchors.clone();
-        anchors.extend(hyp.iter().filter_map(|(si, r)| {
-            (matches!(r, Relation::Cell(..))
-                && !self.s.restricted(*si)
-                && self.s.base(*si).is_some())
-            .then_some(*si)
-        }));
-        if (free_sharers.is_empty() || anchors.is_empty())
-            && (free_cells.is_empty() || free_rtl.is_empty())
-        {
-            return Ok(Vec::new());
-        }
-        // Items: for every RTL state of interest next, clock and asynchronous condition and the
-        // state value itself; for every free element its four functions.
-        let mut rtl_ids: Vec<usize> = free_sharers.clone();
-        rtl_ids.extend(&anchors);
-        rtl_ids.extend(&free_rtl);
-        rtl_ids.sort_unstable();
-        rtl_ids.dedup();
-        let mut items = Vec::new();
-        for &si in &rtl_ids {
-            let st = &model.states[si];
-            items.extend([
-                st.next,
-                st.clk,
-                st.arst.map_or(B::F, |(cnd, _)| cnd),
-                B::V(st.q),
-            ]);
-        }
-        for &ci in &free_cells {
-            let x = &nm.seq[ci];
-            items.extend([x.next, x.clk, x.clear, x.preset]);
-        }
-        let w = self.record(hyp, &items)?;
-        let at: HashMap<usize, usize> = rtl_ids
-            .iter()
-            .enumerate()
-            .map(|(k, si)| (*si, 4 * k))
-            .collect();
-        let cell_at = |k: usize| 4 * rtl_ids.len() + 4 * k;
-        let key = |a: &[u64], b: &[u64]| -> Vec<u64> { a.iter().chain(b).copied().collect() };
-        let ok = |bad: u32, active: u32| f64::from(bad) <= MAX_DISAGREEMENT * f64::from(active);
-        let tried = |si: usize, rel: Relation| {
-            failures.get(&(si, rel)).copied().unwrap_or(0) >= MAX_FAILURES
-        };
-        let mut out = Vec::new();
-        // (b) Shares: same clock and asynchronous condition; the candidate's next value with its
-        // own value set to the representative's (through `zero` and `one`) agrees in most lanes.
-        // All candidates are proposed together, so states that depend on each other's relation
-        // can hold together under refinement.
-        let mut by_key: HashMap<Vec<u64>, Vec<usize>> = HashMap::new();
-        for &ri in &anchors {
-            let k = at[&ri];
-            by_key
-                .entry(key(&w[k + 1].rnd, &w[k + 2].rnd))
-                .or_default()
-                .push(ri);
-        }
-        for &si in &free_sharers {
-            let k = at[&si];
-            let Some(group) = by_key.get(&key(&w[k + 1].rnd, &w[k + 2].rnd)) else {
-                continue;
-            };
-            let base = self.s.base(si).expect("sharer base");
-            let passing: Vec<(u32, usize, bool)> = group
-                .iter()
-                .copied()
-                .filter_map(|ri| {
-                    let inv = base ^ self.s.base(ri).expect("anchor base");
-                    if tried(si, Relation::Shares(ri, inv)) {
-                        return None;
-                    }
-                    let r = at[&ri];
-                    let (mut bad, mut active) = (0, 0);
-                    for t in 0..PROPOSE_ROUNDS {
-                        let own = w[r + 3].rnd[t] ^ mask(inv);
-                        let next = (own & w[k].one[t]) | (!own & w[k].zero[t]);
-                        let live = !w[k + 2].rnd[t];
-                        bad += ((next ^ mask(inv) ^ w[r].rnd[t]) & live).count_ones();
-                        active += live.count_ones();
-                    }
-                    ok(bad, active).then_some((bad, ri, inv))
-                })
-                .collect();
-            // Rank: bits of the same RTL variable first, then structural similarity, then
-            // simulation agreement.
-            let var = variable(&model.states[si].name);
-            let mut best: Option<(bool, f64, u32, usize, bool)> = None;
-            for (bad, ri, inv) in passing {
-                let same = variable(&model.states[ri].name) == var;
-                let sim = self.similarity(si, ri);
-                let better = match best {
-                    None => true,
-                    Some((s0, m0, b0, r0, _)) => {
-                        (same, sim) > (s0, m0) || ((same, sim) == (s0, m0) && (bad, ri) < (b0, r0))
-                    }
-                };
-                if better {
-                    best = Some((same, sim, bad, ri, inv));
-                }
-            }
-            let best = best.map(|(_, _, b, r, i)| (b, r, i));
-            if let Some((_, ri, inv)) = best {
-                out.push((si, Relation::Shares(ri, inv)));
-            }
-        }
-        // (c) Cells: an unused element and an unmatched RTL state of the same kind with equal
-        // clock and asynchronous behavior whose next values agree under one parity in most lanes.
-        let support_hints = self
-            .rank_supports
-            .then(|| support::signatures(self.s, self.corr, hyp, &free_rtl, &free_cells));
-        let sketch_hints = if !self.rank_supports && self.sketch_bytes > 0 {
-            let work = (self.order.len() as u64).saturating_mul(4);
-            if let Some(left) = &mut self.remaining_work {
-                if work > *left {
-                    return Err(Stop::Undecided(
-                        "state proposal sketch-work budget reached".into(),
-                    ));
-                }
-                *left -= work;
-            }
-            support::sketches(
-                self.s,
-                self.corr,
-                &free_rtl,
-                &free_cells,
-                &self.order,
-                self.sketch_bytes,
-            )
-        } else {
-            None
-        };
-        let mut used: HashSet<usize> = out.iter().map(|x| x.0).collect();
-        for (n, &ci) in free_cells.iter().enumerate() {
-            let x = &nm.seq[ci];
-            let k = cell_at(n);
-            let mut best: Option<(u32, f64, usize, bool)> = None;
-            for &si in free_rtl.iter().filter(|si| !used.contains(si)) {
-                let st = &model.states[si];
-                let r = at[&si];
-                if st.latch != x.latch || w[r + 1].rnd != w[k + 1].rnd {
-                    continue;
-                }
-                for p in [false, true] {
-                    if tried(si, Relation::Cell(ci, p)) {
-                        continue;
-                    }
-                    if let (Some(bc), Some(br)) = (self.cell_base[ci], self.s.base(si)) {
-                        if bc != br ^ p {
-                            continue;
-                        }
-                    }
-                    let (mut bad, mut active, mut forced) = (0, 0, false);
-                    let parity = mask(p);
-                    let cross = p ^ self.rtl_phase(si) ^ self.cell_phase(ci);
-                    for t in 0..PROPOSE_ROUNDS {
-                        let (clear, preset) = (w[k + 2].rnd[t], w[k + 3].rnd[t]);
-                        let (f0, f1) = if p { (preset, clear) } else { (clear, preset) };
-                        let cnd = w[r + 2].rnd[t];
-                        let (want0, want1) = match st.arst {
-                            None => (0, 0),
-                            Some((_, false)) => (cnd, 0),
-                            Some((_, true)) => (0, cnd),
-                        };
-                        forced |= f0 != want0 || f1 != want1;
-                        let mut live = !cnd;
-                        if st.latch {
-                            live &= w[r + 1].rnd[t];
-                        }
-                        let (c0, c1) = (w[k].zero[t], w[k].one[t]);
-                        let (s0, s1) = (w[r].zero[t], w[r].one[t]);
-                        let differ = if cross {
-                            (c1 ^ parity ^ s0) | (c0 ^ parity ^ s1)
-                        } else {
-                            (c0 ^ parity ^ s0) | (c1 ^ parity ^ s1)
-                        };
-                        bad += (differ & live).count_ones();
-                        active += live.count_ones();
-                    }
-                    let similarity = support_hints.as_ref().map_or_else(
-                        || {
-                            sketch_hints
-                                .as_ref()
-                                .map_or(0.0, |(rtl_support, cell_support)| {
-                                    support::sketch_similarity(rtl_support[&si], cell_support[&ci])
-                                })
-                        },
-                        |(rtl_support, cell_support)| {
-                            support::similarity(&rtl_support[&si], &cell_support[&ci])
-                        },
-                    );
-                    if !forced
-                        && ok(bad, active)
-                        && best
-                            .is_none_or(|(b, sim, _, _)| bad < b || (bad == b && similarity > sim))
-                    {
-                        best = Some((bad, similarity, si, p));
-                    }
-                }
-            }
-            if let Some((_, _, si, p)) = best {
-                used.insert(si);
-                out.push((si, Relation::Cell(ci, p)));
-            }
-        }
-        Ok(out)
-    }
-}
-
-/// The RTL variable of a state name: the name without its last bit index.
-fn variable(name: &str) -> &str {
-    match name.rfind('[') {
-        Some(i) if name.ends_with(']') => &name[..i],
-        _ => name,
-    }
 }
 
 /// RTL state bits without a counterpart that the compared logic reads, transitively.
@@ -782,67 +828,11 @@ pub(crate) fn discover(
     excluded: &HashSet<(usize, Relation)>,
     ctx: Ctx<'_>,
 ) -> Result<Vec<(usize, Relation)>, Stop> {
-    discover_inner(s, corr, seed, excluded, ctx, None)
+    discover_inner(s, corr, seed, excluded, ctx, None, None, (&[], None), &mut None)
+        .map(|(relations, _)| relations)
 }
 
-/// Name-free bindings are proposals only. A bijection leaves every gate bit
-/// arbitrary; the exported complete event frame must still pass external CEC.
-/// Memory plan, one corner/worker: <=64M definitions * (3*8+4) bytes of dense
-/// scratch, <=64M support entries *4 bytes, plus bounded names/signatures;
-/// Optional 16-byte/definition support sketches use at most 1 GiB;
-/// <4 GiB additional RAM. Pair, round and evaluation budgets bound all work.
-pub(crate) fn for_export(
-    s: &Setting<'_>,
-    corr: &Corr,
-    seed: u64,
-    limits: &crate::ObligationExport,
-    ctx: Ctx<'_>,
-) -> Result<Vec<(usize, Relation)>, Stop> {
-    if !s.pulse.is_empty()
-        || s.uninitialized_dont_care
-        || s.c.defs.len() > limits.max_discovery_definitions
-        || limits.max_discovery_rounds == 0
-        || limits.max_discovery_work == 0
-    {
-        return Err(Stop::Undecided(format!(
-            "one-to-one export proposal scope/definition budget reached: {} definitions (max {})",
-            s.c.defs.len(),
-            limits.max_discovery_definitions
-        )));
-    }
-    // Search only relevant unmatched states; every other original RTL state
-    // stays free in the final export. This restricts proposals, not the theorem.
-    let mut search_corr = corr.clone();
-    search_corr.unmatched =
-        needed_limited(s, corr, Some(limits.max_discovery_rounds)).map_err(Stop::Undecided)?;
-    let candidates = search_corr.unmatched.len() as u128 * corr.unused.len() as u128;
-    if !s.pulse.is_empty()
-        || s.uninitialized_dont_care
-        || s.c.defs.len() > limits.max_discovery_definitions
-        || candidates > limits.max_discovery_candidates as u128
-        || limits.max_discovery_rounds == 0
-        || limits.max_discovery_work == 0
-    {
-        return Err(Stop::Undecided(format!(
-            "one-to-one export state-proposal budget or scope reached: {} definitions (max {}), {} candidate pairs (max {})",
-            s.c.defs.len(),
-            limits.max_discovery_definitions,
-            candidates,
-            limits.max_discovery_candidates
-        )));
-    }
-    let proposals = discover_inner(s, &search_corr, seed, &HashSet::new(), ctx, Some(limits))?;
-    if proposals
-        .iter()
-        .any(|(_, relation)| !matches!(relation, Relation::Cell(..)))
-    {
-        return Err(Stop::Internal(
-            "export discovery proposed a constant or shared state".into(),
-        ));
-    }
-    Ok(proposals)
-}
-
+#[allow(clippy::too_many_arguments)]
 fn discover_inner(
     s: &Setting<'_>,
     corr: &Corr,
@@ -850,23 +840,45 @@ fn discover_inner(
     excluded: &HashSet<(usize, Relation)>,
     ctx: Ctx<'_>,
     limits: Option<&crate::ObligationExport>,
-) -> Result<Vec<(usize, Relation)>, Stop> {
+    traces: Option<trace::Traces>,
+    (seed_relations, names): (&[(usize, Relation)], Option<&std::rc::Rc<crate::alias::Names>>),
+    work: &mut Option<u64>,
+) -> Result<(Vec<(usize, Relation)>, Vec<Encoding>), Stop> {
     if corr.unmatched.is_empty() && corr.unused.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), corr.encodings.clone()));
     }
     let mut search = if limits.is_some() {
         Search::with_needed(s, corr, seed, corr.unmatched.clone())?
     } else {
         Search::new(s, corr, seed)?
     };
-    search.remaining_work = limits.map(|limit| limit.max_discovery_work);
+    search.remaining_work = if limits.is_some() { *work } else { None };
     search.sketch_bytes = limits.map_or(0, |limit| limit.max_discovery_sketch_bytes);
     search.normalized_own = limits.is_some();
     search.rank_supports = limits.is_none_or(|limit| {
         (corr.unmatched.len() as u128 + corr.unused.len() as u128) * s.c.defs.len() as u128
             <= limit.max_discovery_support_entries as u128
     });
-    let mut hyp: Hyp = HashMap::new();
+    if s.initial_state_map && limits.is_some() {
+        search.traces = match traces {
+            Some(t) => Some(t),
+            None => Some(trace::simulate(s, corr, seed, &mut search.remaining_work)?),
+        };
+    }
+    let map = search.traces.is_some();
+    search.optimistic = map;
+    search.names = names.cloned();
+    // Name hints from wire aliases start as proposals; refinement may drop them.
+    let mut hyp: Hyp = seeded(corr, seed_relations, excluded, &corr.encodings);
+    if std::env::var_os("RUSTSYS_DISCOVERY_TRACE").is_some() {
+        eprintln!(
+            "relation search: {} unmatched, {} unused, {} seeded, {} encodings",
+            corr.unmatched.len(),
+            corr.unused.len(),
+            hyp.len(),
+            corr.encodings.len()
+        );
+    }
     // Relations a proof rejected are never proposed again.
     let mut failures: HashMap<(usize, Relation), u32> =
         excluded.iter().map(|r| (*r, MAX_FAILURES)).collect();
@@ -884,13 +896,21 @@ fn discover_inner(
         rounds += 1;
         let before = hyp.clone();
         let mut proposed = 0;
-        for i in 0..search.consts.len() {
+        for i in 0..if map { 0 } else { search.consts.len() } {
             let si = search.consts[i];
             if hyp.contains_key(&si) {
                 continue;
             }
             let base = s.base(si);
-            let pick = [base.unwrap_or(false), !base.unwrap_or(false)]
+            // A state map tries the reset value first; the map still chooses either value.
+            let first = base
+                .or_else(|| {
+                    s.initial_state_map
+                        .then(|| s.model.states[si].arst.map(|(_, v)| v))
+                        .flatten()
+                })
+                .unwrap_or(false);
+            let pick = [first, !first]
                 .into_iter()
                 .take(if base.is_some() { 1 } else { 2 })
                 .map(Relation::Constant)
@@ -900,21 +920,83 @@ fn discover_inner(
                 proposed += 1;
             }
         }
-        search.refine(&mut hyp, &mut failures)?;
+        // Seeded name hints are refined together with the first proposals: refining them
+        // alone would blame them for states that no proposal explains yet.
+        if !(first && !seed_relations.is_empty()) {
+            search.refine(&mut hyp, &mut failures)?;
+        }
         let props = search.propose(&hyp, &failures)?;
+        if let Ok(w) = std::env::var("RUSTSYS_DISCOVERY_PROPOSALS") {
+            for (si, rel) in &props {
+                if s.model.states[*si].name.contains(w.as_str()) {
+                    eprintln!("proposal round {rounds}: {} {:?}", s.model.states[*si].name, match rel {
+                        Relation::Cell(ci, p) => format!("cell {} {p}", s.nm.seq[*ci].inst),
+                        Relation::Shares(ri, inv) => format!("shares {} {inv}", s.model.states[*ri].name),
+                        Relation::Constant(k) => format!("constant {k}"),
+                    });
+                }
+            }
+        }
         proposed += props.len();
         for (si, rel) in props {
             hyp.insert(si, rel);
         }
         search.refine(&mut hyp, &mut failures)?;
+        // A state map proposes a constant only for state whose reset trace never changes and
+        // that no element or shared state explains.
+        if let Some(t) = &search.traces {
+            for &si in &search.consts {
+                if hyp.contains_key(&si) {
+                    continue;
+                }
+                let Some(v) = trace::Traces::constant(&t.rtl[si]) else {
+                    continue;
+                };
+                let rel = Relation::Constant(v);
+                if failures.get(&(si, rel)).copied().unwrap_or(0) < MAX_FAILURES {
+                    hyp.insert(si, rel);
+                    proposed += 1;
+                }
+            }
+            search.refine(&mut hyp, &mut failures)?;
+        }
+        if std::env::var_os("RUSTSYS_DISCOVERY_TRACE").is_some() {
+            let count = |k: u8| hyp.values().filter(|r| trust(**r) == k).count();
+            eprintln!(
+                "discovery round {rounds}: proposed {proposed}, kept {} (shares {}, cells {}, constants {}), failures {}",
+                hyp.len(),
+                count(0),
+                count(1),
+                count(2),
+                failures.len()
+            );
+        }
         if proposed == 0 || (hyp == before && !first) {
             break;
         }
         first = false;
     }
+    if std::env::var_os("RUSTSYS_DISCOVERY_BLOCKERS").is_some() {
+        search.blockers(&hyp);
+    }
     let mut out: Vec<(usize, Relation)> = hyp.into_iter().collect();
     out.sort_by_key(|x| x.0);
-    Ok(out)
+    if std::env::var_os("RUSTSYS_DISCOVERY_TRACE").is_some() {
+        for (enc, failures) in search.encodings.iter().zip(&search.encoding_failures) {
+            eprintln!(
+                "encoding {}: {} bits, {} elements, {} codes {:?}, {failures} contradicted rounds",
+                enc.variable,
+                enc.rtl.len(),
+                enc.gate.len(),
+                enc.codes.len(),
+                enc.codes
+            );
+        }
+    }
+    if limits.is_some() {
+        *work = search.remaining_work;
+    }
+    Ok((out, search.encodings))
 }
 
 #[cfg(test)]

@@ -140,6 +140,7 @@ impl<'a> Builder<'a> {
             port_order: vec![],
             states: vec![],
             observations: vec![],
+            state_aliases: vec![],
             warnings: vec![],
         };
         for p in &ports {
@@ -241,6 +242,38 @@ impl<'a> Builder<'a> {
                     .map(B::V)
                     .collect(),
             ));
+        }
+        if opts.state_aliases {
+            // Bounded: at most 4M signal bits are recorded.
+            let q_index: HashMap<u32, usize> =
+                self.states.iter().enumerate().map(|(i, st)| (st.q, i)).collect();
+            'sigs: for (s, sig) in self.sigs.iter().enumerate() {
+                // The declared index of a one-dimensional vector's bit, least significant first.
+                let declared = |i: usize| match &sig.ty.packed {
+                    super::ty::Packed::Arr { elem, left, right }
+                        if !sig.ty.is_array() && elem.width() == 1 =>
+                    {
+                        let d = if left >= right { right + i as i64 } else { right - i as i64 };
+                        (d != i as i64).then(|| format!("{}[{d}]", sig.name))
+                    }
+                    _ => None,
+                };
+                for (i, &v) in sig.vars.iter().enumerate() {
+                    if model.state_aliases.len() >= 1 << 22 {
+                        break 'sigs;
+                    }
+                    if let Some((x, inverted)) = crate::netlist::trace(self.c, v) {
+                        if let Some(&state) = q_index.get(&x) {
+                            model.state_aliases.push(super::StateAlias {
+                                name: self.bit_name(s, i),
+                                declared: declared(i),
+                                state,
+                                inverted,
+                            });
+                        }
+                    }
+                }
+            }
         }
         model.states = std::mem::take(&mut self.states);
         model.warnings = std::mem::take(&mut self.warnings);

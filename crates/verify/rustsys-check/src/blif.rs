@@ -991,6 +991,7 @@ pub(crate) fn assemble(
         port_order,
         states,
         observations: Vec::new(),
+        state_aliases: Vec::new(),
         warnings: Vec::new(),
     })
 }

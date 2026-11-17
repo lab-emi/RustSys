@@ -91,6 +91,81 @@ def verify_relation(directory,manifest):
     return {'state_relation_sha256':run.digest(relation),'input_variables_sha256':run.digest(variables)}
 
 
+def verify_state_map(directory,manifest):
+    """Interface check of a reset-reachable (state map) export, independent of the exporter.
+
+    Every implementation element is covered exactly once: by an owner relation or by one
+    re-encoded register. Every RTL state bit is either quantified (an input) or defined by
+    exactly one map record: shared with an owner, constant, or canonical over fresh code
+    inputs. Every valid-code invariant has base and step obligations. The obligations decide
+    whether the map is right; this check only refuses a map that leaves something unbound.
+    """
+    if manifest.get('semantics')!='reset_reachable':raise ValueError('not a reset-reachable export')
+    n=manifest['gate_state_elements'];nr=manifest['rtl_state_bits'];inputs=manifest['sides'][0]['inputs']
+    variables=directory/'input-variables.u32le'
+    if variables.stat().st_size!=4*inputs or not 0<inputs<=1_000_000:raise ValueError('input interface budget')
+    ids=array('I')
+    with variables.open('rb') as f:ids.fromfile(f,inputs)
+    if sys.byteorder!='little':ids.byteswap()
+    present=set(ids)
+    if len(present)!=inputs:raise ValueError('duplicate CEC input variable')
+    names=(directory/manifest['input_names_file']).read_text().splitlines()
+    if len(names)!=inputs or not all(names):raise ValueError('input names do not cover the interface')
+    gate=bytearray(n);rtl=bytearray(nr);canonical=set();defined_vars=set()
+    def own_gate(g):
+        if type(g) is not int or not 0<=g<n or gate[g]:raise ValueError('implementation element unbound or bound twice')
+        gate[g]=1
+    def own_rtl(r):
+        if type(r) is not int or not 0<=r<nr or rtl[r]:raise ValueError('RTL state bit bound twice')
+        rtl[r]=1
+    path=directory/manifest['state_map_file']
+    if path.stat().st_size>256*1024**2:raise ValueError('state map byte budget')
+    shares=constants=encoded_bits=0;encodings=[]
+    for line in path.open():
+        entry=json.loads(line);kind=entry['kind']
+        if kind=='shares':
+            own_rtl(entry['rtl_index']);shares+=1;defined_vars.add(entry['rtl_variable'])
+            if entry['representative_variable'] not in present:raise ValueError('shared state has no quantified representative')
+        elif kind=='constant':
+            own_rtl(entry['rtl_index']);constants+=1;defined_vars.add(entry['rtl_variable'])
+            if type(entry['value']) is not bool:raise ValueError('constant state without a value')
+        elif kind=='encoding':
+            bits=entry['rtl_indices'];fresh=entry['input_variables'];codes=entry['codes']
+            if len(fresh)!=len(bits) or not set(fresh)<=present or not codes or len(codes)>1<<len(bits):
+                raise ValueError('re-encoded register not quantified over a proper code set')
+            if len(entry['gate_indices'])!=len(entry['gate_variables']):raise ValueError('encoding element list')
+            for r in bits:own_rtl(r)
+            for g in entry['gate_indices']:own_gate(g)
+            if entry['rtl_reset_code'] not in [c[0] for c in codes]:raise ValueError('reset code outside the valid codes')
+            canonical.update(fresh);defined_vars.update(entry['rtl_variables']);encoded_bits+=len(bits)
+            encodings.append(entry)
+        else:raise ValueError('unknown state map record')
+    records=0
+    with (directory/'state-relation.jsonl').open() as f:
+        while line:=f.readline(65537):
+            if len(line)>65536:raise ValueError('relation record byte budget reached')
+            entry=json.loads(line);v=entry['rtl_variable']
+            own_gate(entry['gate_index']);records+=1
+            # An owner is quantified, or is a bit of a register under a valid-code invariant.
+            if v not in present and v not in defined_vars:raise ValueError('owner state is neither quantified nor canonical')
+            if v in present:own_rtl(entry['rtl_index'])
+            if type(entry['inverted']) is not bool or not entry['rtl_name'] or not entry['gate_instance']:
+                raise ValueError('invalid state relation')
+    if not all(gate) or records!=manifest['state_relation_records']:raise ValueError('state map omits implementation elements')
+    if inputs!=manifest['primary_input_bits']+nr-shares-constants:
+        raise ValueError('quantified interface differs from RTL states minus mapped ones')
+    kinds=manifest['obligation_kinds'];invariants=manifest.get('invariants',[])
+    if len(invariants)!=len(encodings) or kinds.get('invariant-base',0)<len(invariants) or kinds.get('invariant-step',0)<len(invariants):
+        raise ValueError('a valid-code invariant lacks base or step obligations')
+    if kinds.get('encoded-next-state',0)!=manifest.get('encoded_state_elements'):raise ValueError('encoded elements lack obligations')
+    for inv in invariants:
+        if inv.get('base')!='exported' or inv.get('step')!='exported' or not inv.get('registers'):
+            raise ValueError('invariant without exported base/step obligations')
+    return {'state_map_sha256':run.digest(path),'state_relation_sha256':run.digest(directory/'state-relation.jsonl'),
+            'input_variables_sha256':run.digest(variables),'shared':shares,'constant':constants,
+            'encoded_rtl_bits':encoded_bits,'canonical_inputs':len(canonical)}
+
+
 def verify_inventory(manifest,producer,require_full_core):
     """The implementation inventory must match; independent RTL allocations may differ.
 

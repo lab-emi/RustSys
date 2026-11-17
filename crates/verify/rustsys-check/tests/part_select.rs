@@ -40,6 +40,7 @@ fn part_selects_match_icarus_not_synthesis() {
         &units,
         &mut c,
         &RtlOptions {
+            state_aliases: false,
             top: Some("part_selects".into()),
             assume_full_case: false,
             assume_parallel_case: false,

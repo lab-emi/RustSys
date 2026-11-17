@@ -33,6 +33,11 @@ pub struct Setting<'a> {
     /// Variables of the RTL clock and asynchronous-control cones.
     pub control_vars: &'a HashSet<u32>,
     pub uninitialized_dont_care: bool,
+    /// Obligation export only: explicit permission to let a proven implementation-to-RTL state
+    /// map choose the initial values of RTL state bits that the implementation merged into
+    /// another element or replaced by a constant. Every implementation initial state stays
+    /// covered and no reset is assumed; the claim is refinement, not two-way equivalence.
+    pub initial_state_map: bool,
 }
 
 impl Setting<'_> {
@@ -48,6 +53,40 @@ impl Setting<'_> {
     pub fn restricted(&self, si: usize) -> bool {
         let st = &self.model.states[si];
         st.latch || self.control_vars.contains(&st.q)
+    }
+}
+
+/// A re-encoded register (for example an FSM state register recoded to one-hot): RTL state bits
+/// `rtl` (bit `b` of a code is `rtl[b]`) are a function of implementation elements `gate` (bit `i`
+/// of a code is `gate[i]`). `codes` lists the valid pairs (RTL code, element code).
+///
+/// Obligation export only, under `Setting::initial_state_map`. The export proves, as separate
+/// obligations, that an asynchronous reset puts the elements in a valid code (base) and that a
+/// valid code stays valid over every transition (step); every other obligation is proved for
+/// the states with valid codes. The claim then covers every state reachable from reset.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Encoding {
+    pub variable: String,
+    pub rtl: Vec<usize>,
+    pub gate: Vec<usize>,
+    pub codes: Vec<(u64, u64)>,
+}
+
+impl Encoding {
+    /// The RTL code of an element code, if valid.
+    pub fn decode(&self, gate_code: u64) -> Option<u64> {
+        self.codes
+            .iter()
+            .find(|(_, g)| *g == gate_code)
+            .map(|(r, _)| *r)
+    }
+
+    /// The element code of an RTL code, if valid.
+    pub fn encode(&self, rtl_code: u64) -> Option<u64> {
+        self.codes
+            .iter()
+            .find(|(r, _)| *r == rtl_code)
+            .map(|(_, g)| *g)
     }
 }
 
@@ -69,6 +108,32 @@ pub struct Corr {
     pub unused: Vec<usize>,
     /// Discovered relations in force (CHECK-REQ-0032).
     pub discovered: Vec<(usize, Relation)>,
+    /// Re-encoded registers (state-map export only); their RTL bits and elements are in neither
+    /// `unmatched` nor `unused`.
+    pub encodings: Vec<Encoding>,
+}
+
+impl Corr {
+    /// Removes the pairing of RTL state `si` and makes its element unused (state-map export:
+    /// a name match that a re-encoding contradicts is only a hint).
+    pub fn release(&mut self, si: usize) {
+        if let Some((ci, _)) = self.paired[si].take() {
+            if self.owners[ci] == Some(si) {
+                self.owners[ci] = None;
+                self.equivalents.retain(|(a, r, _)| *a != si && *r != si);
+                if !self.unused.contains(&ci) {
+                    self.unused.push(ci);
+                    self.unused.sort_unstable();
+                }
+            } else {
+                self.equivalents.retain(|(a, _, _)| *a != si);
+            }
+        }
+        if !self.unmatched.contains(&si) {
+            self.unmatched.push(si);
+            self.unmatched.sort_unstable();
+        }
+    }
 }
 
 /// Correspondence by name. Netlist state elements without a named counterpart are returned in
@@ -80,6 +145,8 @@ pub fn by_name(s: &Setting<'_>) -> Result<Corr, String> {
 /// Export only a one-to-one subset. Removed/aliased RTL state remains FREE;
 /// no constant or sharing relation is asserted. External obligations must prove
 /// outputs and every retained transition for ALL values of those extra states.
+/// A state map adds relations only through discovery, which runs only when an element has no
+/// owner; a netlist that names every element keeps the one-to-one export unchanged.
 pub fn by_name_for_export(s: &Setting<'_>) -> Result<Corr, String> {
     named(s, true)
 }
@@ -160,6 +227,63 @@ pub(crate) fn explicit_export_proposals(
     Ok(result)
 }
 
+/// Resolves externally refuted relations by name (at most 65536 records / 16 MiB of names).
+/// An unknown name is an error: a stale exclusion list must not silently widen the search.
+pub(crate) fn excluded_relations(
+    s: &Setting<'_>,
+    list: &[crate::ExcludedRelation],
+) -> Result<HashSet<(usize, Relation)>, String> {
+    if list.is_empty() {
+        return Ok(HashSet::new());
+    }
+    if list.len() > 65_536
+        || list
+            .iter()
+            .map(|x| x.rtl_state.len() + x.other.len())
+            .fold(0usize, usize::saturating_add)
+            > 16 * 1024 * 1024
+    {
+        return Err("excluded relation count/name byte budget reached".into());
+    }
+    let rtl: HashMap<&str, usize> = s
+        .model
+        .states
+        .iter()
+        .enumerate()
+        .map(|(i, st)| (st.name.as_str(), i))
+        .collect();
+    let cells: HashMap<&str, usize> = s
+        .nm
+        .seq
+        .iter()
+        .enumerate()
+        .map(|(i, x)| (x.inst.as_str(), i))
+        .collect();
+    let mut out = HashSet::with_capacity(list.len());
+    for x in list {
+        let si = *rtl
+            .get(x.rtl_state.as_str())
+            .ok_or_else(|| format!("unknown excluded RTL state {}", x.rtl_state))?;
+        let rel = match x.kind.as_str() {
+            "constant" => Relation::Constant(x.value),
+            "shares" => Relation::Shares(
+                *rtl.get(x.other.as_str())
+                    .ok_or_else(|| format!("unknown excluded representative {}", x.other))?,
+                x.value,
+            ),
+            "cell" => Relation::Cell(
+                *cells
+                    .get(x.other.as_str())
+                    .ok_or_else(|| format!("unknown excluded instance {}", x.other))?,
+                x.value,
+            ),
+            other => return Err(format!("unknown excluded relation kind {other}")),
+        };
+        out.insert((si, rel));
+    }
+    Ok(out)
+}
+
 fn named(s: &Setting<'_>, leave_unpaired_free: bool) -> Result<Corr, String> {
     let (c, model, nm) = (s.c, s.model, s.nm);
     let iq_to_cell: HashMap<u32, usize> =
@@ -173,6 +297,7 @@ fn named(s: &Setting<'_>, leave_unpaired_free: bool) -> Result<Corr, String> {
         unmatched: Vec::new(),
         unused: Vec::new(),
         discovered: Vec::new(),
+        encodings: Vec::new(),
     };
     let mut cell_used = vec![false; nm.seq.len()];
     for (si, st) in model.states.iter().enumerate() {
@@ -181,12 +306,14 @@ fn named(s: &Setting<'_>, leave_unpaired_free: bool) -> Result<Corr, String> {
             continue;
         };
         if let Some(value) = reset::constant(c, B::V(net)) {
-            if leave_unpaired_free {
+            // Under a state map a named constant is a proposal like a discovered one: one
+            // that is not allowed stays free instead of failing the check.
+            if leave_unpaired_free || (s.initial_state_map && !constant_allowed(s, si, value)) {
                 corr.unmatched.push(si);
                 continue;
             }
             // Constant state aliases need an explicit base case (CHECK-REQ-0048, CHECK-REQ-0050).
-            if s.pulse.is_empty() && !s.uninitialized_dont_care {
+            if !s.initial_state_map && s.pulse.is_empty() && !s.uninitialized_dont_care {
                 return Err(format!(
                     "state net {} is not driven by a state element through inverters or buffers",
                     st.name
@@ -213,11 +340,11 @@ fn named(s: &Setting<'_>, leave_unpaired_free: bool) -> Result<Corr, String> {
             continue;
         };
         if let Some(ri) = corr.owners[ci] {
-            if leave_unpaired_free {
+            let inv = parity ^ corr.paired[ri].expect("state owner").1;
+            if leave_unpaired_free || (s.initial_state_map && !sharing_allowed(s, si, ri, inv)) {
                 corr.unmatched.push(si);
                 continue;
             }
-            let inv = parity ^ corr.paired[ri].expect("state owner").1;
             if !sharing_allowed(s, si, ri, inv) {
                 return Err(format!(
                     "state element {} drives two state nets without an established reset relation",
@@ -235,9 +362,14 @@ fn named(s: &Setting<'_>, leave_unpaired_free: bool) -> Result<Corr, String> {
     Ok(corr)
 }
 
-/// Base case of a constant state (CHECK-REQ-0048, CHECK-REQ-0050).
+/// Base case of a constant state (CHECK-REQ-0048, CHECK-REQ-0050). Under an implementation
+/// state map the map itself chooses the RTL initial value; latches and sequential-control
+/// state still never become constants.
 fn constant_allowed(s: &Setting<'_>, si: usize, value: bool) -> bool {
     let st = &s.model.states[si];
+    if s.initial_state_map {
+        return s.pulse.is_empty() && !s.uninitialized_dont_care && !s.restricted(si);
+    }
     (!s.pulse.is_empty() || s.uninitialized_dont_care)
         && !s.restricted(si)
         && (reset::establishes(s.c, st.arst, value, s.pulse)
@@ -249,6 +381,9 @@ fn sharing_allowed(s: &Setting<'_>, si: usize, ri: usize, inv: bool) -> bool {
     let (st, rep) = (&s.model.states[si], &s.model.states[ri]);
     if s.restricted(si) || s.restricted(ri) {
         return false;
+    }
+    if s.initial_state_map {
+        return s.pulse.is_empty() && !s.uninitialized_dont_care;
     }
     if s.uninitialized_dont_care && st.arst.is_none() && rep.arst.is_none() {
         return true;

@@ -35,6 +35,7 @@ fn model_widths(n: u32, m: u32, w: u32, signed: bool) -> (Circuit, Vec<u32>, Vec
         &units,
         &mut c,
         &RtlOptions {
+            state_aliases: false,
             assume_full_case: false,
             assume_parallel_case: false,
             top: Some("m".into()),
